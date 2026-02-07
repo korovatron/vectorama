@@ -9,6 +9,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Title Screen -->
+    <div id="title-screen" class="title-screen">
+        <div class="title-content">
+            <img src="images/vectoramaLogo.png" alt="Vectorama Logo" class="title-logo">
+            <button id="start-btn" class="start-btn">Start</button>
+        </div>
+    </div>
+    
+    <!-- Main App Container (hidden until Start is clicked) -->
+    <div id="main-app" class="main-app" style="display: none;">
     <!-- Hamburger Menu Button -->
     <button id="panel-toggle-btn" class="panel-toggle-btn active">
         <span></span>
@@ -200,6 +210,8 @@
         }
     }
     </script>
+    </div><!-- End Main App Container -->
+    
     <script type="module" src="app.js"></script>
 </body>
 </html>

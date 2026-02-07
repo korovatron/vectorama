@@ -1,6 +1,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// Title Screen Functionality
+const titleScreen = document.getElementById('title-screen');
+const mainApp = document.getElementById('main-app');
+const startBtn = document.getElementById('start-btn');
+
+let appInitialized = false;
+
+startBtn.addEventListener('click', () => {
+    titleScreen.classList.add('hidden');
+    mainApp.style.display = 'block';
+    
+    // Initialize the app only after the container is visible
+    if (!appInitialized) {
+        const app = new VectoramaApp();
+        window.vectoramaApp = app;
+        appInitialized = true;
+    }
+});
+
 // iOS viewport height fix - necessary for full-screen rendering into notch and chrome areas
 // Sets a CSS variable for the actual viewport height, which works around iOS Safari's 100vh issue
 function setActualVH() {
@@ -1103,14 +1122,21 @@ class VectoramaApp {
             plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
-                this.updateTempVector(intersectPoint.x, intersectPoint.y, 0);
+                // Snap to grid for preview
+                const x = Math.round(intersectPoint.x);
+                const y = Math.round(intersectPoint.y);
+                this.updateTempVector(x, y, 0);
             }
         } else {
             // XZ plane (y = 0) for 3D mode
             plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
-                this.updateTempVector(intersectPoint.x, intersectPoint.y, intersectPoint.z);
+                // Snap to grid for preview
+                const x = Math.round(intersectPoint.x);
+                const y = Math.round(intersectPoint.y);
+                const z = Math.round(intersectPoint.z);
+                this.updateTempVector(x, y, z);
             }
         }
     }
@@ -1671,6 +1697,4 @@ class VectoramaApp {
     }
 }
 
-// Initialize the app when DOM is loaded
-const app = new VectoramaApp();
-window.vectoramaApp = app; // Store globally for theme toggle
+// App will be initialized when Start button is clicked (see title screen code above)
