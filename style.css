@@ -85,6 +85,14 @@ body {
     object-fit: contain;
 }
 
+.title-tagline {
+    font-size: 1.4em;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+    font-style: italic;
+}
+
 .start-btn {
     padding: 15px 50px;
     font-size: 1.2em;
