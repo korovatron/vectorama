@@ -4,11 +4,21 @@
     box-sizing: border-box;
 }
 
+:root {
+    /* Safe area support for iOS - for full-screen rendering into notch and chrome areas */
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+    --safe-area-left: env(safe-area-inset-left);
+    --safe-area-right: env(safe-area-inset-right);
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #333;
     overflow: hidden;
+    overscroll-behavior: none; /* Prevent iOS rubber band scrolling */
+    touch-action: none; /* Prevent default touch behaviors */
     /* Prevent touch behaviors on mobile */
     -webkit-touch-callout: none; /* iOS callout */
     -webkit-user-select: none; /* Safari */
@@ -21,6 +31,7 @@ body {
 .container {
     position: relative;
     height: 100vh;
+    height: var(--actual-vh, 100vh); /* Mobile: JS-calculated height for iOS PWA fix */
     width: 100vw;
 }
 

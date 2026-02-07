@@ -1,0 +1,2849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-H5MT68XJY3"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-H5MT68XJY3');
+    </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Graphiti">
+    <title>Graphiti | Any Curve You Like</title>
+    <meta name="description" content="Free online graphing calculator. Plot equations, find intersections and turning points, visualise calculus concepts with interactive tangents and integrals. Supports parametric, polar and implicit functions with inequalities. Perfect for GCSE and A-Level maths students and teachers. Works on any device - no download needed.">
+    <meta name="keywords" content="graphing calculator, graphical calculator, graph plotter, function plotter, function graphing, mathematical functions, parametric equations, parametric curves, parametric graphs, polar graphs, polar plots, arc length, inequalities, inequality graphing, shaded regions, implicit inequalities, implicit functions, polar inequalities, area between curves, interactive graphs, maths visualisation, calculus visualisation, curve sketching, integration, definite integral, numerical integration, trapezium rule, Simpson's rule, mid-ordinate rule, tangent lines, normal lines, differentiation, derivatives, derivative calculator, turning points, stationary points, maxima and minima, critical points, intersections, intercepts, parameter sliders, A-level maths, GCSE maths, online graphing tool, free graphing calculator, math calculator, web calculator">
+    <meta name="author" content="Neil Kendall">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.korovatron.co.uk/graphiti/">
+    <meta property="og:title" content="Graphiti | Any Curve You Like">
+    <meta property="og:description" content="Free online graphing calculator. Plot equations, find intersections and turning points, visualise calculus concepts with interactive tangents and integrals. Supports parametric, polar and implicit functions with inequalities. Perfect for GCSE and A-Level maths students and teachers. Works on any device - no download needed.">
+    <meta property="og:image" content="https://www.korovatron.co.uk/graphiti/images/graphitiShareImage.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.korovatron.co.uk/graphiti/">
+    <meta property="twitter:title" content="Graphiti | Any Curve You Like">
+    <meta property="twitter:description" content="Free online graphing calculator. Plot equations, find intersections and turning points, visualise calculus concepts with interactive tangents and integrals. Supports parametric, polar and implicit functions with inequalities. Perfect for GCSE and A-Level maths students and teachers. Works on any device - no download needed.">
+    <meta property="twitter:image" content="https://www.korovatron.co.uk/graphiti/images/graphitiShareImage.png">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1A2F42">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Graphiti">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" href="logoTrans.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="logo.png">
+    <link rel="shortcut icon" href="logoTrans.png">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://www.korovatron.co.uk/graphiti/">
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Graphiti",
+        "alternateName": "Any Curve You Like",
+        "description": "Free online graphing calculator. Plot equations, find intersections and turning points, visualise calculus concepts with interactive tangents and integrals. Supports parametric, polar and implicit functions with inequalities. Features real-time tangents and normals, arc length calculation, definite integrals with exact values (fractions, π multiples, surds), area between curves, numerical integration (trapezium rule, Simpson's rule, mid-ordinate rule), and interactive parameter sliders. Perfect for A-level and GCSE maths students and teachers learning calculus and integration techniques.",
+        "url": "https://www.korovatron.co.uk/graphiti/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web Browser",
+        "author": {
+            "@type": "Person",
+            "name": "Neil Kendall",
+            "url": "https://www.korovatron.co.uk"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "GBP"
+        },
+        "browserRequirements": "Requires JavaScript. Works on desktop and mobile browsers.",
+        "softwareVersion": "2025.2",
+        "datePublished": "2025-01-01",
+        "dateModified": "2025-11-30",
+        "image": "https://www.korovatron.co.uk/graphiti/images/graphitiShareImage.png"
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Theme Variables */
+        :root {
+            /* Dark Mode (Default) */
+            --bg-primary: #1A2F42;
+            --bg-secondary: #2A3F5A;
+            --canvas-bg: #606060;
+            --text-primary: #E8F4FD;
+            --text-secondary: #888;
+            --accent-color: #4A90E2;
+            --accent-hover: #6BA3E8;
+            --panel-bg: rgba(42, 63, 90, 0.95);
+            --border-color: #555;
+            --input-bg: #3A4F6A;
+            --button-bg: #4A90E2;
+            --primary-color: #4A90E2;
+            --grid-color: rgba(255, 255, 255, 0.2);
+            --axes-color: rgba(255, 255, 255, 0.5);
+            --label-color: rgba(255, 255, 255, 0.8);
+            --coord-bg: rgba(74, 144, 226, 0.1);
+            --coord-border: rgba(74, 144, 226, 0.3);
+            --coord-text: rgba(255, 255, 255, 0.9);
+            --animation-coord-bg: rgba(42, 63, 90, 0.92);
+            --animation-coord-border: rgba(74, 144, 226, 0.5);
+            --animation-coord-text: rgba(255, 255, 255, 0.95);
+
+            /* Safe area support for iOS */
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+            --safe-area-left: env(safe-area-inset-left);
+            --safe-area-right: env(safe-area-inset-right);
+        }
+        
+        html[data-theme="light"] {
+            /* Light Mode - Only canvas/graph paper changes */
+            --canvas-bg: #FDFDFD;
+            --grid-color: rgba(0, 0, 0, 0.08);
+            --axes-color: rgba(0, 0, 0, 0.25);
+            --label-color: rgba(0, 0, 0, 0.55);
+            --coord-bg: rgba(252, 252, 252, 0.92);
+            --coord-border: rgba(52, 152, 219, 0.25);
+            --coord-text: rgba(44, 62, 80, 0.85);
+            --animation-coord-bg: rgba(255, 255, 255, 0.95);
+            --animation-coord-border: rgba(52, 152, 219, 0.4);
+            --animation-coord-text: rgba(44, 62, 80, 0.95);
+        }
+        
+        html, body {
+            height: 100%;
+            height: var(--actual-vh, 100vh); /* Mobile: JS-calculated height for iOS PWA fix */
+            overflow: hidden;
+            overscroll-behavior: none; /* Prevent iOS rubber band scrolling */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            touch-action: none;
+        }
+        
+        /* Prevent text selection and dragging on UI elements (not input fields) */
+        button, label, img, .logo, .range-label, .title-screen,
+        #help-button, #return-to-title, #virtual-keyboard-toggle, .color-indicator,
+        .function-item .remove-btn, .split-button-dropdown,
+        .parameter-slider-item .range-button, .parameter-slider-item .arrow-button,
+        #function-panel, .function-item, .function-controls,
+        .examples-header, .example-item, .demo-set-item,
+        .example-formula, .example-description, .blank-function-item,
+        .split-button-content, .dropdown-item, .landscape-edit-message {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+            -webkit-touch-callout: none;
+        }
+        
+        /* Re-enable text selection for math-field elements */
+        math-field, math-field * {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+            -webkit-touch-callout: default !important;
+            cursor: text !important;
+        }
+        
+        #app-container {
+            width: 100vw;
+            height: var(--actual-vh, 100vh); /* Mobile: JS-calculated height for iOS PWA fix */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Desktop: Hide scroll bars - Apply to all desktop browsers regardless of window size */
+        @media (hover: hover) and (pointer: fine) {
+            html, body {
+                overflow: hidden; /* Force hide scroll bar on desktop */
+                scrollbar-width: none; /* Firefox */
+                -ms-overflow-style: none; /* IE/Edge */
+            }
+            
+            html::-webkit-scrollbar, body::-webkit-scrollbar {
+                display: none; /* Chrome/Safari/Webkit */
+            }
+            
+            /* Hide function panel scroll bar on desktop */
+            #function-panel {
+                scrollbar-width: none; /* Firefox */
+                -ms-overflow-style: none; /* IE/Edge */
+            }
+            
+            #function-panel::-webkit-scrollbar {
+                display: none; /* Chrome/Safari/Webkit */
+            }
+        }
+        
+        #canvas {
+            display: block;
+            background: var(--canvas-bg);
+            touch-action: none;
+            margin: 0;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+        
+        #canvas.loaded {
+            opacity: 1;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 15px;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        button {
+            background: var(--button-bg);
+            color: var(--text-primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
+        }
+        
+        /* Only apply hover effects on devices with hover capability (not touch screens) */
+        @media (hover: hover) {
+            button:hover {
+                filter: brightness(1.15);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+            
+            /* Remove box-shadow from title/help buttons */
+            #return-to-title:hover,
+            #virtual-keyboard-toggle:hover,
+            #help-button:hover {
+                box-shadow: none;
+            }
+        }
+        
+        /* Active state for all devices (provides touch feedback) */
+        button:active {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        #return-to-title:active,
+        #virtual-keyboard-toggle:active,
+        #help-button:active {
+            box-shadow: none;
+        }
+        
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        /* Parameter slider styling */
+        .parameter-slider-item {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            /* Disable iOS magnifier/loupe on touch */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        .parameter-slider-item * {
+            display: inline-flex !important;
+            /* Disable iOS magnifier/loupe on slider elements */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        .parameter-slider-item .greek-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-color);
+            min-width: auto;
+            flex-shrink: 0;
+        }
+        
+        .parameter-slider-item .parameter-value {
+            font-size: 14px;
+            color: var(--text-color);
+            min-width: 35px;
+            text-align: left;
+            flex-shrink: 0;
+            margin-right: 4px;
+        }
+        
+        .parameter-slider-item .range-button {
+            width: 42px;
+            min-width: 42px;
+            height: 20px;
+            min-height: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: var(--text-primary);
+            opacity: 0.7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 0;
+            margin: 0;
+            transition: background 0.2s;
+            flex-shrink: 0;
+            box-shadow: none;
+        }
+        
+        @media (hover: hover) {
+            .parameter-slider-item .range-button:hover {
+                filter: brightness(1.15);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+        }
+        
+        .parameter-slider-item .range-button:active {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .parameter-slider-item .arrow-button {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            min-height: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 0;
+            margin: 0;
+            transition: background 0.2s;
+            flex-shrink: 0;
+            box-shadow: none;
+        }
+        
+        @media (hover: hover) {
+            .parameter-slider-item .arrow-button:hover {
+                filter: brightness(1.15);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+        }
+        
+        .parameter-slider-item .arrow-button:active {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            flex: 1;
+            height: 6px;
+            background: var(--input-bg);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid #555;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: filter 0.2s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Slider thumb label overlay */
+        .slider-thumb-label {
+            position: absolute;
+            pointer-events: none;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            font-family: 'Times New Roman', 'STIX Two Math', 'Cambria Math', serif;
+            font-style: italic;
+            line-height: 20px;
+            text-align: center;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            user-select: none;
+            -webkit-user-select: none;
+            margin-left: -10px;
+            margin-top: -10px;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid #555;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: filter 0.2s;
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .title-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            pointer-events: auto;
+            background: #1A2F42; /* Fixed dark background */
+            position: relative;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+        
+        .title-screen.loaded {
+            opacity: 1;
+        }
+        
+        .title-screen .logo {
+            max-width: 90vw;
+            max-height: 120px;
+            width: auto;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        
+        /* Sine wave animated tagline */
+        .sine-wave-text {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            font-size: 1.3em;
+            font-weight: 500;
+            color: #4A90E2;
+            margin: 20px 0;
+            min-height: 60px;
+            padding: 0 15px;
+        }
+        
+        /* Smaller font size on mobile */
+        @media (max-width: 500px) {
+            .sine-wave-text {
+                font-size: 1.1em;
+                gap: 1px;
+                padding: 0 20px;
+            }
+        }
+        
+        /* Even smaller on very narrow screens */
+        @media (max-width: 380px) {
+            .sine-wave-text {
+                font-size: 0.95em;
+                padding: 0 15px;
+            }
+        }
+        
+        .sine-wave-text span {
+            display: inline-block;
+            animation: sineWave 2s ease-in-out infinite;
+            animation-delay: calc(var(--char-index) * 0.05s);
+        }
+        
+        @keyframes sineWave {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            25% {
+                transform: translateY(calc(-25px * var(--amplitude)));
+            }
+            75% {
+                transform: translateY(calc(25px * var(--amplitude)));
+            }
+        }
+        
+        .title-screen p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            color: #FFFFFF; /* Fixed white text */
+        }
+        
+        .title-screen .title-button {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid #555;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: filter 0.2s, box-shadow 0.2s;
+            margin: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            display: inline-block;
+            min-width: 180px;
+        }
+        
+        .title-screen .title-button:hover {
+            filter: brightness(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .title-screen .title-button:active {
+            filter: brightness(1.1);
+        }
+        
+        .title-screen .button-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        /* Stack buttons vertically on narrow screens */
+        @media (max-width: 500px) {
+            .title-screen .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .title-screen .title-button {
+                width: 200px;
+                margin: 5px;
+            }
+        }
+        
+        .title-screen a {
+            color: #4A90E2; /* Fixed blue color */
+            text-decoration: underline;
+        }
+        
+        .title-screen a:hover {
+            color: #357ABD; /* Fixed hover blue */
+        }
+        
+        .title-screen p.copyright {
+            position: absolute;
+            bottom: calc(20px + var(--safe-area-bottom, 0px));
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            margin: 0;
+            text-align: center;
+            line-height: 1.3;
+            max-width: 90%;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .title-screen p.copyright a {
+            white-space: nowrap; /* Keep URL from breaking */
+        }
+        
+        .break-mobile {
+            display: inline; /* Show break on mobile by default */
+        }
+        
+        .space-desktop {
+            display: none; /* Hide space on mobile by default */
+        }
+        
+        /* On wider screens, try to keep copyright more compact */
+        @media (min-width: 800px) {
+            .break-mobile {
+                display: none; /* Hide break on desktop */
+            }
+            .space-desktop {
+                display: inline; /* Show space on desktop */
+            }
+            .title-screen p.copyright {
+                max-width: 70%;
+            }
+            .title-screen p.copyright .projects-text {
+                white-space: nowrap; /* Keep "Check out my other projects at" together on wide screens */
+            }
+        }
+        
+        /* On medium screens, show strategic breaks */
+        @media (min-width: 400px) and (max-width: 599px) {
+            .title-screen p.copyright {
+                max-width: 85%;
+            }
+        }
+        
+        /* On very narrow screens, ensure readability */
+        @media (max-width: 399px) {
+            .title-screen p.copyright {
+                font-size: 0.75em;
+                max-width: 95%;
+                line-height: 1.4;
+            }
+        }
+        
+        .function-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(74, 144, 226, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid;
+        }
+        
+        .function-item .function-main-row {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+        }
+        
+        .function-item .function-controls {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            min-height: 100%;
+        }
+        
+        .function-item .color-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        @media (hover: hover) {
+            .function-item .color-indicator:hover {
+                border-color: rgba(255, 255, 255, 0.5);
+                transform: scale(1.1);
+            }
+        }
+        
+        .function-item .color-indicator:active {
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        /* Floating performance monitor overlay */
+        #performance-overlay {
+            position: fixed;
+            bottom: calc(20px + var(--safe-area-bottom, 0px));
+            left: calc(20px + var(--safe-area-left, 0px));
+            background: rgba(26, 47, 66, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-primary);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            line-height: 1.6;
+            min-width: 180px;
+            display: none;
+        }
+        
+        #performance-overlay.visible {
+            display: block;
+        }
+        
+        #performance-overlay .perf-title {
+            font-weight: bold;
+            color: #4A90E2;
+            margin-bottom: 8px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 4px;
+        }
+        
+        #performance-overlay .perf-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0;
+        }
+        
+        #performance-overlay .perf-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        #performance-overlay .perf-value {
+            font-weight: bold;
+            margin-left: 12px;
+        }
+        
+        #performance-overlay .perf-value.good {
+            color: #27AE60;
+        }
+        
+        #performance-overlay .perf-value.warning {
+            color: #F39C12;
+        }
+        
+        #performance-overlay .perf-value.error {
+            color: #E74C3C;
+        }
+        
+        #performance-overlay .perf-hint {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        .function-item .remove-btn {
+            background: #2A3F5A;
+            color: var(--text-primary);
+            border: 1px solid #555;
+            padding: 0;
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (hover: hover) {
+            .function-item .remove-btn:hover {
+                box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+        
+        .function-item .remove-btn:active {
+            background: #E74C3C;
+        }
+        
+        .function-item input[type="text"], .function-item input[type="number"] {
+            flex: 1;
+            min-width: 100px;
+            font-size: 14px;
+            padding: 4px 6px;
+        }
+        
+        /* MathLive styling */
+        .function-item math-field {
+            flex: 1;
+            min-width: 100px;
+            font-size: 18px !important;
+            padding: 2px 4px !important; /* Even more compact padding */
+            line-height: 1.1 !important; /* Very tight line spacing */
+            min-height: 26px; /* Much smaller minimum height */
+            --border-radius: 4px;
+            --border: 1px solid var(--border-color);
+            --background: var(--input-bg) !important;
+            --text-color: var(--text-primary);
+            --caret-color: white;
+            --selection-background-color: var(--accent-color);
+            --selection-color: white;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3);
+            --keyboard-zindex: 9999;
+        }
+        
+        /* Hide the menu toggle button to save space */
+        .function-item math-field::part(menu-toggle) {
+            display: none;
+        }
+        
+        /* Remove hover effect from virtual keyboard toggle */
+        .function-item math-field::part(virtual-keyboard-toggle):hover,
+        .function-item math-field::part(keyboard-toggle):hover,
+        #cartesian-ranges math-field::part(virtual-keyboard-toggle):hover,
+        #cartesian-ranges-y math-field::part(virtual-keyboard-toggle):hover,
+        #parametric-ranges math-field::part(virtual-keyboard-toggle):hover,
+        #polar-ranges math-field::part(virtual-keyboard-toggle):hover {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        
+        /* Hide virtual keyboard toggle - using panel button instead */
+        .function-item math-field::part(virtual-keyboard-toggle),
+        .function-item math-field::part(keyboard-toggle) {
+            display: none !important;
+        }
+        
+        /* Simple PWA safe area handling - no positioning interference */
+        @media (display-mode: standalone) {
+            .ML__keyboard,
+            .ML__keyboard-container,
+            .ML__virtual-keyboard,
+            math-field::part(keyboard) {
+                /* Only handle safe area padding, let MathLive handle positioning */
+                padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+                margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
+            }
+            
+            /* In fullscreen PWA mode, extend keyboard to bottom edge */
+            @media (display-mode: fullscreen) {
+                .ML__keyboard,
+                .ML__keyboard-container,
+                .ML__virtual-keyboard,
+                math-field::part(keyboard) {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+                
+                /* Use all MathLive's CSS custom properties for complete PWA bottom positioning */
+                .ML__keyboard {
+                    --keyboard-padding-bottom: 0px !important;
+                    --_padding-bottom: 0px !important;
+                    --keyboard-padding-top: 5px !important;
+                    --_padding-top: 5px !important;
+                }
+                
+                /* Target the backdrop and plate elements specifically */
+                .MLK__backdrop {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+                
+                .MLK__plate {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+            }
+            
+            /* Alternative approach for standalone PWA mode */
+            @media (display-mode: standalone) {
+                .ML__keyboard,
+                .ML__keyboard-container,
+                .ML__virtual-keyboard,
+                math-field::part(keyboard) {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+                
+                /* Use all MathLive's CSS custom properties for complete PWA bottom positioning */
+                .ML__keyboard {
+                    --keyboard-padding-bottom: 0px !important;
+                    --_padding-bottom: 0px !important;
+                    --keyboard-padding-top: 5px !important;
+                    --_padding-top: 5px !important;
+                }
+                
+                /* Target the backdrop and plate elements specifically */
+                .MLK__backdrop {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+                
+                .MLK__plate {
+                    padding-bottom: 0px !important;
+                    margin-bottom: 0px !important;
+                }
+            }
+        }
+
+        /* Integral limits container styling */
+        .integral-limits-container {
+            display: none; /* Hidden by default, shown when integrals exist */
+            flex-direction: row;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .integral-limits-container.visible {
+            display: flex;
+        }
+
+        .integral-limit-row {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .integral-limit-label {
+            font-size: 14px;
+            display: block;
+            margin-bottom: 2px;
+            color: var(--text-primary);
+        }
+
+        .integral-limit-field {
+            width: 100%;
+            max-width: 100%;
+            font-size: 16px !important;
+            padding: 2px 4px !important;
+            line-height: 1.2 !important;
+            min-height: auto;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            --border-radius: 4px;
+            --border: 1px solid var(--border-color);
+            --background: var(--input-bg) !important;
+            --text-color: var(--text-primary);
+            --caret-color: white;
+            --selection-background-color: var(--accent-color);
+            --selection-color: white;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3);
+            --keyboard-zindex: 9999;
+        }
+        
+        /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+        .integral-limit-field::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .integral-limit-field::part(content) {
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+        }
+        
+        .integral-limit-field:focus-within {
+            --border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        /* Hide menu toggle and virtual keyboard toggle for integral limit fields */
+        .integral-limit-field::part(menu-toggle) {
+            display: none;
+        }
+        
+        /* Hide virtual keyboard toggle - using panel button instead */
+        .integral-limit-field::part(virtual-keyboard-toggle),
+        .integral-limit-field::part(keyboard-toggle) {
+            display: none !important;
+        }
+
+        /* Landscape editing restriction overlay for mobile phones */
+        .landscape-edit-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 47, 66, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+
+        .landscape-edit-message {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .landscape-edit-message h3 {
+            color: var(--text-color);
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .landscape-edit-message p {
+            color: var(--text-muted);
+            margin: 0 0 20px 0;
+            line-height: 1.4;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .landscape-edit-message .rotate-icon {
+            font-size: 2em;
+            margin: 10px 0;
+            opacity: 0.7;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .landscape-dismiss-btn {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid #555;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: filter 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            min-width: 120px;
+        }
+        
+        @media (hover: hover) {
+            .landscape-dismiss-btn:hover {
+                filter: brightness(1.15);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+        }
+        
+        .landscape-dismiss-btn:active {
+            filter: brightness(1.1);
+        }
+        
+        /* Target the actual math content for larger font size */
+        .function-item math-field::part(content) {
+            font-size: 18px !important;
+            line-height: 1.1 !important;
+        }
+        
+        .function-item math-field:focus-within {
+            --border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        
+        /* Error styling for functions using direct styling */
+        .function-item.function-error math-field {
+            background: rgba(231, 76, 60, 0.1) !important;
+            border: 2px solid #E74C3C !important;
+            border-radius: 4px !important;
+        }
+        
+        /* Also try with :focus-within for visibility */
+        .function-item.function-error math-field:focus-within {
+            background: rgba(231, 76, 60, 0.2) !important;
+            border: 2px solid #E74C3C !important;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.3) !important;
+        }
+        
+        /* Error styling for range MathLive fields */
+        #cartesian-ranges math-field.input-error,
+        #cartesian-ranges-y math-field.input-error,
+        #polar-ranges math-field.input-error {
+            background: rgba(231, 76, 60, 0.1) !important;
+            border: 2px solid #E74C3C !important;
+            border-radius: 4px !important;
+        }
+        
+        #cartesian-ranges math-field.input-error:focus-within,
+        #cartesian-ranges-y math-field.input-error:focus-within,
+        #polar-ranges math-field.input-error:focus-within {
+            background: rgba(231, 76, 60, 0.2) !important;
+            border: 2px solid #E74C3C !important;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.3) !important;
+        }
+        
+        .function-item.disabled {
+            opacity: 0.7;
+        }
+        
+        /* Range input styling - MathLive fields for both Cartesian and Polar */
+        #cartesian-ranges math-field,
+        #cartesian-ranges-y math-field {
+            width: 100%;
+            max-width: 100%;
+            font-size: 16px !important;
+            padding: 2px 4px !important;
+            line-height: 1.2 !important;
+            min-height: auto;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            --border-radius: 4px;
+            --border: 1px solid var(--border-color);
+            --background: var(--input-bg) !important;
+            --text-color: var(--text-primary);
+            --caret-color: white;
+            --selection-background-color: var(--accent-color);
+            --selection-color: white;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3);
+            --keyboard-zindex: 9999;
+        }
+        
+        /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+        #cartesian-ranges math-field::-webkit-scrollbar,
+        #cartesian-ranges-y math-field::-webkit-scrollbar {
+            display: none;
+        }
+        
+        #cartesian-ranges math-field::part(content),
+        #cartesian-ranges-y math-field::part(content) {
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+        }
+        
+        #cartesian-ranges math-field:focus-within,
+        #cartesian-ranges-y math-field:focus-within {
+            --border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        
+        /* Hide menu toggle button for Cartesian range fields */
+        #cartesian-ranges math-field::part(menu-toggle),
+        #cartesian-ranges-y math-field::part(menu-toggle) {
+            display: none;
+        }
+        
+        /* Hide virtual keyboard toggle - using panel button instead */
+        #cartesian-ranges math-field::part(virtual-keyboard-toggle),
+        #cartesian-ranges math-field::part(keyboard-toggle),
+        #cartesian-ranges-y math-field::part(virtual-keyboard-toggle),
+        #cartesian-ranges-y math-field::part(keyboard-toggle) {
+            display: none !important;
+        }
+        
+        /* Parametric t range styling - match Cartesian range fields exactly */
+        #parametric-ranges math-field {
+            width: 100%;
+            max-width: 100%;
+            font-size: 16px !important;
+            padding: 2px 4px !important;
+            line-height: 1.2 !important;
+            min-height: auto;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            --border-radius: 4px;
+            --border: 1px solid var(--border-color);
+            --background: var(--input-bg) !important;
+            --text-color: var(--text-primary);
+            --caret-color: white;
+            --selection-background-color: var(--accent-color);
+            --selection-color: white;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3);
+            --keyboard-zindex: 9999;
+        }
+        
+        #parametric-ranges math-field::-webkit-scrollbar {
+            display: none;
+        }
+        
+        #parametric-ranges math-field::part(content) {
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+        }
+        
+        #parametric-ranges math-field:focus-within {
+            --border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        
+        /* Hide menu toggle button for parametric range fields */
+        #parametric-ranges math-field::part(menu-toggle) {
+            display: none;
+        }
+        
+        /* Hide virtual keyboard toggle - using panel button instead */
+        #parametric-ranges math-field::part(virtual-keyboard-toggle),
+        #parametric-ranges math-field::part(keyboard-toggle) {
+            display: none !important;
+        }
+        
+        /* Polar range MathLive field styling - match function input styling */
+        #polar-ranges math-field {
+            width: 100%;
+            max-width: 100%;
+            font-size: 16px !important;
+            padding: 2px 4px !important;
+            line-height: 1.2 !important;
+            min-height: auto;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            --border-radius: 4px;
+            --border: 1px solid var(--border-color);
+            --background: var(--input-bg) !important;
+            --text-color: var(--text-primary);
+            --caret-color: white;
+            --selection-background-color: var(--accent-color);
+            --selection-color: white;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3);
+            --keyboard-zindex: 9999;
+        }
+        
+        /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+        #polar-ranges math-field::-webkit-scrollbar {
+            display: none;
+        }
+        
+        #polar-ranges math-field::part(content) {
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+        }
+        
+        #polar-ranges math-field:focus-within {
+            --border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        
+        /* Hide menu toggle button for polar range fields */
+        #polar-ranges math-field::part(menu-toggle) {
+            display: none;
+        }
+        
+        /* Hide virtual keyboard toggle - using panel button instead */
+        #polar-ranges math-field::part(virtual-keyboard-toggle),
+        #polar-ranges math-field::part(keyboard-toggle) {
+            display: none !important;
+        }
+        
+
+        
+        /* Range input error focus styling */
+        /* Hamburger Menu Styles - Always top-right for consistency */
+        #hamburger-menu {
+            position: absolute;
+            top: calc(20px + var(--safe-area-top, 0px));
+            right: calc(20px + var(--safe-area-right, 0px));
+            width: 40px;
+            height: 40px;
+            background: rgba(42, 63, 90, 0.95); /* Same as other panels */
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure it's above other elements */
+            touch-action: manipulation; /* Improve touch responsiveness */
+            z-index: 20;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        #hamburger-menu.loaded {
+            opacity: 1;
+        }
+        
+        #hamburger-menu:hover {
+            background: rgba(74, 144, 226, 0.9); /* Same blue hover as other elements */
+        }
+        
+        .hamburger-line {
+            width: 20px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.9); /* Fixed white lines */
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+        
+        #hamburger-menu.active .hamburger-line:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        #hamburger-menu.active .hamburger-line:nth-child(2) {
+            opacity: 0;
+        }
+        
+        #hamburger-menu.active .hamburger-line:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+        
+        /* Hide hamburger when explicitly hidden via JavaScript */
+        #hamburger-menu[style*="display: none"] {
+            display: none !important;
+        }
+        
+        /* iOS Safari browser-specific fixes for orientation change UI disappearing bug */
+        /* Affects both iPhone and iPad in Safari browser mode, but not PWA mode */
+        @media (hover: none) and (pointer: coarse) {
+            #hamburger-menu {
+                /* Keep position: absolute for better mobile compatibility */
+                transform: translateZ(0); /* Force hardware acceleration */
+                will-change: transform; /* Optimize for transforms */
+            }
+            
+            #function-panel {
+                transform: translateZ(0) !important; /* Force hardware acceleration */
+                will-change: transform, left !important; /* Optimize for transforms */
+            }
+            
+            #mobile-overlay {
+                transform: translateZ(0) !important; /* Force hardware acceleration */
+                will-change: transform !important; /* Optimize for transforms */
+            }
+        }
+        
+        /* Function panel sliding animation for all devices - v2 narrower */
+        #function-panel {
+            position: fixed !important;
+            top: 0 !important; /* Full height for all devices */
+            left: -100% !important;
+            width: 100% !important;
+            max-width: 330px !important; /* Simplified for iOS compatibility */
+            height: 100vh !important; /* Fixed viewport height to prevent extension */
+            z-index: 15;
+            transition: left 0.3s ease;
+            overflow-y: scroll; /* Always scroll to prevent iOS PWA touch fall-through */
+            border-radius: 0 !important;
+            padding: 20px !important; /* Normal padding for desktop/browser */
+            backdrop-filter: blur(10px);
+            background: rgba(26, 47, 66, 0.95) !important;
+        }
+        
+        /* NOTE: The following media query adds extra top padding in PWA mode to avoid rendering 
+           under the iPhone notch/status bar. It was temporarily disabled due to an iOS 26.1 bug 
+           that caused content to shift down by ~70px (the logo height) when running as a PWA
+           at mobile widths. iOS 26.2 fixed this issue on 13th December 2025, so this code has 
+           been re-enabled. Test thoroughly on iPhone PWA in portrait mode if issues occur. */
+        @media (max-width: 500px) and (display-mode: standalone) {
+            #function-panel {
+                padding: 70px 20px 20px 20px !important;
+            }
+        }
+        
+        #function-panel.mobile-open {
+            left: 0 !important;
+        }
+
+        /* Hamburger color change when panel is open for visual feedback */
+        #hamburger-menu.panel-open {
+            background: rgba(231, 76, 60, 0.9) !important; /* Red to indicate close action */
+        }
+
+        #hamburger-menu.panel-open:hover {
+            background: rgba(192, 57, 43, 0.95) !important; /* Darker red on hover */
+        }
+        
+        /* Mobile Styles - Use more specific targeting */
+        @media (max-width: 500px), (max-height: 500px) {
+            #hamburger-menu {
+                position: fixed !important; /* Use fixed positioning on mobile for consistent placement */
+            }
+            
+            #function-panel {
+                max-width: 330px !important; /* Force narrow width on mobile */
+            }
+            
+            /* Ensure hamburger can still be hidden when explicitly set via JavaScript */
+            #hamburger-menu[style*="display: none"] {
+                display: none !important;
+            }
+            
+            /* Keep function items horizontal on mobile */
+            .function-item {
+                flex-wrap: nowrap;
+                gap: 8px;
+                align-items: stretch; /* Maintain stretch for proper button alignment */
+            }
+            
+            .function-item input[type="text"] {
+                min-width: 100px;
+                flex: 1;
+            }
+            
+            .function-item input[type="number"] {
+                min-width: 60px;
+                width: 60px;
+                flex: none;
+            }
+            
+            .function-item .color-indicator {
+                flex: none;
+            }
+            
+            .function-item button {
+                flex: none;
+            }
+            
+            /* Range inputs on mobile */
+            #function-panel div[style*="display: flex"] input[type="number"] {
+                min-width: 80px !important;
+            }
+        }
+        
+        /* Landscape orientation adjustments - More specific mobile detection */
+        @media (max-width: 500px) and (orientation: landscape),
+               (max-height: 500px) and (orientation: landscape) {
+            #hamburger-menu {
+                top: calc(10px + var(--safe-area-top, 0px)) !important;
+                right: calc(10px + var(--safe-area-right, 0px)) !important;
+            }
+            
+            /* Reduce logo size in landscape to save vertical space */
+            .title-screen .logo {
+                max-height: 70px !important; /* Reduced from 120px */
+                margin-bottom: 10px !important; /* Reduced from 20px */
+            }
+            
+            /* Reduce text spacing in landscape */
+            .title-screen p {
+                font-size: 1em !important; /* Reduced from 1.2em */
+                margin-bottom: 15px !important; /* Reduced from 30px */
+            }
+            
+            /* Adjust instruction text spacing to avoid copyright overlap */
+            .title-screen p[style*="margin-top: 30px"] {
+                margin-top: 10px !important; /* Reduced from 30px */
+                margin-bottom: 5px !important; /* Reduced to create space */
+            }
+            
+            /* Make copyright smaller and less prominent in landscape */
+            .title-screen p.copyright {
+                font-size: 0.7em !important; /* Smaller text */
+                bottom: calc(10px + var(--safe-area-bottom, 0px)) !important; /* Closer to bottom */
+            }
+            
+            /* Simple landscape keyboard height reduction - no aggressive positioning */
+            .ML__keyboard,
+            math-field::part(keyboard) {
+                max-height: 40vh !important; /* Limit height in landscape */
+                overflow-y: auto !important; /* Allow scrolling if needed */
+            }
+            
+            /* Reduce keyboard button sizes and spacing in landscape - more specific selectors */
+            .ML__keyboard .ML__keycap,
+            .ML__keyboard .ML__keycap--small,
+            .ML__keyboard .ML__keycap--large,
+            math-field::part(keycap) {
+                min-height: 28px !important; /* Reduced from default ~40px */
+                max-height: 28px !important; /* Force consistent height */
+                padding: 2px 6px !important; /* Reduced padding */
+                font-size: 0.75em !important; /* Smaller text */
+                line-height: 1.2 !important; /* Tighter line height */
+            }
+            
+            /* Reduce row spacing in keyboard */
+            .ML__keyboard .ML__row,
+            math-field::part(keyboard-row) {
+                margin-bottom: 1px !important; /* Reduced row gap */
+                padding: 1px 0 !important; /* Minimal row padding */
+            }
+            
+            /* Make keyboard tabs smaller */
+            .ML__keyboard .ML__tab,
+            math-field::part(keyboard-tab) {
+                padding: 3px 6px !important; /* Reduced tab padding */
+                font-size: 0.75em !important; /* Smaller tab text */
+                min-height: 24px !important; /* Smaller tab height */
+            }
+            
+            /* Reduce overall keyboard container padding */
+            .ML__keyboard {
+                padding: 4px !important; /* Reduced container padding */
+            }
+        }
+
+        /* Highlight variable keys (x and θ) for better visibility using MathLive's class system */
+        
+        /* Add a custom class to x and θ keys and target them specifically */
+        .ML__keyboard .MLK__keycap.variable-key,
+        .ML__keyboard .variable-key,
+        .MLK__keycap.variable-key {
+            background: var(--panel-bg) !important;
+            background-color: var(--panel-bg) !important;
+            color: white !important;
+            font-weight: bold !important;
+            border: 2px solid rgba(42, 63, 90, 1) !important;
+            border-color: rgba(42, 63, 90, 1) !important;
+            box-shadow: 0 2px 6px rgba(42, 63, 90, 0.4) !important;
+        }
+        
+        .ML__keyboard .MLK__keycap.variable-key:hover,
+        .ML__keyboard .variable-key:hover,
+        .MLK__keycap.variable-key:hover {
+            background: rgba(52, 73, 100, 0.95) !important;
+            background-color: rgba(52, 73, 100, 0.95) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 8px rgba(42, 63, 90, 0.5) !important;
+        }
+        
+        /* Extra specificity to override MathLive defaults */
+        .ML__keyboard .MLK__rows .MLK__keycap.variable-key {
+            background: var(--panel-bg) !important;
+            background-color: var(--panel-bg) !important;
+            color: white !important;
+        }
+
+        /* Landscape editing overlay */
+        .landscape-edit-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(26, 47, 66, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+
+        .landscape-edit-message {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            margin: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .landscape-edit-message h3 {
+            margin: 0 0 15px 0;
+            color: var(--text-color);
+            font-size: 1.2em;
+        }
+
+        .landscape-edit-message p {
+            margin: 0 0 20px 0;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .landscape-edit-dismiss {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .landscape-edit-dismiss:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Force mobile mode for narrow screens regardless of landscape */
+        @media (max-width: 500px) {
+            /* This ensures phones in landscape don't trigger desktop mode */
+            #function-panel {
+                max-width: 330px !important; /* Match our desired narrow width */
+            }
+        }
+        
+        /* Overlay for mobile menu */
+        #mobile-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 14;
+            display: none;
+            pointer-events: auto;
+        }
+
+        /* Mathematical typography for function notation */
+        .math-italic {
+            font-style: italic;
+            font-family: 'Times New Roman', 'STIX Two Math', serif;
+        }
+
+        /* Force MathLive selection colors to always use dark theme regardless of OS theme */
+        math-field {
+            --selection-background-color: #4A90E2 !important;
+            --selection-color: white !important;
+            --contains-highlight-background-color: rgba(74, 144, 226, 0.3) !important;
+        }
+
+        /* Override OS theme detection for MathLive text selection */
+        @media (prefers-color-scheme: light) {
+            math-field {
+                --selection-background-color: #4A90E2 !important;
+                --selection-color: white !important;
+                --contains-highlight-background-color: rgba(74, 144, 226, 0.3) !important;
+            }
+        }
+
+        /* Keyboard shortcuts hint message */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #ccc;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        .keyboard-hint.show {
+            opacity: 1;
+        }
+
+        .keyboard-hint kbd {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #fff;
+        }
+
+        /* Hide hint on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .keyboard-hint {
+                display: none;
+            }
+        }
+
+        /* Keyboard shortcuts overlay */
+        .shortcuts-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .shortcuts-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .shortcuts-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px 40px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            margin: 0 20px; /* Add horizontal margins on mobile */
+        }
+        
+        /* Mobile portrait: narrower content with more padding */
+        @media (max-width: 500px) {
+            .shortcuts-content {
+                padding: 20px;
+                margin: 0 20px;
+                max-width: calc(100% - 40px);
+            }
+        }
+
+        .shortcuts-content h2 {
+            margin: 0 0 20px 0;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .shortcuts-section {
+            margin-bottom: 20px;
+        }
+
+        .shortcuts-section h3 {
+            color: #4A90E2;
+            font-size: 16px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .shortcut-item:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-description {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .shortcut-keys {
+            display: flex;
+            gap: 5px;
+        }
+
+        .shortcut-keys kbd {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #fff;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .shortcuts-close {
+            margin-top: 20px;
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+        }
+        
+        /* Device-aware content visibility */
+        .touch-only {
+            display: none;
+        }
+        
+        .desktop-only {
+            display: inline;
+        }
+        
+        @media (hover: none) and (pointer: coarse) {
+            .touch-only {
+                display: inline;
+            }
+            .desktop-only {
+                display: none !important;
+            }
+        }
+
+        /* Split button for Add Function with dropdown */
+        .split-button-container {
+            position: relative;
+            display: flex;
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+        }
+
+        .split-button-main {
+            flex: 1 1 0 !important;
+            border-radius: 4px 0 0 4px;
+            border-right: none !important;
+            min-width: 0 !important;
+        }
+
+        .split-button-dropdown {
+            width: 24px !important;
+            flex-shrink: 0 !important;
+            border-radius: 0 4px 4px 0;
+            border-left: 1px solid #555 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        @media (hover: hover) {
+            .split-button-dropdown:hover {
+                background: #3A4F6A;
+            }
+        }
+        
+        .split-button-dropdown:active {
+            background: #3A4F6A;
+        }
+
+        .examples-dropdown {
+            position: fixed;
+            margin-top: 4px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            opacity: 0;
+            transform: translateY(-20px) scaleY(0.9);
+            transform-origin: top center;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            scrollbar-width: none; /* Firefox */
+            -webkit-user-select: none;
+            user-select: none;
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .examples-dropdown::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Opera */
+        }
+
+        .examples-dropdown.show {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
+            pointer-events: auto;
+        }
+
+        .examples-header {
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4A90E2;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .example-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .example-item:last-child {
+            border-bottom: none;
+        }
+
+        .example-item:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        .demo-set-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .demo-set-item:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        .example-formula {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .example-formula math-field {
+            font-size: 16px;
+            background: transparent !important;
+            color: #e0e0e0 !important;
+            border: none !important;
+            outline: none !important;
+            pointer-events: none !important;
+        }
+
+        .example-formula math-field::part(container) {
+            background: transparent !important;
+            color: #e0e0e0 !important;
+            border: none !important;
+            pointer-events: none !important;
+        }
+
+        .example-formula math-field::part(content) {
+            background: transparent !important;
+            color: #e0e0e0 !important;
+            pointer-events: none !important;
+        }
+
+        .example-description {
+            font-size: 12px;
+            color: #999;
+            margin-left: 0;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .blank-function-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: 600;
+            background: rgba(42, 63, 90, 0.5);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .blank-function-item:hover {
+            background: rgba(42, 63, 90, 0.8);
+        }
+
+        .clear-all-functions-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: 600;
+            background: rgba(90, 42, 42, 0.5);
+            color: #ffaaaa;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .clear-all-functions-item:hover {
+            background: rgba(90, 42, 42, 0.8);
+        }
+
+        /* Temporary Session Banner */
+        #temp-session-banner {
+            background: linear-gradient(135deg, #9D4EDD 0%, #C77DFF 100%);
+            color: #FFFFFF;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(157, 78, 221, 0.4), 0 0 15px rgba(199, 125, 255, 0.3);
+            transition: all 0.2s ease;
+            animation: tempBannerPulse 2s ease-in-out infinite;
+        }
+
+        #temp-session-banner:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.5), 0 0 20px rgba(199, 125, 255, 0.4);
+        }
+
+        @keyframes tempBannerPulse {
+            0%, 100% {
+                box-shadow: 0 2px 8px rgba(157, 78, 221, 0.4), 0 0 15px rgba(199, 125, 255, 0.3);
+            }
+            50% {
+                box-shadow: 0 2px 12px rgba(157, 78, 221, 0.5), 0 0 20px rgba(199, 125, 255, 0.4);
+            }
+        }
+        
+        /* SVG heartbeat path drawing animation */
+        #title-heartbeat-path {
+            stroke-dasharray: 500;
+            stroke-dashoffset: 500;
+            animation: drawHeartbeat 3.5s ease-in-out 0.5s forwards;
+        }
+        
+        @keyframes drawHeartbeat {
+            from {
+                stroke-dashoffset: 500;
+            }
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+</head>
+<body theme="dark">
+    <div id="app-container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <!-- Hamburger Menu Button (Mobile) -->
+            <button id="hamburger-menu">
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
+            </button>
+            
+            <!-- Mobile Overlay -->
+            <div id="mobile-overlay"></div>
+            
+            <!-- Title Screen -->
+            <div id="title-screen" class="title-screen">
+                <img src="images/graphitiTitle.png" alt="Graphiti" class="logo" />
+                
+                <!-- Animated sine wave tagline -->
+                <div id="sine-wave-tagline" class="sine-wave-text">
+                    <!-- JavaScript will populate this with animated letters -->
+                </div>
+                
+                <svg viewBox="0 0 200 64" xmlns="http://www.w3.org/2000/svg" style="width: 150px; height: auto; margin-bottom: 20px;">
+                    <defs>
+                        <!-- Two full rainbows across the whole path, with lighter blues/purples -->
+                        <linearGradient id="rainbow"
+                            x1="0%" y1="0%" x2="200%" y2="0%"
+                            gradientUnits="userSpaceOnUse">
+
+                            <!-- Rainbow 1 -->
+                            <stop offset="0%"   stop-color="#ff0000" />
+                            <stop offset="8%"   stop-color="#ff7f00" />
+                            <stop offset="16%"  stop-color="#ffff00" />
+                            <stop offset="25%"  stop-color="#00ff00" />
+                            <stop offset="33%"  stop-color="#3f6fff" />   <!-- lighter blue -->
+                            <stop offset="41%"  stop-color="#7a33c8" />   <!-- lighter indigo -->
+                            <stop offset="50%"  stop-color="#b066ff" />   <!-- lighter violet -->
+
+                            <!-- Rainbow 2 -->
+                            <stop offset="50%"  stop-color="#ff0000" />
+                            <stop offset="58%"  stop-color="#ff7f00" />
+                            <stop offset="66%"  stop-color="#ffff00" />
+                            <stop offset="75%"  stop-color="#00ff00" />
+                            <stop offset="83%"  stop-color="#3f6fff" />   <!-- lighter blue -->
+                            <stop offset="91%"  stop-color="#7a33c8" />   <!-- lighter indigo -->
+                            <stop offset="100%" stop-color="#b066ff" />   <!-- lighter violet -->
+                        </linearGradient>
+                    </defs>
+
+                    <rect width="200" height="64" fill="none" />
+
+                    <!-- Identical double‑pulse path -->
+                    <path id="title-heartbeat-path" d="
+                        M 4   32
+                        L 24  32
+                        L 32  10
+                        L 40  54
+                        L 48  18
+                        L 56  48
+                        L 64  22
+                        L 84  32
+
+                        L 104 32
+                        L 112 10
+                        L 120 54
+                        L 128 18
+                        L 136 48
+                        L 144 22
+                        L 164 32
+                        L 196 32
+                    "
+                    fill="none"
+                    stroke="url(#rainbow)"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+                
+                <button id="title-start-button" class="title-button">Set the Controls ...</button>
+                
+                <p class="copyright">© 2025-2026 Neil Kendall<span class="break-mobile"><br></span><span class="space-desktop">. </span><span class="projects-text">More @ </span><a href="https://www.korovatron.co.uk/" target="_blank">www.korovatron.co.uk</a></p>
+            </div>
+            
+            <!-- Function Input Panel -->
+            <div id="function-panel" class="ui-panel hidden" style="top: 20px; left: 20px; min-width: 300px;">
+                <!-- Graphiti Title Image -->
+                <div id="graphiti-title" style="text-align: center; margin-bottom: 10px;">
+                    <img src="./images/graphitiTitle.png" alt="Graphiti" style="width: 90%; max-height: 50px; height: auto;">
+                </div>
+                
+                <!-- Top Row: Function Management + View Controls -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; margin-bottom: 8px; gap: 8px;">
+                    <!-- Split Button: Add Function with Examples Dropdown -->
+                    <div class="split-button-container" style="position: relative; display: flex;">
+                        <button id="add-function" class="split-button-main" style="padding: 8px; font-size: 14px; height: 40px; display: flex; align-items: center; justify-content: center; background: #2A3F5A; border: 1px solid #555; flex: 1; min-width: 0; border-radius: 4px 0 0 4px; border-right: none;">+&nbsp;<span class="math-italic">f</span>&nbsp;(<span class="math-italic">x</span>)</button>
+                        <button id="examples-toggle" class="split-button-dropdown" style="padding: 0; font-size: 14px; height: 40px; background: #2A3F5A; border: 1px solid #555; width: 24px; flex-shrink: 0; border-radius: 0 4px 4px 0; border-left: 1px solid #555; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Show example functions">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="2,4 6,8 10,4"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Examples Dropdown Menu -->
+                        <div id="examples-dropdown" class="examples-dropdown">
+                            <div class="blank-function-item" data-example="blank">
+                                <strong>+</strong> Add Blank Function
+                            </div>
+                            <div class="clear-all-functions-item" data-action="clear-all">
+                                <strong>−</strong> Clear All Functions
+                            </div>
+                            
+                            <!-- Demo Sets Section -->
+                            <div class="examples-header">Demo Sets</div>
+                            <div class="demo-set-item" data-demo-set="explicit-functions">
+                                <div class="example-formula">
+                                    <strong>Explicit Functions</strong>
+                                </div>
+                                <div class="example-description">Exponential, logarithms (ln & log), square root, and absolute value</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="implicit-equations">
+                                <div class="example-formula">
+                                    <strong>Implicit Equations</strong>
+                                </div>
+                                <div class="example-description">Complex curves: ellipse, folium, cubic</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="parametric-curves">
+                                <div class="example-formula">
+                                    <strong>Parametric Curves</strong>
+                                </div>
+                                <div class="example-description">Demonstrates trig functions: circle & Lissajous</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="inequality-intersection">
+                                <div class="example-formula">
+                                    <strong>Inequality Intersection</strong>
+                                </div>
+                                <div class="example-description">Shows strict & non-strict boundaries with intersection</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="parameter-sliders">
+                                <div class="example-formula">
+                                    <strong>Parameter Sliders</strong>
+                                </div>
+                                <div class="example-description">Interactive sliders: sine wave, line, & circle</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="tangents-normals">
+                                <div class="example-formula">
+                                    <strong>Tangents & Normals</strong>
+                                </div>
+                                <div class="example-description">Calculus visualization: tangent & normal lines (drag badges to reposition)</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="definite-integral">
+                                <div class="example-formula">
+                                    <strong>Definite Integral</strong>
+                                </div>
+                                <div class="example-description">Area under curve: hyperbolic function with bounds</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="area-between-curves">
+                                <div class="example-formula">
+                                    <strong>Area Between Curves</strong>
+                                </div>
+                                <div class="example-description">Integration: parabola and line with shared bounds</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="numerical-integration">
+                                <div class="example-formula">
+                                    <strong>Numerical Integration</strong>
+                                </div>
+                                <div class="example-description">Visualize trapezium, Simpson's, and mid-ordinate methods</div>
+                            </div>
+                            <div class="demo-set-item" data-demo-set="derivatives-turning-points">
+                                <div class="example-formula">
+                                    <strong>Derivatives & Turning Points</strong>
+                                </div>
+                                <div class="example-description">Plot y = x³ - 3x and its derivative using d/dx notation</div>
+                            </div>
+                            
+                            <!-- Polar Demo Sets -->
+                            <div class="demo-set-item polar-only" data-demo-set="polar-basic">
+                                <div class="example-formula">
+                                    <strong>Polar Basics</strong>
+                                </div>
+                                <div class="example-description">Shows r=f(θ) syntax: cardioid, rose, and θ=constant rays</div>
+                            </div>
+                            <div class="demo-set-item polar-only" data-demo-set="polar-integral">
+                                <div class="example-formula">
+                                    <strong>Polar Integral</strong>
+                                </div>
+                                <div class="example-description">Area calculation: spiral of Archimedes with bounds</div>
+                            </div>
+                            <div class="demo-set-item polar-only" data-demo-set="polar-area-between">
+                                <div class="example-formula">
+                                    <strong>Polar Area Between</strong>
+                                </div>
+                                <div class="example-description">Area between curves: circle and cardioid</div>
+                            </div>
+                        </div>
+
+                    <button id="reset-view" style="padding: 8px; font-size: 10px; height: 40px; line-height: 1.2; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center;" title="Reset View">RESET<br>AXES</button>
+
+                    <!-- Coordinate System Toggle Button with Icons -->
+                    <button id="mode-toggle" style="padding: 8px; font-size: 12px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px;" title="Toggle between Cartesian and Polar coordinate systems">
+                        <!-- Cartesian Icon -->
+                        <svg id="cartesian-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 1;">
+                            <!-- Simple X-Y axes -->
+                            <line x1="12" y1="2" x2="12" y2="22"></line>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <!-- Arrow heads for axes -->
+                            <polyline points="18,8 22,12 18,16"></polyline>
+                            <polyline points="8,6 12,2 16,6"></polyline>
+                        </svg>
+
+                        <!-- Separator -->
+                        <div style="width: 1px; height: 16px; background: #666;"></div>
+
+                        <!-- Polar Icon -->
+                        <svg id="polar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.3;">
+                            <!-- Concentric circles for polar -->
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <circle cx="12" cy="12" r="6"></circle>
+                            <circle cx="12" cy="12" r="9"></circle>
+                            <!-- Radial lines -->
+                            <line x1="12" y1="3" x2="12" y2="21"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Bottom Row: Mathematical Analysis Features -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
+                    <!-- Intersection Toggle Button -->
+                    <button id="intersection-toggle" style="padding: 8px; font-size: 10px; height: 40px; background: #2A3F5A; border: 1px solid #555; flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;" title="Toggle intersection detection">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <!-- Parabola shifted up slightly from bottom -->
+                            <path d="M8 28 C8 1, 24 1, 24 28" stroke="currentColor" fill="none" stroke-width="1.5"></path>
+                            <!-- Longer line with gentler slope -->
+                            <line x1="4" y1="24" x2="28" y2="10" stroke="currentColor" stroke-width="1.5"></line>
+                            <!-- Two intersection markers -->
+                            <circle cx="10" cy="20" r="2.5" fill="currentColor"></circle>
+                            <circle cx="22" cy="13" r="2.5" fill="currentColor"></circle>
+                        </svg>
+                    </button>
+
+                    <!-- Axis Intercepts Toggle Button -->
+                    <button id="intercepts-toggle" style="padding: 8px; font-size: 10px; height: 40px; background: #2A3F5A; border: 1px solid #555; flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;" title="Toggle axis intercept detection">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <!-- First quadrant axes (origin at bottom-left) -->
+                            <!-- Y-axis (vertical) -->
+                            <line x1="6" y1="26" x2="6" y2="4" stroke="currentColor" stroke-width="1.5" opacity="0.6"></line>
+                            <!-- X-axis (horizontal) -->
+                            <line x1="6" y1="26" x2="30" y2="26" stroke="currentColor" stroke-width="1.5" opacity="0.6"></line>
+                            <!-- Linear graph from y-intercept to x-intercept -->
+                            <line x1="6" y1="10" x2="24" y2="26" stroke="currentColor" stroke-width="2"></line>
+                            <!-- Y-intercept marker (where line crosses y-axis) -->
+                            <circle cx="6" cy="10" r="2" fill="currentColor"></circle>
+                            <!-- X-intercept marker (where line crosses x-axis) -->
+                            <circle cx="24" cy="26" r="2" fill="currentColor"></circle>
+                        </svg>
+                    </button>
+
+                    <!-- Turning Points Toggle Button -->
+                    <button id="turning-points-toggle" style="padding: 8px; font-size: 10px; height: 40px; background: #2A3F5A; border: 1px solid #555; flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between;" title="Toggle turning point detection">
+                        <!-- Derivative notation (left side) as proper fractions -->
+                        <span id="turning-points-notation-cartesian" style="font-size: 11px; opacity: 0.8; font-family: 'Times New Roman', serif; font-style: italic; display: inline-flex; align-items: center; gap: 3px;">
+                            <span style="display: inline-flex; flex-direction: column; align-items: center; line-height: 0.9;">
+                                <span style="border-bottom: 1px solid currentColor; padding-bottom: 1px;">dy</span>
+                                <span style="padding-top: 1px;">dx</span>
+                            </span>
+                            <span style="align-self: center;">=0</span>
+                        </span>
+                        <span id="turning-points-notation-polar" style="font-size: 11px; opacity: 0.8; font-family: 'Times New Roman', serif; font-style: italic; display: none; align-items: center; gap: 3px;">
+                            <span style="display: inline-flex; flex-direction: column; align-items: center; line-height: 0.9;">
+                                <span style="border-bottom: 1px solid currentColor; padding-bottom: 1px;">dr</span>
+                                <span style="padding-top: 1px;">dθ</span>
+                            </span>
+                            <span style="align-self: center;">=0</span>
+                        </span>
+                        
+                        <!-- Cartesian mode icon: sine wave with turning points (right side) -->
+                        <svg id="turning-points-icon-cartesian" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <!-- Taller sine wave using more vertical space -->
+                            <path d="M1 16 Q8 4, 16 16 Q24 28, 31 16" stroke="currentColor" fill="none" stroke-width="1.5"></path>
+                            <!-- Maximum point marker (adjusted to actual curve peak) -->
+                            <circle cx="8" cy="10" r="2.5" fill="currentColor"></circle>
+                            <!-- Minimum point marker (adjusted to actual curve trough) -->
+                            <circle cx="24" cy="22" r="2.5" fill="currentColor"></circle>
+                        </svg>
+                        <!-- Polar mode icon: r=1+sin(2θ) with turning points (right side) -->
+                        <svg id="turning-points-icon-polar" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" style="display: none;">
+                            <!-- Modified lemniscate with fuller petals in 1st and 3rd quadrants -->
+                            <polyline points="23.0,16.0 24.7,14.8 26.1,13.3 27.0,11.4 27.3,9.5 26.9,7.6 25.9,6.1 24.4,5.1 22.5,4.7 20.6,5.0 18.7,5.9 17.2,7.3 16.0,9.0 15.3,10.9 15.1,12.6 15.2,14.1 15.5,15.2 15.9,15.8 16.0,16.0 15.8,15.9 15.2,15.5 14.1,15.2 12.6,15.1 10.9,15.3 9.0,16.0 7.3,17.2 5.9,18.7 5.0,20.6 4.7,22.5 5.1,24.4 6.1,25.9 7.6,26.9 9.5,27.3 11.4,27.0 13.3,26.1 14.8,24.7 16.0,23.0 16.7,21.1 16.9,19.4 16.8,17.9 16.5,16.8 16.1,16.2 16.0,16.0 16.2,16.1 16.8,16.5 17.9,16.8 19.4,16.9 21.1,16.7 23.0,16.0" 
+                                      stroke="currentColor" fill="none" stroke-width="1.5" stroke-linejoin="round"></polyline>
+                            <!-- Turning point markers at θ=45° and θ=225° where dr/dθ = 0 -->
+                            <circle cx="25.9" cy="6.1" r="2.5" fill="currentColor"></circle>
+                            <circle cx="6.1" cy="25.9" r="2.5" fill="currentColor"></circle>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Parameter Sliders Container (shown when alpha/beta/gamma are used) -->
+                <div id="parameter-sliders" style="display: none;">
+                    <!-- Alpha Slider -->
+                    <div id="alpha-slider-container" class="parameter-slider-item" style="display: none; margin-bottom: 6px; position: relative;">
+                        <button class="range-button" data-param="alpha" title="Click to cycle range">±10</button>
+                        <span id="alpha-value" class="parameter-value">1.0</span>
+                        <button class="arrow-button" data-param="alpha" data-dir="-1">◀</button>
+                        <div style="position: relative; flex: 1;">
+                            <input type="range" id="alpha-slider" min="-10" max="10" step="0.01" value="1" class="parameter-slider">
+                            <span id="alpha-thumb-label" class="slider-thumb-label">α</span>
+                        </div>
+                        <button class="arrow-button" data-param="alpha" data-dir="1">▶</button>
+                    </div>
+                    
+                    <!-- Beta Slider -->
+                    <div id="beta-slider-container" class="parameter-slider-item" style="display: none; margin-bottom: 6px; position: relative;">
+                        <button class="range-button" data-param="beta" title="Click to cycle range">±10</button>
+                        <span id="beta-value" class="parameter-value">1.0</span>
+                        <button class="arrow-button" data-param="beta" data-dir="-1">◀</button>
+                        <div style="position: relative; flex: 1;">
+                            <input type="range" id="beta-slider" min="-10" max="10" step="0.01" value="1" class="parameter-slider">
+                            <span id="beta-thumb-label" class="slider-thumb-label">β</span>
+                        </div>
+                        <button class="arrow-button" data-param="beta" data-dir="1">▶</button>
+                    </div>
+                    
+                    <!-- Gamma Slider -->
+                    <div id="gamma-slider-container" class="parameter-slider-item" style="display: none; margin-bottom: 6px; position: relative;">
+                        <button class="range-button" data-param="gamma" title="Click to cycle range">±10</button>
+                        <span id="gamma-value" class="parameter-value">1.0</span>
+                        <button class="arrow-button" data-param="gamma" data-dir="-1">◀</button>
+                        <div style="position: relative; flex: 1;">
+                            <input type="range" id="gamma-slider" min="-10" max="10" step="0.01" value="1" class="parameter-slider">
+                            <span id="gamma-thumb-label" class="slider-thumb-label">γ</span>
+                        </div>
+                        <button class="arrow-button" data-param="gamma" data-dir="1">▶</button>
+                    </div>
+                    
+                    <!-- Delta Slider -->
+                    <div id="delta-slider-container" class="parameter-slider-item" style="display: none; margin-bottom: 6px; position: relative;">
+                        <button class="range-button" data-param="delta" title="Click to cycle range">±10</button>
+                        <span id="delta-value" class="parameter-value">1.0</span>
+                        <button class="arrow-button" data-param="delta" data-dir="-1">◀</button>
+                        <div style="position: relative; flex: 1;">
+                            <input type="range" id="delta-slider" min="-10" max="10" step="0.01" value="1" class="parameter-slider">
+                            <span id="delta-thumb-label" class="slider-thumb-label">δ</span>
+                        </div>
+                        <button class="arrow-button" data-param="delta" data-dir="1">▶</button>
+                    </div>
+                </div>
+                
+                <!-- Divider -->
+                <div style="border-top: 1px solid #555; margin: 15px 0 10px 0;"></div>
+                
+                <!-- Temporary Session Banner (shown when loaded from shared link) -->
+                <div id="temp-session-banner" style="display: none;">
+                    <div style="font-size: 15px; margin-bottom: 2px;">🔗 Viewing Shared Functions</div>
+                    <div style="font-size: 13px; opacity: 0.85;">Click to exit</div>
+                </div>
+                
+                <div id="functions-container">
+                    <!-- Functions will be added here dynamically -->
+                </div>
+                
+                <!-- Cartesian Range Controls -->
+                <div id="cartesian-ranges" style="display: flex; gap: 10px; margin-bottom: 5px; margin-top: 15px; border-top: 1px solid #555; padding-top: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="x-min" style="font-size: 14px; display: block; margin-bottom: 2px;">X min:</label>
+                        <math-field id="x-min">-10</math-field>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="x-max" style="font-size: 14px; display: block; margin-bottom: 2px;">X max:</label>
+                        <math-field id="x-max">10</math-field>
+                    </div>
+                </div>
+                
+                <div id="cartesian-ranges-y" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="y-min" style="font-size: 14px; display: block; margin-bottom: 2px;">Y min:</label>
+                        <math-field id="y-min">-10</math-field>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="y-max" style="font-size: 14px; display: block; margin-bottom: 2px;">Y max:</label>
+                        <math-field id="y-max">10</math-field>
+                    </div>
+                </div>
+                
+                <!-- Parametric t Range Controls (shown only when parametric functions exist) -->
+                <div id="parametric-ranges" style="display: none; flex-direction: row; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="t-min" style="font-size: 14px; display: block; margin-bottom: 2px;">t min:</label>
+                        <math-field id="t-min">0</math-field>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="t-max" style="font-size: 14px; display: block; margin-bottom: 2px;">t max:</label>
+                        <math-field id="t-max">2\pi</math-field>
+                    </div>
+                </div>
+                
+                <!-- Polar Range Controls (hidden initially) -->
+                <div id="polar-ranges" style="display: none; flex-direction: row; gap: 10px; margin-bottom: 5px; margin-top: 15px; border-top: 1px solid #555; padding-top: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="theta-min" style="font-size: 14px; display: block; margin-bottom: 2px;">θ min:</label>
+                        <math-field id="theta-min">0</math-field>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <label for="theta-max" style="font-size: 14px; display: block; margin-bottom: 2px;">θ max:</label>
+                        <math-field id="theta-max">2\pi</math-field>
+                    </div>
+                </div>
+                
+                <div id="polar-options" style="display: none; margin-bottom: 10px;">
+                    <label style="font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
+                        <input type="checkbox" id="negative-r-toggle" checked style="margin: 0;">
+                        <span>Plot negative r values</span>
+                    </label>
+                    
+                    <!-- Polar Animation Controls -->
+                    <div style="border-top: 1px solid #555; padding-top: 10px; margin-top: 5px;">
+                        <div style="font-size: 13px; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">Animation Controls</div>
+                        
+                        <!-- Play/Pause/Stop Row -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <button id="polar-play-pause" style="flex: 1; padding: 8px; font-size: 12px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Play/Pause animation">
+                                <svg id="play-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                    <polygon points="2,1 2,11 10,6"></polygon>
+                                </svg>
+                                <svg id="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style="display: none;">
+                                    <rect x="2" y="1" width="3" height="10"></rect>
+                                    <rect x="7" y="1" width="3" height="10"></rect>
+                                </svg>
+                                <span id="play-pause-text">Play</span>
+                            </button>
+                            <button id="polar-step-back" style="flex: 0.8; padding: 8px; font-size: 12px; background: #1a2a3f; border: 1px solid #555; display: flex; align-items: center; justify-content: center; opacity: 0.6;" title="Step backward (only when paused)" disabled>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <polygon points="10,3 10,13 4,8"></polygon>
+                                    <rect x="3" y="3" width="1.5" height="10"></rect>
+                                </svg>
+                            </button>
+                            <button id="polar-step-forward" style="flex: 0.8; padding: 8px; font-size: 12px; background: #1a2a3f; border: 1px solid #555; display: flex; align-items: center; justify-content: center; opacity: 0.6;" title="Step forward (only when paused)" disabled>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <polygon points="6,3 6,13 12,8"></polygon>
+                                    <rect x="12.5" y="3" width="1.5" height="10"></rect>
+                                </svg>
+                            </button>
+                            <button id="polar-stop-animation" style="flex: 1; padding: 8px; font-size: 12px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Stop animation and show full graph">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                    <rect x="2" y="2" width="8" height="8"></rect>
+                                </svg>
+                                <span>Stop</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Speed Control -->
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 12px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span>Speed:</span>
+                                <span id="speed-display" style="color: var(--text-primary); font-weight: 600;">1.0x</span>
+                            </label>
+                            <input type="range" id="polar-speed-slider" min="0.25" max="5" step="0.25" value="1" style="width: 100%; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;">
+                        </div>
+                        
+                        <!-- Loop Toggle -->
+                        <label style="font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="polar-loop-toggle" style="margin: 0;">
+                            <span>Loop animation</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Control Buttons Row -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: center;">
+                    <button id="angle-mode-toggle" style="padding: 8px 12px; font-size: 12px; height: 40px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Toggle Angle Mode">
+                        <!-- Degrees Text -->
+                        <span id="degrees-icon" style="font-size: 12px; font-weight: bold; opacity: 0.3;">DEG</span>
+
+                        <!-- Separator -->
+                        <div style="width: 1px; height: 12px; background: #666;"></div>
+
+                        <!-- Radians Text -->
+                        <span id="radians-icon" style="font-size: 12px; font-weight: bold; opacity: 1;">RAD</span>
+                    </button>
+                    <button id="size-mode-toggle" style="padding: 8px 12px; font-size: 12px; height: 40px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Toggle Size Mode">
+                        <!-- Normal Size (small A) -->
+                        <span id="normal-size-icon" style="font-size: 12px; font-weight: bold; opacity: 1;">A</span>
+
+                        <!-- Separator -->
+                        <div style="width: 1px; height: 12px; background: #666;"></div>
+
+                        <!-- Large Size (big A) -->
+                        <span id="large-size-icon" style="font-size: 16px; font-weight: bold; opacity: 0.3;">A</span>
+                    </button>
+                    <button id="theme-toggle" style="padding: 8px 12px; font-size: 16px; height: 40px; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Toggle Theme">
+                        <!-- Light Mode Icon (Sun) -->
+                        <svg id="light-icon" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.3;">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+
+                        <!-- Separator -->
+                        <div style="width: 1px; height: 12px; background: #666;"></div>
+
+                        <!-- Dark Mode Icon (Moon) -->
+                        <svg id="dark-icon" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 1;">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Bottom Row: Title Screen, Help, QR Code, and Copy/Share Buttons -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; margin-top: 10px; gap: 8px;">
+                    <!-- Home and Keyboard buttons - aligns with angle-mode-toggle -->
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button id="return-to-title" style="padding: 8px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="Return to Title Screen">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                        </button>
+                        <button id="virtual-keyboard-toggle" style="padding: 8px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="Toggle Virtual Keyboard">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                                <line x1="6" y1="10" x2="6.01" y2="10"></line>
+                                <line x1="10" y1="10" x2="10.01" y2="10"></line>
+                                <line x1="14" y1="10" x2="14.01" y2="10"></line>
+                                <line x1="18" y1="10" x2="18.01" y2="10"></line>
+                                <line x1="6" y1="14" x2="6.01" y2="14"></line>
+                                <line x1="10" y1="14" x2="14" y2="14"></line>
+                                <line x1="18" y1="14" x2="18.01" y2="14"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Help and Image buttons container - aligns with size-mode-toggle -->
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button id="help-button" style="padding: 8px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="How to Use">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </button>
+                        <button id="share-image-button" style="padding: 6px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="Copy image to clipboard or share">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- QR and Link buttons container - aligns with theme-toggle -->
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button id="share-qr-button" style="padding: 8px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="Share QR code">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="3" height="3"></rect>
+                                <rect x="18" y="14" width="3" height="3"></rect>
+                                <rect x="14" y="18" width="3" height="3"></rect>
+                                <rect x="18" y="18" width="3" height="3"></rect>
+                            </svg>
+                        </button>
+                        <!-- Share Link Button (Share arrow icon) -->
+                        <button id="share-link-button" style="padding: 6px; font-size: 10px; height: 40px; flex: 1; background: #2A3F5A; border: 1px solid #555; display: flex; align-items: center; justify-content: center; line-height: 1.2;" title="Copy shareable link">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                <polyline points="16 6 12 2 8 6"></polyline>
+                                <line x1="12" y1="2" x2="12" y2="15"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MathLive library for mathematical notation input -->
+    <script src="https://unpkg.com/mathlive"></script>
+    
+    <!-- Math.js library for safe mathematical expression evaluation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    
+    <!-- LZ-String library for URL compression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    
+    <!-- QRious library for QR code generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    
+    <!-- Custom power function to handle real-valued fractional powers -->
+    <script>
+        // Custom pow function for real-valued results with negative bases and fractional exponents
+        function realPow(x, y) {
+            // Handle special cases
+            if (x === 0) return y === 0 ? 1 : 0;
+            if (y === 0) return 1;
+            if (y === 1) return x;
+            
+            // For integer exponents, use standard behavior
+            if (Number.isInteger(y)) {
+                return Math.pow(x, y);
+            }
+            
+            // For negative base with fractional exponent
+            if (x < 0) {
+                // Try to interpret as a rational number (fraction)
+                const yStr = y.toString();
+                const frac = yStr.split('/');
+                
+                if (frac.length === 2) {
+                    // Explicit fraction like 2/3
+                    const numerator = parseInt(frac[0], 10);
+                    const denominator = parseInt(frac[1], 10);
+                    
+                    if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+                        const absX = Math.abs(x);
+                        const result = Math.pow(absX, numerator / denominator);
+                        
+                        // Pure even roots (1/2, 1/4, 1/6) are undefined for negative base
+                        // But x^(2/3) = (x²)^(1/3) works because we take odd root of x²
+                        if (denominator % 2 === 0 && numerator === 1) {
+                            return NaN;
+                        }
+                        // For odd denominator (odd root), result is always positive (we used absX)
+                        // Only need to flip sign if taking odd root of odd power: x^(1/3), x^(3/5)
+                        if (denominator % 2 !== 0 && numerator % 2 !== 0) {
+                            return -result;
+                        }
+                        return result;
+                    }
+                }
+                
+                // Try to detect if decimal is close to a simple fraction
+                const tolerance = 1e-10;
+                for (let denom = 2; denom <= 12; denom++) {
+                    for (let num = 1; num <= denom * 2; num++) {
+                        if (Math.abs(y - num/denom) < tolerance) {
+                            const absX = Math.abs(x);
+                            const result = Math.pow(absX, num / denom);
+                            // Pure even roots (0.5, 0.25, etc) are undefined for negative base
+                            // But x^(2/3) works because it's (x²)^(1/3)
+                            if (denom % 2 === 0 && num === 1) {
+                                return NaN;
+                            }
+                            // For odd root of odd power, flip the sign (e.g., x^(1/3), x^(3/5))
+                            if (denom % 2 !== 0 && num % 2 !== 0) {
+                                return -result;
+                            }
+                            return result;
+                        }
+                    }
+                }
+                
+                // For other fractional exponents with negative base, return NaN
+                // (avoiding complex number domain)
+                return NaN;
+            }
+            
+            // For positive base, use standard power function
+            return Math.pow(x, y);
+        }
+        
+        // Override math.js pow function
+        if (typeof math !== 'undefined') {
+            math.import({ pow: realPow }, { override: true });
+        }
+    </script>
+
+    <!-- Keyboard shortcuts hint (shown after leaving title screen) -->
+    <div id="keyboard-hint" class="keyboard-hint">
+        Press <kbd>?</kbd> for keyboard shortcuts
+    </div>
+
+    <!-- Help overlay (device-aware) -->
+    <div id="shortcuts-overlay" class="shortcuts-overlay">
+        <div class="shortcuts-content">
+            <h2>How to Use Graphiti</h2>
+            
+            <!-- Interactive Features -->
+            <div class="shortcuts-section">
+                <h3>Interactive Tracing</h3>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><span class="touch-only">Tap</span><span class="desktop-only">Click</span> graph to place trace marker</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><span class="touch-only">Tap</span><span class="desktop-only">Click</span> marker to cycle: tangent → normal → integral</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Drag marker to reposition on curve</span>
+                </div>
+            </div>
+
+            <!-- Navigation (Desktop) -->
+            <div class="shortcuts-section desktop-only">
+                <h3>Navigation (Keyboard)</h3>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Pan</span>
+                    <div class="shortcut-keys">
+                        Left-click drag or <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Zoom</span>
+                    <div class="shortcut-keys">
+                        <kbd>+</kbd> <kbd>-</kbd> or mouse wheel
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Zoom to region (Cartesian only)</span>
+                    <div class="shortcut-keys">
+                        Right-click and drag
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Touch Controls -->
+            <div class="shortcuts-section touch-only">
+                <h3>Touch Controls</h3>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Pan: Drag with one finger</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Zoom: Pinch with two fingers</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description">Directional zoom: Pinch horizontally or vertically</span>
+                </div>
+            </div>
+
+            <!-- Math Input -->
+            <div class="shortcuts-section desktop-only">
+                <h3>Math Input</h3>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Greek letters:</strong> Type <kbd>pi</kbd> for <span style="font-family: 'Times New Roman', serif;">π</span>, <kbd>theta</kbd> for <span style="font-family: 'Times New Roman', serif;">θ</span></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Parameters:</strong> Type <kbd>alpha</kbd>, <kbd>beta</kbd>, <kbd>gamma</kbd>, <kbd>delta</kbd> for parameter sliders</span>
+                </div>
+            </div>
+
+            <!-- Function Syntax -->
+            <div class="shortcuts-section desktop-only">
+                <h3>Function Syntax</h3>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Basic operations:</strong> <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>^</kbd> (exponent)</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Roots:</strong> <kbd>sqrt(x)</kbd> for √x, <kbd>x^(1/n)</kbd> for nth root</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Trigonometry:</strong> <kbd>sin</kbd>, <kbd>cos</kbd>, <kbd>tan</kbd>, <kbd>sec</kbd>, <kbd>csc</kbd>, <kbd>cot</kbd></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Inverse trig:</strong> <kbd>arcsin</kbd>, <kbd>arccos</kbd>, <kbd>arctan</kbd>, <kbd>arcsec</kbd>, <kbd>arccsc</kbd>, <kbd>arccot</kbd></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Hyperbolics:</strong> <kbd>sinh</kbd>, <kbd>cosh</kbd>, <kbd>tanh</kbd>, <kbd>sech</kbd>, <kbd>csch</kbd>, <kbd>coth</kbd></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Inverse hyperbolics:</strong> <kbd>arcsinh</kbd>, <kbd>arccosh</kbd>, <kbd>arctanh</kbd>, <kbd>arcsech</kbd>, <kbd>arccsch</kbd>, <kbd>arccoth</kbd></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Logarithms:</strong> <kbd>ln(x)</kbd> (natural log), <kbd>log(x)</kbd> (base 10)</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Exponentials:</strong> <kbd>exp(x)</kbd> for e<sup>x</sup>, <kbd>e^x</kbd></span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-description"><strong>Absolute value:</strong> <kbd>abs(x)</kbd></span>
+                </div>
+            </div>
+            
+            <!-- Version Number -->
+            <div class="shortcuts-section" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center;">
+                <span style="font-size: 0.85em; opacity: 0.7;">Version <span id="version-number"></span></span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="main.js"></script>
+    
+    <!-- Floating Performance Monitor Overlay (toggled with Ctrl+Alt+P) -->
+    <div id="performance-overlay">
+        <div class="perf-title">Performance Monitor</div>
+        <div class="perf-row">
+            <span class="perf-label">FPS:</span>
+            <span class="perf-value" id="perf-fps">--</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-label">Loop:</span>
+            <span class="perf-value" id="perf-loop">--</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-label">State:</span>
+            <span class="perf-value" id="perf-state">--</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-label">Frame:</span>
+            <span class="perf-value" id="perf-frame">--</span>
+        </div>
+        <div class="perf-hint">Ctrl+Alt+P to hide</div>
+    </div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('SW registered');
+                    })
+                    .catch(registrationError => {
+                        console.error('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,23 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// iOS viewport height fix - necessary for full-screen rendering into notch and chrome areas
+// Sets a CSS variable for the actual viewport height, which works around iOS Safari's 100vh issue
+function setActualVH() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--actual-vh', `${vh}px`);
+}
+
+// Set on load
+setActualVH();
+
+// Update on resize and orientation change
+window.addEventListener('resize', setActualVH);
+window.addEventListener('orientationchange', () => {
+    // Small delay needed for iOS to complete the orientation change
+    setTimeout(setActualVH, 100);
+});
+
 class VectoramaApp {
     constructor() {
         this.appMode = 'transform'; // 'transform' or 'geometry'
