@@ -21,12 +21,7 @@ body {
 .container {
     position: relative;
     height: 100vh;
-    height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
     width: 100vw;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
 }
 
 /* Hamburger Menu Button */
@@ -86,14 +81,13 @@ body {
 .control-panel {
     position: absolute;
     left: 0;
-    left: env(safe-area-inset-left);
     top: 0;
-    top: env(safe-area-inset-top);
     width: 330px;
     height: 100vh;
-    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
     padding: 20px;
+    padding-top: max(20px, calc(env(safe-area-inset-top) + 10px));
+    padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     transition: transform 0.3s ease;
