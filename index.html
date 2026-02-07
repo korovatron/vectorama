@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vectorama - Matrix & Vector Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h1>Vectorama</h1>
+            <p class="subtitle" id="app-subtitle">Interactive Vector Mathematics</p>
+            
+            <!-- App Mode Selector -->
+            <div class="app-mode-selector">
+                <button id="app-mode-transform" class="app-mode-btn active">Transform</button>
+                <button id="app-mode-geometry" class="app-mode-btn">Geometry</button>
+            </div>
+            
+            <!-- View Controls -->
+            <div class="view-controls">
+                <button id="reset-view-btn" class="secondary-btn">Reset View</button>
+                <button id="toggle-grid-btn" class="secondary-btn">Hide Grid</button>
+            </div>
+
+            <!-- Transform Mode Content -->
+            <div id="transform-mode-content" class="mode-content">
+                <div class="dimension-selector">
+                    <button id="mode-2d" class="mode-btn active">2D (2×2)</button>
+                    <button id="mode-3d" class="mode-btn">3D (3×3)</button>
+                </div>
+
+                <!-- 2D Matrix Input -->
+                <div id="matrix-2d" class="matrix-input">
+                    <h3>Transformation Matrix (2×2)</h3>
+                    <div class="matrix-grid matrix-2x2">
+                        <input type="number" id="m2-00" value="1" step="0.1">
+                        <input type="number" id="m2-01" value="0" step="0.1">
+                        <input type="number" id="m2-10" value="0" step="0.1">
+                        <input type="number" id="m2-11" value="1" step="0.1">
+                    </div>
+                </div>
+
+                <!-- 3D Matrix Input -->
+                <div id="matrix-3d" class="matrix-input" style="display: none;">
+                    <h3>Transformation Matrix (3×3)</h3>
+                    <div class="matrix-grid matrix-3x3">
+                        <input type="number" id="m3-00" value="1" step="0.1">
+                        <input type="number" id="m3-01" value="0" step="0.1">
+                        <input type="number" id="m3-02" value="0" step="0.1">
+                        <input type="number" id="m3-10" value="0" step="0.1">
+                        <input type="number" id="m3-11" value="1" step="0.1">
+                        <input type="number" id="m3-12" value="0" step="0.1">
+                        <input type="number" id="m3-20" value="0" step="0.1">
+                        <input type="number" id="m3-21" value="0" step="0.1">
+                        <input type="number" id="m3-22" value="1" step="0.1">
+                    </div>
+                </div>
+
+                <!-- Preset Transformations -->
+                <div class="presets">
+                    <h3>Presets</h3>
+                    <button class="preset-btn" data-preset="identity">Identity</button>
+                    <button class="preset-btn" data-preset="rotation">Rotation 45°</button>
+                    <button class="preset-btn" data-preset="scale">Scale 2x</button>
+                    <button class="preset-btn" data-preset="shear">Shear</button>
+                    <button class="preset-btn" data-preset="reflection">Reflection</button>
+                </div>
+
+                <!-- Animation Controls -->
+                <div class="animation-controls">
+                    <h3>Animation</h3>
+                    <button id="animate-btn" class="primary-btn">Animate Transformation</button>
+                    <button id="reset-btn" class="secondary-btn">Reset</button>
+                    <div class="slider-control">
+                        <label for="speed-slider">Animation Speed:</label>
+                        <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
+                        <span id="speed-value">2.0s</span>
+                    </div>
+                </div>
+
+                <!-- Vector Display -->
+                <div class="vector-display">
+                    <h3>Vectors</h3>
+                    <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Click & drag on canvas to create</p>
+                    <div id="vector-list"></div>
+                </div>
+            </div>
+
+            <!-- Geometry Mode Content -->
+            <div id="geometry-mode-content" class="mode-content" style="display: none;">
+                <div class="dimension-selector">
+                    <button id="geom-mode-2d" class="mode-btn active">2D</button>
+                    <button id="geom-mode-3d" class="mode-btn">3D</button>
+                </div>
+
+                <!-- Object Type Selector -->
+                <div class="geometry-type-selector">
+                    <h3>Add Object</h3>
+                    <button class="geometry-type-btn active" data-type="vector">Vector</button>
+                    <button class="geometry-type-btn" data-type="line">Line</button>
+                    <button class="geometry-type-btn" data-type="plane">Plane</button>
+                </div>
+
+                <!-- Vector Input -->
+                <div id="geom-vector-input" class="geometry-input">
+                    <h3>Vector</h3>
+                    <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Drag on canvas or enter coordinates</p>
+                    <div class="coord-input">
+                        <label>x: <input type="number" id="vec-x" value="0" step="0.1"></label>
+                        <label>y: <input type="number" id="vec-y" value="0" step="0.1"></label>
+                        <label id="vec-z-container">z: <input type="number" id="vec-z" value="0" step="0.1"></label>
+                    </div>
+                    <button id="add-vector-btn" class="primary-btn">Add Vector</button>
+                </div>
+
+                <!-- Line Input -->
+                <div id="geom-line-input" class="geometry-input" style="display: none;">
+                    <h3>Line Equation</h3>
+                    <p style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Parametric: r = a + tb</p>
+                    <div class="coord-input">
+                        <label style="margin-bottom: 8px; display: block; color: #bbb;">Point a:</label>
+                        <label>x: <input type="number" id="line-ax" value="0" step="0.1"></label>
+                        <label>y: <input type="number" id="line-ay" value="0" step="0.1"></label>
+                        <label id="line-az-container">z: <input type="number" id="line-az" value="0" step="0.1"></label>
+                    </div>
+                    <div class="coord-input" style="margin-top: 10px;">
+                        <label style="margin-bottom: 8px; display: block; color: #bbb;">Direction b:</label>
+                        <label>x: <input type="number" id="line-bx" value="1" step="0.1"></label>
+                        <label>y: <input type="number" id="line-by" value="0" step="0.1"></label>
+                        <label id="line-bz-container">z: <input type="number" id="line-bz" value="0" step="0.1"></label>
+                    </div>
+                    <button id="add-line-btn" class="primary-btn">Add Line</button>
+                </div>
+
+                <!-- Plane Input -->
+                <div id="geom-plane-input" class="geometry-input" style="display: none;">
+                    <h3>Plane Equation</h3>
+                    <p style="font-size: 12px; color: #aaa; margin-bottom: 8px;">ax + by + cz = d</p>
+                    <div class="coord-input">
+                        <label>a: <input type="number" id="plane-a" value="0" step="0.1"></label>
+                        <label>b: <input type="number" id="plane-b" value="0" step="0.1"></label>
+                        <label>c: <input type="number" id="plane-c" value="1" step="0.1"></label>
+                        <label>d: <input type="number" id="plane-d" value="0" step="0.1"></label>
+                    </div>
+                    <button id="add-plane-btn" class="primary-btn">Add Plane</button>
+                </div>
+
+                <!-- Geometry Objects List -->
+                <div class="vector-display">
+                    <h3>Objects</h3>
+                    <div id="geometry-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D Canvas -->
+        <div class="canvas-container">
+            <canvas id="three-canvas"></canvas>
+            <div class="canvas-instructions">
+                <p id="control-instructions">🖱️ Drag to create vectors | Right click: Pan | Scroll: Zoom</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
