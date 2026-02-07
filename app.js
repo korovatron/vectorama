@@ -53,7 +53,7 @@ class VectoramaApp {
         // Controls
         this.controls = new OrbitControls(this.camera, this.canvas);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = 0.15;
         this.controls.enableRotate = false; // Start in 2D mode with rotation disabled
         
         // Set zoom limits to prevent extreme zoom levels
