@@ -21,6 +21,7 @@ class VectoramaApp {
         this.isResizing = false; // Flag to prevent animation loop interference
         this.resizeTimeout = null; // For debouncing
         
+        this.panelOpen = true; // Panel open by default
         this.initThreeJS();
         this.initEventListeners();
         this.createGrid();
@@ -58,6 +59,18 @@ class VectoramaApp {
         // Set zoom limits to prevent extreme zoom levels
         this.controls.minDistance = 1;   // Prevent zooming too close
         this.controls.maxDistance = 100; // Prevent zooming beyond axis endpoints
+        
+        // Set mouse button mappings for 2D mode (left click = pan, right for vectors)
+        this.controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY
+        };
+        
+        // Set touch mappings for 2D mode (one finger = pan, pinch = zoom)
+        this.controls.touches = {
+            ONE: THREE.TOUCH.PAN,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
 
         // Raycaster for clicking
         this.raycaster = new THREE.Raycaster();
@@ -434,6 +447,9 @@ class VectoramaApp {
         canvas.height = 128;
         const context = canvas.getContext('2d');
         
+        // Keep background transparent (don't fill with white)
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
         // Draw text
         context.fillStyle = color;
         context.font = 'bold 80px Arial';
@@ -443,8 +459,14 @@ class VectoramaApp {
         
         // Create sprite from canvas
         const texture = new THREE.CanvasTexture(canvas);
-        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true,
+            depthWrite: false,  // Prevent z-fighting with transparent objects
+            depthTest: false    // Always render on top
+        });
         const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.renderOrder = 999; // Render after everything else
         
         // Scale based on camera distance for consistent screen size
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
@@ -582,6 +604,36 @@ class VectoramaApp {
     }
 
     initEventListeners() {
+        // Panel toggle button
+        const panelToggleBtn = document.getElementById('panel-toggle-btn');
+        const controlPanel = document.querySelector('.control-panel');
+        
+        panelToggleBtn.addEventListener('click', () => {
+            this.panelOpen = !this.panelOpen;
+            controlPanel.classList.toggle('closed');
+            panelToggleBtn.classList.toggle('active');
+            
+            // Trigger resize after panel animation completes
+            setTimeout(() => {
+                this.onWindowResize();
+            }, 300);
+        });
+        
+        // Auto-close panel on canvas tap for narrow touch devices (phones in portrait)
+        this.canvas.addEventListener('touchstart', (e) => {
+            // Only on narrow screens (phones) and when panel is open
+            if (window.innerWidth < 768 && this.panelOpen) {
+                this.panelOpen = false;
+                controlPanel.classList.add('closed');
+                panelToggleBtn.classList.remove('active');
+                
+                // Trigger resize after panel animation completes
+                setTimeout(() => {
+                    this.onWindowResize();
+                }, 300);
+            }
+        }, { passive: true });
+        
         // App mode switching
         document.getElementById('app-mode-transform').addEventListener('click', () => this.switchAppMode('transform'));
         document.getElementById('app-mode-geometry').addEventListener('click', () => this.switchAppMode('geometry'));
@@ -632,6 +684,9 @@ class VectoramaApp {
         this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
         this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
         this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e));
+        
+        // Prevent context menu on right click
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // Matrix input changes
         this.addMatrixInputListeners();
@@ -740,8 +795,20 @@ class VectoramaApp {
             this.controls.enableRotate = false; // Disable rotation in 2D
             this.controls.target.set(0, 0, 0);
             
+            // Set mouse buttons for 2D: left = pan, right for vectors
+            this.controls.mouseButtons = {
+                LEFT: THREE.MOUSE.PAN,
+                MIDDLE: THREE.MOUSE.DOLLY
+            };
+            
+            // Set touch controls for 2D: one finger = pan, pinch = zoom
+            this.controls.touches = {
+                ONE: THREE.TOUCH.PAN,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
+            
             // Update instructions
-            document.getElementById('control-instructions').textContent = '🖱️ Drag to create vectors | Right click: Pan | Scroll: Zoom';
+            document.getElementById('control-instructions').textContent = '🖱️ Right click: Create vectors | Left click: Pan | Scroll: Zoom';
         } else {
             // Enable full 3D camera control
             this.camera.position.set(5, 5, 5);
@@ -749,8 +816,21 @@ class VectoramaApp {
             this.controls.enableRotate = true; // Enable rotation in 3D
             this.controls.target.set(0, 0, 0);
             
+            // Set mouse buttons for 3D: left = rotate, right = pan
+            this.controls.mouseButtons = {
+                LEFT: THREE.MOUSE.ROTATE,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.PAN
+            };
+            
+            // Set touch controls for 3D: one finger = rotate, two fingers = pan, pinch = zoom
+            this.controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
+            
             // Update instructions
-            document.getElementById('control-instructions').textContent = '🖱️ Shift+drag: Create vectors | Left drag: Rotate | Right click: Pan | Scroll: Zoom';
+            document.getElementById('control-instructions').textContent = '🖱️ Middle click: Create vectors | Left click: Rotate | Right click: Pan | Scroll: Zoom';
         }
 
         this.controls.update();
@@ -916,12 +996,14 @@ class VectoramaApp {
     onCanvasMouseDown(event) {
         if (this.isAnimating) return;
         
-        // Only respond to left mouse button for vector creation
-        if (event.button !== 0) return;
+        // Vector creation: right-click in 2D, middle-click in 3D
+        const isVectorButton = (this.dimension === '2d' && event.button === 2) || 
+                               (this.dimension === '3d' && event.button === 1);
         
-        // In 3D mode, only start vector drawing if Shift is held (to avoid conflict with orbit controls)
-        // In 2D mode, always allow (rotation is disabled)
-        if (this.dimension === '3d' && !event.shiftKey) return;
+        if (!isVectorButton) return;
+        
+        // Prevent default behavior
+        event.preventDefault();
 
         this.isDragging = true;
         this.controls.enabled = false; // Disable orbit controls while drawing
@@ -1273,7 +1355,7 @@ class VectoramaApp {
         if (a === 0 && b === 0 && c === 0) return; // Invalid plane
 
         // Create plane mesh with random color
-        const geometry = new THREE.PlaneGeometry(10, 10);
+        const geometry = new THREE.PlaneGeometry(20, 20);
         const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
         const material = new THREE.MeshBasicMaterial({ 
             color: color, 

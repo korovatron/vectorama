@@ -9,23 +9,97 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #333;
     overflow: hidden;
+    /* Prevent touch behaviors on mobile */
+    -webkit-touch-callout: none; /* iOS callout */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Old Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version */
 }
 
 .container {
-    display: flex;
+    position: relative;
     height: 100vh;
-    gap: 0;
+    width: 100vw;
+}
+
+/* Hamburger Menu Button */
+.panel-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    touch-action: manipulation; /* Prevents double-tap zoom delay on mobile */
+    -webkit-tap-highlight-color: transparent; /* Removes tap highlight on mobile */
+}
+
+.panel-toggle-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.panel-toggle-btn span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Hamburger to X animation */
+.panel-toggle-btn.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.panel-toggle-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.panel-toggle-btn.active span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
 }
 
 /* Control Panel */
 .control-panel {
-    width: 350px;
-    min-width: 350px;
-    flex-shrink: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 330px;
+    height: 100vh;
     background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
     padding: 20px;
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+}
+
+.control-panel.closed {
+    transform: translateX(-100%);
+}
+
+/* Allow text selection in inputs and labels */
+.control-panel input,
+.control-panel label,
+.control-panel textarea {
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 .control-panel h1 {
@@ -356,8 +430,8 @@ body {
 
 /* Canvas Container */
 .canvas-container {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
+    height: 100vh;
     position: relative;
     background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
 }
@@ -366,6 +440,9 @@ body {
     width: 100%;
     height: 100%;
     display: block;
+    touch-action: none; /* Prevent default touch behaviors */
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .canvas-instructions {
