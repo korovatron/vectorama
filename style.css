@@ -528,7 +528,7 @@ body {
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     .control-panel {
-        width: 280px;
+        width: 330px;
     }
     
     .panel-toggle-btn {
