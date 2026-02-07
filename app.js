@@ -1434,7 +1434,8 @@ class VectoramaApp {
             color: color, 
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.5
+            opacity: 0.5,
+            depthWrite: false // Prevent z-fighting with grid lines
         });
         const plane = new THREE.Mesh(geometry, material);
 
