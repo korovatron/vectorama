@@ -18,6 +18,41 @@ window.addEventListener('orientationchange', () => {
     setTimeout(setActualVH, 100);
 });
 
+// Theme Toggle Functionality
+const themeToggle = document.getElementById('theme-toggle');
+const lightIcon = document.getElementById('light-icon');
+const darkIcon = document.getElementById('dark-icon');
+
+// Load theme from localStorage or default to dark
+const savedTheme = localStorage.getItem('theme') || 'dark';
+if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    lightIcon.style.opacity = '1';
+    darkIcon.style.opacity = '0';
+}
+
+themeToggle.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    // Animate icon transition
+    if (newTheme === 'light') {
+        lightIcon.style.opacity = '1';
+        darkIcon.style.opacity = '0';
+    } else {
+        lightIcon.style.opacity = '0';
+        darkIcon.style.opacity = '1';
+    }
+    
+    // Update scene background if app exists
+    if (window.vectoramaApp) {
+        window.vectoramaApp.updateTheme();
+    }
+});
+
 class VectoramaApp {
     constructor() {
         this.appMode = 'transform'; // 'transform' or 'geometry'
@@ -37,6 +72,8 @@ class VectoramaApp {
         this.currentGridSpacing = 1; // Current grid spacing
         this.isResizing = false; // Flag to prevent animation loop interference
         this.resizeTimeout = null; // For debouncing
+        this.updateTimeout = null; // For debouncing grid/axes updates during zoom
+        this.lastUpdateTime = 0; // Track last update time for throttling
         
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
@@ -49,7 +86,10 @@ class VectoramaApp {
     initThreeJS() {
         // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf5f5f5);
+        
+        // Set initial background based on theme
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        this.scene.background = new THREE.Color(currentTheme === 'light' ? 0xFDFDFD : 0x606060);
 
         // Camera
         this.canvas = document.getElementById('three-canvas');
@@ -141,10 +181,16 @@ class VectoramaApp {
             // Recalculate size to be exact multiple of spacing
             const size = divisions * spacing;
             
-            this.gridHelper = new THREE.GridHelper(size, divisions, 0x999999, 0xcccccc);
+            // Match 3D grid color and transparency
+            this.gridHelper = new THREE.GridHelper(size, divisions, 0x888888, 0x888888);
             this.gridHelper.rotation.x = Math.PI / 2;
             this.gridHelper.position.z = -0.01;
             this.gridHelper.visible = this.gridVisible;
+            
+            // Make grid transparent like 3D grid lines
+            this.gridHelper.material.transparent = true;
+            this.gridHelper.material.opacity = 0.3;
+            
             this.scene.add(this.gridHelper);
             
             // Add axis numbers for 2D mode
@@ -156,14 +202,14 @@ class VectoramaApp {
                 if (i === 0) continue; // Skip origin
                 const value = i * spacing;
                 
-                // X axis numbers (below the axis)
-                const xLabel = this.createNumberLabel(value, '#ff0000');
+                // X axis numbers (below the axis) - gray to match axes
+                const xLabel = this.createNumberLabel(value, '#888888');
                 xLabel.position.set(value, -labelOffset, 0);
                 xLabel.userData = { axis: 'x', value: value };
                 this.axisNumbers.add(xLabel);
                 
-                // Y axis numbers (left of the axis)
-                const yLabel = this.createNumberLabel(value, '#009900');
+                // Y axis numbers (left of the axis) - gray to match axes
+                const yLabel = this.createNumberLabel(value, '#888888');
                 yLabel.position.set(-labelOffset, value, 0);
                 yLabel.userData = { axis: 'y', value: value };
                 this.axisNumbers.add(yLabel);
@@ -257,20 +303,20 @@ class VectoramaApp {
                 if (i === 0) continue; // Skip origin
                 const value = i * spacing;
                 
-                // X axis numbers (along red axis, on XZ plane)
-                const xLabel = this.createNumberLabel(value, '#ff0000');
+                // X axis numbers (along x axis, on XZ plane) - gray to match axes
+                const xLabel = this.createNumberLabel(value, '#888888');
                 xLabel.position.set(value, 0, -labelOffset);
                 xLabel.userData = { axis: 'x', value: value };
                 this.axisNumbers.add(xLabel);
                 
-                // Y axis numbers (along green axis, on YZ plane)
-                const yLabel = this.createNumberLabel(value, '#009900');
+                // Y axis numbers (along y axis, on YZ plane) - gray to match axes
+                const yLabel = this.createNumberLabel(value, '#888888');
                 yLabel.position.set(-labelOffset, value, 0);
                 yLabel.userData = { axis: 'y', value: value };
                 this.axisNumbers.add(yLabel);
                 
-                // Z axis numbers (along blue axis, on XZ plane)
-                const zLabel = this.createNumberLabel(value, '#0000ff');
+                // Z axis numbers (along z axis, on XZ plane) - gray to match axes
+                const zLabel = this.createNumberLabel(value, '#888888');
                 zLabel.position.set(0, -labelOffset, value);
                 zLabel.userData = { axis: 'z', value: value };
                 this.axisNumbers.add(zLabel);
@@ -309,10 +355,15 @@ class VectoramaApp {
     }
 
     updateGridSpacing() {
+        // Throttle updates to prevent constant recreation during zoom
+        const now = Date.now();
+        if (now - this.lastUpdateTime < 150) return; // Only update every 150ms max
+        
         // Only update if spacing changes significantly
         const optimalSpacing = this.calculateGridSpacing();
         
         if (optimalSpacing !== this.currentGridSpacing) {
+            this.lastUpdateTime = now;
             this.createGrid(optimalSpacing);
         }
     }
@@ -337,37 +388,37 @@ class VectoramaApp {
     }
 
     create2DAxes() {
-        // 2D mode: Simple black axes
+        // 2D mode: Gray axes matching grid color
         // Extend far in both directions for visibility during panning
         const axisLength = 100; // Very long axes
         const thickness = this.getArrowThickness();
-        const lineWidth = thickness.headWidth * 0.3;
+        const lineWidth = thickness.headWidth * 0.15;
 
-        // X axis - Black
+        // X axis - Gray
         const xAxisPos = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(axisLength, 0, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
         const xAxisNeg = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(-axisLength, 0, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
 
-        // Y axis - Black
+        // Y axis - Gray
         const yAxisPos = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, axisLength, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
         const yAxisNeg = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, -axisLength, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
 
@@ -375,51 +426,51 @@ class VectoramaApp {
     }
 
     create3DAxes() {
-        // 3D mode: Simple black axes (numbers remain color-coded)
+        // 3D mode: Gray axes matching grid color
         // Extend far in both directions for visibility during rotation
         const axisLength = 100; // Very long axes
         const thickness = this.getArrowThickness();
-        const lineWidth = thickness.headWidth * 0.3;
+        const lineWidth = thickness.headWidth * 0.15;
 
-        // X axis - Black
+        // X axis - Gray
         const xAxisPos = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(axisLength, 0, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
         const xAxisNeg = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(-axisLength, 0, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
 
-        // Y axis - Black
+        // Y axis - Gray
         const yAxisPos = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, axisLength, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
         const yAxisNeg = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, -axisLength, 0),
-            0x000000,
+            0x888888,
             lineWidth
         );
 
-        // Z axis - Black
+        // Z axis - Gray
         const zAxisPos = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, 0, axisLength),
-            0x000000,
+            0x888888,
             lineWidth
         );
         const zAxisNeg = this.createAxisLine(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, 0, -axisLength),
-            0x000000,
+            0x888888,
             lineWidth
         );
 
@@ -630,9 +681,12 @@ class VectoramaApp {
             controlPanel.classList.toggle('closed');
             panelToggleBtn.classList.toggle('active');
             
-            // Trigger resize after panel animation completes
+            // Trigger lightweight resize after panel animation completes
+            // Use requestAnimationFrame to avoid blocking the UI
             setTimeout(() => {
-                this.onWindowResize();
+                requestAnimationFrame(() => {
+                    this.onPanelResize();
+                });
             }, 300);
         });
         
@@ -644,9 +698,11 @@ class VectoramaApp {
                 controlPanel.classList.add('closed');
                 panelToggleBtn.classList.remove('active');
                 
-                // Trigger resize after panel animation completes
+                // Trigger lightweight resize after panel animation completes
                 setTimeout(() => {
-                    this.onWindowResize();
+                    requestAnimationFrame(() => {
+                        this.onPanelResize();
+                    });
                 }, 300);
             }
         }, { passive: true });
@@ -1479,9 +1535,24 @@ class VectoramaApp {
         }, 200);
     }
 
+    onPanelResize() {
+        // Lightweight resize for panel toggle - only update camera/renderer, not axes/grid
+        const container = this.canvas.parentElement;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    }
+
     updateAxesLength() {
         // Skip if currently resizing - let resize handler manage axes
         if (this.isResizing) return;
+        
+        // Throttle updates to prevent constant recreation during zoom
+        const now = Date.now();
+        if (now - this.lastUpdateTime < 150) return; // Only update every 150ms max
         
         // Calculate visible viewport dimensions based on camera distance to target (zoom level)
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
@@ -1508,14 +1579,15 @@ class VectoramaApp {
             newLengthZ = minDim;
         }
         
-        // Only recreate axes if any length changed significantly (>2% change for smooth updates)
+        // Only recreate axes if any length changed significantly (>5% change to reduce updates)
         // Handle case when old values are 0 or very small
         const changeX = this.axisLengthX > 0.01 ? Math.abs(newLengthX - this.axisLengthX) / this.axisLengthX : 1;
         const changeY = this.axisLengthY > 0.01 ? Math.abs(newLengthY - this.axisLengthY) / this.axisLengthY : 1;
         const changeZ = this.axisLengthZ > 0.01 ? Math.abs(newLengthZ - this.axisLengthZ) / this.axisLengthZ : 1;
         const maxChange = Math.max(changeX, changeY, changeZ);
         
-        if (maxChange > 0.02) {
+        if (maxChange > 0.05) {
+            this.lastUpdateTime = now;
             this.axisLengthX = newLengthX;
             this.axisLengthY = newLengthY;
             this.axisLengthZ = newLengthZ;
@@ -1582,6 +1654,12 @@ class VectoramaApp {
         });
     }
 
+    updateTheme() {
+        // Update scene background color based on current theme
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        this.scene.background = new THREE.Color(currentTheme === 'light' ? 0xFDFDFD : 0x606060);
+    }
+
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
@@ -1594,3 +1672,4 @@ class VectoramaApp {
 
 // Initialize the app when DOM is loaded
 const app = new VectoramaApp();
+window.vectoramaApp = app; // Store globally for theme toggle
