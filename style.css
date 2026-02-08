@@ -126,6 +126,49 @@ body {
     filter: brightness(1.1);
 }
 
+.copyright {
+    position: absolute;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8em;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    text-align: center;
+    line-height: 1.3;
+    max-width: 90%;
+    word-wrap: break-word;
+}
+
+.copyright a {
+    color: var(--accent-color);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s;
+}
+
+.copyright a:hover {
+    color: var(--text-primary);
+}
+
+.break-mobile {
+    display: inline;
+}
+
+.space-desktop {
+    display: none;
+}
+
+@media (min-width: 800px) {
+    .break-mobile {
+        display: none;
+    }
+    
+    .space-desktop {
+        display: inline;
+    }
+}
+
 .container {
     position: relative;
     height: 100vh;
@@ -802,7 +845,7 @@ body {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
 }
 
 .matrix-item .matrix-name {
@@ -901,7 +944,7 @@ body {
 }
 
 .matrix-bracket {
-    font-size: 100px;
+    font-size: 70px;
     color: var(--text-primary);
     font-weight: 300;
     line-height: 0.8;
@@ -1041,23 +1084,16 @@ body {
     user-select: none;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - Hidden */
+.control-panel {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
 .control-panel::-webkit-scrollbar {
-    width: 8px;
+    display: none; /* Chrome, Safari, Opera */
 }
 
-.control-panel::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-}
-
-.control-panel::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
-    border-radius: 4px;
-}
-
-.control-panel::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-hover);
-}
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     .control-panel {

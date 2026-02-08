@@ -2284,6 +2284,22 @@ class VectoramaApp {
     animateTransformation() {
         if (this.isAnimating || this.vectors.length === 0) return;
         
+        // Auto-close panel on mobile/narrow screens to see the animation
+        if (window.innerWidth < 768 && this.panelOpen) {
+            const controlPanel = document.querySelector('.control-panel');
+            const panelToggleBtn = document.getElementById('panel-toggle-btn');
+            this.panelOpen = false;
+            controlPanel.classList.add('closed');
+            panelToggleBtn.classList.remove('active');
+            
+            // Trigger lightweight resize after panel animation completes
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    this.onPanelResize();
+                });
+            }, 300);
+        }
+        
         // Clear any existing visualizations before starting
         this.updateVectorDisplay();
         
