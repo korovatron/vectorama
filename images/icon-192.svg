@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect fill="#16213e" width="192" height="192"/>
+  <g fill="none" stroke="#4ecca3" stroke-width="3">
+    <!-- Arrow representing a vector -->
+    <line x1="60" y1="132" x2="132" y2="60" stroke-width="4"/>
+    <polygon points="132,60 120,65 125,72" fill="#4ecca3"/>
+    <!-- Grid -->
+    <line x1="96" y1="40" x2="96" y2="152" opacity="0.3"/>
+    <line x1="40" y1="96" x2="152" y2="96" opacity="0.3"/>
+  </g>
+  <text x="96" y="170" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#eeeeee" text-anchor="middle">V</text>
+</svg>
