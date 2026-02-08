@@ -1,21 +1,23 @@
 {
-  "name": "Vectorama - Matrix & Vector Visualizer",
+  "id": "vectorama-matrix-visualiser",
+  "name": "Vectorama - Matrix & Vector Visualiser",
   "short_name": "Vectorama",
   "description": "Interactive vector mathematics and matrix transformation visualizer in 2D and 3D",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#16213e",
   "orientation": "any",
   "icons": [
     {
-      "src": "images/icon-192.svg",
+      "src": "./images/icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "images/icon-512.svg",
+      "src": "./images/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
