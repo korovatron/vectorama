@@ -2308,11 +2308,11 @@ class VectoramaApp {
         const elements = matrix.elements;
         
         if (this.dimension === '2d') {
-            // For 2x2: [[a, c], [b, d]] stored as [a, b, c, d]
-            const a = elements[0];
-            const b = elements[1];
-            const c = elements[2];
-            const d = elements[3];
+            // For 2x2: [[a, b], [c, d]] in column-major: [a, c, _, b, d, _, _, _, _]
+            const a = elements[0]; // n11 = a
+            const c = elements[1]; // n21 = c (off-diagonal)
+            const b = elements[3]; // n12 = b (off-diagonal)
+            const d = elements[4]; // n22 = d
             
             // Check if diagonal elements are equal and off-diagonal are zero
             return Math.abs(a - d) < epsilon && 
