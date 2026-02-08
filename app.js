@@ -1676,7 +1676,9 @@ class VectoramaApp {
         
         const nameSpan = document.createElement('div');
         nameSpan.className = 'matrix-name';
-        nameSpan.textContent = matrix.name + ' =';
+        // Hide '=' sign on mobile to save space
+        const isMobile = window.innerWidth < 768;
+        nameSpan.textContent = isMobile ? matrix.name : matrix.name + ' =';
         matrixContent.appendChild(nameSpan);
         
         // Matrix grid with brackets
@@ -1685,7 +1687,7 @@ class VectoramaApp {
         
         const leftBracket = document.createElement('span');
         leftBracket.className = 'matrix-bracket';
-        leftBracket.textContent = '(';
+        leftBracket.textContent = '[';
         gridContainer.appendChild(leftBracket);
         
         const grid = document.createElement('div');
@@ -1714,7 +1716,7 @@ class VectoramaApp {
         
         const rightBracket = document.createElement('span');
         rightBracket.className = 'matrix-bracket';
-        rightBracket.textContent = ')';
+        rightBracket.textContent = ']';
         gridContainer.appendChild(rightBracket);
         
         matrixContent.appendChild(gridContainer);
