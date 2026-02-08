@@ -77,6 +77,9 @@ class VectoramaApp {
         this.appMode = 'transform'; // 'transform' or 'geometry'
         this.dimension = '2d'; // '2d' or '3d'
         this.vectors = [];
+        this.matrices = []; // Store multiple transformation matrices
+        this.usedMatrixLetters = new Set(); // Track used letter names
+        this.selectedMatrixId = null; // Currently selected matrix for animation
         this.geometryObjects = []; // For geometry mode: lines, planes, etc.
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -93,6 +96,14 @@ class VectoramaApp {
         this.resizeTimeout = null; // For debouncing
         this.updateTimeout = null; // For debouncing grid/axes updates during zoom
         this.lastUpdateTime = 0; // Track last update time for throttling
+        
+        // Vector color palette matching graphiti
+        this.vectorColors = [
+            '#4A90E2', '#27AE60', '#F39C12', 
+            '#E91E63', '#1ABC9C', '#E67E22', '#34495E',
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#E74C3C'
+        ];
+        this.colorIndex = 0; // Track next color to use
         
         this.invariantLines = []; // Store invariant line objects (eigenvectors)
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
@@ -696,35 +707,75 @@ class VectoramaApp {
             }
         }, { passive: true });
         
-        // App mode switching
+        // Top button row - Mode toggle
+        document.getElementById('mode-toggle-btn').addEventListener('click', () => this.toggleAppMode());
+        
+        // Top button row - Reset axes
+        document.getElementById('reset-axes-btn').addEventListener('click', () => this.resetView());
+        
+        // Top button row - Add main button (adds vector by default)
+        document.getElementById('add-main-btn').addEventListener('click', () => {
+            if (this.dimension === '2d') {
+                this.addVector(1, 1, 0);
+            } else {
+                this.addVector(1, 1, 1);
+            }
+        });
+        
+        // Top button row - Add dropdown toggle
+        document.getElementById('add-dropdown-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('add-dropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        // Add dropdown - item click handler
+        document.querySelectorAll('#add-dropdown .dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = item.getAttribute('data-action');
+                
+                if (action === 'add-vector') {
+                    // Add a blank vector with default coordinates
+                    if (this.dimension === '2d') {
+                        this.addVector(1, 1, 0);
+                    } else {
+                        this.addVector(1, 1, 1);
+                    }
+                } else if (action === 'add-matrix') {
+                    this.addMatrix();
+                } else if (action.startsWith('rotation-') || action.startsWith('scale-') || 
+                           action.startsWith('shear-') || action.startsWith('reflection-')) {
+                    // Add a preset matrix
+                    this.addPresetMatrix(action);
+                }
+                
+                // Close dropdown
+                document.getElementById('add-dropdown').style.display = 'none';
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            document.getElementById('add-dropdown').style.display = 'none';
+        });
+        
+        // Second button row - Grid toggle
+        document.getElementById('grid-toggle-btn').addEventListener('click', () => this.toggleGrid());
+        
+        // Second button row - Invariant toggle
+        document.getElementById('invariant-toggle-btn').addEventListener('click', () => this.toggleInvariant());
+        
+        // Second button row - Dimension toggle
+        document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
+        
+        // App mode switching (legacy)
         document.getElementById('app-mode-transform').addEventListener('click', () => this.switchAppMode('transform'));
         document.getElementById('app-mode-geometry').addEventListener('click', () => this.switchAppMode('geometry'));
-        
-        // Reset view button
-        document.getElementById('reset-view-btn').addEventListener('click', () => this.resetView());
-        
-        // Toggle grid button
-        document.getElementById('toggle-grid-btn').addEventListener('click', () => this.toggleGrid());
-        
-        // Toggle invariant display button
-        document.getElementById('toggle-invariant-btn').addEventListener('click', () => this.toggleInvariant());
-
-        // Transform mode - dimension switching
-        document.getElementById('mode-2d').addEventListener('click', () => this.switchDimension('2d'));
-        document.getElementById('mode-3d').addEventListener('click', () => this.switchDimension('3d'));
-
-        // Geometry mode - dimension switching
-        document.getElementById('geom-mode-2d').addEventListener('click', () => this.switchDimension('2d'));
-        document.getElementById('geom-mode-3d').addEventListener('click', () => this.switchDimension('3d'));
 
         // Geometry type switching
         document.querySelectorAll('.geometry-type-btn').forEach(btn => {
             btn.addEventListener('click', () => this.switchGeometryType(btn.dataset.type));
-        });
-
-        // Transform mode - Preset buttons
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.applyPreset(btn.dataset.preset));
         });
 
         // Transform mode - Animation controls
@@ -778,16 +829,26 @@ class VectoramaApp {
             document.getElementById('app-mode-transform').classList.add('active');
             document.getElementById('transform-mode-content').style.display = 'block';
             document.getElementById('geometry-mode-content').style.display = 'none';
+            // Update the mode toggle button label
+            document.getElementById('mode-label').textContent = 'Transform';
         } else {
             document.getElementById('app-mode-geometry').classList.add('active');
             document.getElementById('transform-mode-content').style.display = 'none';
             document.getElementById('geometry-mode-content').style.display = 'block';
+            // Update the mode toggle button label
+            document.getElementById('mode-label').textContent = 'Geometry';
         }
 
         // Clear and reset
         this.clearVectors();
         this.clearGeometryObjects();
         this.clearInvariantSpaces();
+    }
+    
+    toggleAppMode() {
+        // Toggle between transform and geometry modes
+        const newMode = this.appMode === 'transform' ? 'geometry' : 'transform';
+        this.switchAppMode(newMode);
     }
 
     switchGeometryType(type) {
@@ -817,23 +878,19 @@ class VectoramaApp {
         this.dimension = dimension;
         this.isResizing = true; // Prevent animation loop from interfering
 
-        // Update appropriate mode buttons based on current app mode
+        // Update dimension button label
+        const dimensionLabel = document.getElementById('dimension-label');
+        if (dimensionLabel) {
+            dimensionLabel.textContent = dimension === '2d' ? '2D' : '3D';
+        }
+
+        // Update UI based on current app mode and dimension
         if (this.appMode === 'transform') {
-            document.querySelectorAll('#transform-mode-content .mode-btn').forEach(btn => btn.classList.remove('active'));
-            if (dimension === '2d') {
-                document.getElementById('mode-2d').classList.add('active');
-                document.getElementById('matrix-2d').style.display = 'block';
-                document.getElementById('matrix-3d').style.display = 'none';
-            } else {
-                document.getElementById('mode-3d').classList.add('active');
-                document.getElementById('matrix-2d').style.display = 'none';
-                document.getElementById('matrix-3d').style.display = 'block';
-            }
+            // Update matrices to match new dimension
+            this.updateObjectsList();
         } else {
             // Geometry mode
-            document.querySelectorAll('#geometry-mode-content .mode-btn').forEach(btn => btn.classList.remove('active'));
             if (dimension === '2d') {
-                document.getElementById('geom-mode-2d').classList.add('active');
                 // Hide z-coordinate inputs in 2D
                 document.getElementById('vec-z-container').style.display = 'none';
                 document.getElementById('line-az-container').style.display = 'none';
@@ -844,7 +901,6 @@ class VectoramaApp {
                     this.switchGeometryType('line');
                 }
             } else {
-                document.getElementById('geom-mode-3d').classList.add('active');
                 // Show z-coordinate inputs in 3D
                 document.getElementById('vec-z-container').style.display = 'inline';
                 document.getElementById('line-az-container').style.display = 'inline';
@@ -936,7 +992,28 @@ class VectoramaApp {
         this.isDragging = false;
         this.controls.enabled = true;
         
-        this.clearVectors();
+        // Update matrices for new dimension
+        this.matrices.forEach(matrix => {
+            const oldSize = matrix.values.length;
+            const newSize = dimension === '2d' ? 2 : 3;
+            
+            if (newSize > oldSize) {
+                // Expanding from 2D to 3D - add third row/column
+                for (let i = 0; i < oldSize; i++) {
+                    matrix.values[i][2] = 0; // Add third column
+                }
+                matrix.values[2] = [0, 0, 1]; // Add third row (identity)
+            } else if (newSize < oldSize) {
+                // Shrinking from 3D to 2D - remove third row/column
+                for (let i = 0; i < 2; i++) {
+                    matrix.values[i] = matrix.values[i].slice(0, 2);
+                }
+                matrix.values = matrix.values.slice(0, 2);
+            }
+        });
+        
+        // Update objects list to show/hide z-coordinate and resize matrices
+        this.updateObjectsList();
         this.clearInvariantSpaces();
     }
 
@@ -961,8 +1038,10 @@ class VectoramaApp {
         }
         
         // Update button text
-        const btn = document.getElementById('toggle-grid-btn');
-        btn.textContent = this.gridVisible ? 'Hide Grid' : 'Show Grid';
+        const btn = document.getElementById('grid-toggle-btn');
+        if (btn) {
+            document.getElementById('grid-label').textContent = this.gridVisible ? 'Hide Grid' : 'Show Grid';
+        }
     }
     
     toggleInvariant() {
@@ -976,113 +1055,75 @@ class VectoramaApp {
         }
         
         // Update button text
-        const btn = document.getElementById('toggle-invariant-btn');
-        const labels = {
-            'pulse': 'Invariant: Pulse',
-            'solid': 'Invariant: Solid',
-            'off': 'Invariant: Off'
-        };
-        btn.textContent = labels[this.invariantDisplayMode];
+        const btn = document.getElementById('invariant-toggle-btn');
+        if (btn) {
+            const labels = {
+                'pulse': 'Invariant:<br>Pulse',
+                'solid': 'Invariant:<br>Solid',
+                'off': 'Invariant:<br>Off'
+            };
+            document.getElementById('invariant-label').innerHTML = labels[this.invariantDisplayMode];
+        }
         
         // Re-visualize to apply the new mode
         this.visualizeInvariantSpaces();
     }
-
-    applyPreset(preset) {
-        const dimension = this.dimension;
-        
-        if (dimension === '2d') {
-            const inputs = {
-                '00': document.getElementById('m2-00'),
-                '01': document.getElementById('m2-01'),
-                '10': document.getElementById('m2-10'),
-                '11': document.getElementById('m2-11')
-            };
-
-            switch(preset) {
-                case 'identity':
-                    inputs['00'].value = 1; inputs['01'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 1;
-                    break;
-                case 'rotation':
-                    const cos45 = Math.cos(Math.PI / 4);
-                    const sin45 = Math.sin(Math.PI / 4);
-                    inputs['00'].value = cos45; inputs['01'].value = -sin45;
-                    inputs['10'].value = sin45; inputs['11'].value = cos45;
-                    break;
-                case 'scale':
-                    inputs['00'].value = 2; inputs['01'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 2;
-                    break;
-                case 'shear':
-                    inputs['00'].value = 1; inputs['01'].value = 0.5;
-                    inputs['10'].value = 0; inputs['11'].value = 1;
-                    break;
-                case 'reflection':
-                    inputs['00'].value = -1; inputs['01'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 1;
-                    break;
-            }
-        } else {
-            const inputs = {
-                '00': document.getElementById('m3-00'),
-                '01': document.getElementById('m3-01'),
-                '02': document.getElementById('m3-02'),
-                '10': document.getElementById('m3-10'),
-                '11': document.getElementById('m3-11'),
-                '12': document.getElementById('m3-12'),
-                '20': document.getElementById('m3-20'),
-                '21': document.getElementById('m3-21'),
-                '22': document.getElementById('m3-22')
-            };
-
-            switch(preset) {
-                case 'identity':
-                    inputs['00'].value = 1; inputs['01'].value = 0; inputs['02'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 1; inputs['12'].value = 0;
-                    inputs['20'].value = 0; inputs['21'].value = 0; inputs['22'].value = 1;
-                    break;
-                case 'rotation':
-                    const cos45 = Math.cos(Math.PI / 4);
-                    const sin45 = Math.sin(Math.PI / 4);
-                    inputs['00'].value = cos45; inputs['01'].value = -sin45; inputs['02'].value = 0;
-                    inputs['10'].value = sin45; inputs['11'].value = cos45; inputs['12'].value = 0;
-                    inputs['20'].value = 0; inputs['21'].value = 0; inputs['22'].value = 1;
-                    break;
-                case 'scale':
-                    inputs['00'].value = 2; inputs['01'].value = 0; inputs['02'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 2; inputs['12'].value = 0;
-                    inputs['20'].value = 0; inputs['21'].value = 0; inputs['22'].value = 2;
-                    break;
-                case 'shear':
-                    inputs['00'].value = 1; inputs['01'].value = 0.5; inputs['02'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 1; inputs['12'].value = 0;
-                    inputs['20'].value = 0; inputs['21'].value = 0; inputs['22'].value = 1;
-                    break;
-                case 'reflection':
-                    inputs['00'].value = -1; inputs['01'].value = 0; inputs['02'].value = 0;
-                    inputs['10'].value = 0; inputs['11'].value = 1; inputs['12'].value = 0;
-                    inputs['20'].value = 0; inputs['21'].value = 0; inputs['22'].value = 1;
-                    break;
-            }
-        }
-        
-        // Update invariant space visualization after applying preset
-        this.visualizeInvariantSpaces();
+    
+    toggleDimension() {
+        // Toggle between 2D and 3D
+        const newDimension = this.dimension === '2d' ? '3d' : '2d';
+        this.switchDimension(newDimension);
     }
 
     getTransformationMatrix() {
+        // Use the selected matrix, or return identity if none selected
+        if (!this.selectedMatrixId) {
+            // Return identity matrix
+            if (this.dimension === '2d') {
+                return new THREE.Matrix3().set(
+                    1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1
+                );
+            } else {
+                return new THREE.Matrix3().set(
+                    1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1
+                );
+            }
+        }
+        
+        const matrix = this.matrices.find(m => m.id === this.selectedMatrixId);
+        if (!matrix) {
+            // Return identity if matrix not found
+            if (this.dimension === '2d') {
+                return new THREE.Matrix3().set(
+                    1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1
+                );
+            } else {
+                return new THREE.Matrix3().set(
+                    1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1
+                );
+            }
+        }
+        
+        // Create THREE.Matrix3 from our stored matrix values
         if (this.dimension === '2d') {
             return new THREE.Matrix3().set(
-                parseFloat(document.getElementById('m2-00').value), parseFloat(document.getElementById('m2-01').value), 0,
-                parseFloat(document.getElementById('m2-10').value), parseFloat(document.getElementById('m2-11').value), 0,
+                matrix.values[0][0], matrix.values[0][1], 0,
+                matrix.values[1][0], matrix.values[1][1], 0,
                 0, 0, 1
             );
         } else {
             return new THREE.Matrix3().set(
-                parseFloat(document.getElementById('m3-00').value), parseFloat(document.getElementById('m3-01').value), parseFloat(document.getElementById('m3-02').value),
-                parseFloat(document.getElementById('m3-10').value), parseFloat(document.getElementById('m3-11').value), parseFloat(document.getElementById('m3-12').value),
-                parseFloat(document.getElementById('m3-20').value), parseFloat(document.getElementById('m3-21').value), parseFloat(document.getElementById('m3-22').value)
+                matrix.values[0][0], matrix.values[0][1], matrix.values[0][2],
+                matrix.values[1][0], matrix.values[1][1], matrix.values[1][2],
+                matrix.values[2][0], matrix.values[2][1], matrix.values[2][2]
             );
         }
     }
@@ -1239,7 +1280,10 @@ class VectoramaApp {
         const direction = new THREE.Vector3(x, y, z).normalize();
         const length = Math.sqrt(x * x + y * y + z * z);
         
-        const color = new THREE.Color().setHSL(Math.random(), 0.85, 0.35);
+        // Use next color from graphiti's color palette
+        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
+        this.colorIndex++;
+        const color = new THREE.Color(colorHex);
         
         const thickness = this.getArrowThickness();
         const arrow = this.createSmoothArrow(
@@ -1256,35 +1300,223 @@ class VectoramaApp {
             originalEnd: new THREE.Vector3(x, y, z),
             currentEnd: new THREE.Vector3(x, y, z),
             color: color,
-            id: Date.now()
+            id: Date.now(),
+            visible: true
         };
 
         this.vectors.push(vector);
         this.scene.add(arrow);
-        this.updateVectorList();
+        this.updateObjectsList();
     }
 
     updateVectorList() {
-        const listEl = document.getElementById('vector-list');
-        listEl.innerHTML = '';
+        this.updateObjectsList();
+    }
+    
+    updateObjectsList() {
+        const container = document.getElementById('objects-container');
+        container.innerHTML = '';
 
-        this.vectors.forEach(vec => {
-            const item = document.createElement('div');
-            item.className = 'vector-item';
-            
-            const text = document.createElement('span');
-            const end = vec.currentEnd;
-            text.textContent = `v = (${end.x.toFixed(2)}, ${end.y.toFixed(2)}${this.dimension === '3d' ? `, ${end.z.toFixed(2)}` : ''})`;
-            
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.textContent = '×';
-            deleteBtn.addEventListener('click', () => this.removeVector(vec.id));
-            
-            item.appendChild(text);
-            item.appendChild(deleteBtn);
-            listEl.appendChild(item);
+        // Render matrices first
+        this.matrices.forEach(matrix => {
+            this.renderMatrixItem(container, matrix);
         });
+
+        // Then render vectors
+        this.vectors.forEach(vec => {
+            this.renderVectorItem(container, vec);
+        });
+    }
+    
+    renderMatrixItem(container, matrix) {
+        const item = document.createElement('div');
+        const isActive = this.selectedMatrixId === matrix.id;
+        item.className = isActive ? 'matrix-item' : 'matrix-item disabled';
+        item.style.borderLeftColor = matrix.color.getStyle();
+        item.setAttribute('data-matrix-id', matrix.id);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'matrix-main-row';
+        
+        // Matrix content (name + grid)
+        const matrixContent = document.createElement('div');
+        matrixContent.className = 'matrix-content';
+        
+        const nameSpan = document.createElement('div');
+        nameSpan.className = 'matrix-name';
+        nameSpan.textContent = matrix.name + ' =';
+        matrixContent.appendChild(nameSpan);
+        
+        // Matrix grid with brackets
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'matrix-grid-container';
+        
+        const leftBracket = document.createElement('span');
+        leftBracket.className = 'matrix-bracket';
+        leftBracket.textContent = '(';
+        gridContainer.appendChild(leftBracket);
+        
+        const grid = document.createElement('div');
+        grid.className = `matrix-grid ${this.dimension === '2d' ? 'matrix-2x2' : 'matrix-3x3'}`;
+        
+        const size = this.dimension === '2d' ? 2 : 3;
+        for (let row = 0; row < size; row++) {
+            for (let col = 0; col < size; col++) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.step = '0.1';
+                input.value = matrix.values[row][col].toFixed(2);
+                input.setAttribute('data-row', row);
+                input.setAttribute('data-col', col);
+                input.addEventListener('input', (e) => {
+                    const r = parseInt(e.target.getAttribute('data-row'));
+                    const c = parseInt(e.target.getAttribute('data-col'));
+                    matrix.values[r][c] = parseFloat(e.target.value) || 0;
+                    this.visualizeInvariantSpaces();
+                });
+                grid.appendChild(input);
+            }
+        }
+        
+        gridContainer.appendChild(grid);
+        
+        const rightBracket = document.createElement('span');
+        rightBracket.className = 'matrix-bracket';
+        rightBracket.textContent = ')';
+        gridContainer.appendChild(rightBracket);
+        
+        matrixContent.appendChild(gridContainer);
+        mainRow.appendChild(matrixContent);
+        
+        // Controls container
+        const controls = document.createElement('div');
+        controls.className = 'matrix-controls';
+        
+        // Active indicator (toggles active state)
+        const activeIndicator = document.createElement('div');
+        activeIndicator.className = 'color-indicator';
+        activeIndicator.style.backgroundColor = isActive ? matrix.color.getStyle() : 'transparent';
+        activeIndicator.title = `Click to ${isActive ? 'deactivate' : 'activate'} matrix`;
+        activeIndicator.style.cursor = 'pointer';
+        activeIndicator.addEventListener('click', () => this.toggleMatrixActive(matrix.id));
+        controls.appendChild(activeIndicator);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Delete matrix';
+        removeBtn.addEventListener('click', () => this.removeMatrix(matrix.id));
+        controls.appendChild(removeBtn);
+        
+        mainRow.appendChild(controls);
+        item.appendChild(mainRow);
+        container.appendChild(item);
+    }
+    
+    renderVectorItem(container, vec) {
+        const item = document.createElement('div');
+        item.className = vec.visible ? 'vector-item' : 'vector-item disabled';
+        item.style.borderLeftColor = vec.color.getStyle();
+        item.setAttribute('data-vector-id', vec.id);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'vector-main-row';
+
+        // Coordinates container
+        const coordsDiv = document.createElement('div');
+        coordsDiv.className = 'vector-coordinates';
+
+        // Create input for x (i component)
+        const xDiv = document.createElement('div');
+        xDiv.className = 'vector-coord-input';
+        xDiv.innerHTML = `
+            <input type="number" step="0.1" value="${vec.currentEnd.x.toFixed(2)}" data-axis="x">
+            <label>i</label>
+        `;
+        coordsDiv.appendChild(xDiv);
+
+        // Create input for y (j component)
+        const yDiv = document.createElement('div');
+        yDiv.className = 'vector-coord-input';
+        yDiv.innerHTML = `
+            <input type="number" step="0.1" value="${vec.currentEnd.y.toFixed(2)}" data-axis="y">
+            <label>j</label>
+        `;
+        coordsDiv.appendChild(yDiv);
+
+        // Create input for z (k component, if 3D mode)
+        if (this.dimension === '3d') {
+            const zDiv = document.createElement('div');
+            zDiv.className = 'vector-coord-input';
+            zDiv.innerHTML = `
+                <input type="number" step="0.1" value="${vec.currentEnd.z.toFixed(2)}" data-axis="z">
+                <label>k</label>
+            `;
+            coordsDiv.appendChild(zDiv);
+        }
+
+        // Add event listeners to inputs for live editing
+        const inputs = coordsDiv.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                const axis = e.target.getAttribute('data-axis');
+                const value = parseFloat(e.target.value) || 0;
+                vec.currentEnd[axis] = value;
+                vec.originalEnd[axis] = value;
+                this.updateVectorArrow(vec);
+            });
+        });
+
+        mainRow.appendChild(coordsDiv);
+
+        // Controls container
+        const controls = document.createElement('div');
+        controls.className = 'vector-controls';
+
+        // Color indicator (toggles visibility)
+        const colorIndicator = document.createElement('div');
+        colorIndicator.className = 'color-indicator';
+        colorIndicator.style.backgroundColor = vec.visible ? vec.color.getStyle() : 'transparent';
+        colorIndicator.title = `Click to ${vec.visible ? 'hide' : 'show'} vector`;
+        colorIndicator.style.cursor = 'pointer';
+        colorIndicator.addEventListener('click', () => this.toggleVectorVisibility(vec.id));
+        controls.appendChild(colorIndicator);
+
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Delete vector';
+        removeBtn.addEventListener('click', () => this.removeVector(vec.id));
+        controls.appendChild(removeBtn);
+
+        mainRow.appendChild(controls);
+        item.appendChild(mainRow);
+        container.appendChild(item);
+    }
+
+    updateVectorArrow(vec) {
+        // Remove old arrow
+        this.scene.remove(vec.arrow);
+        
+        // Create new arrow
+        const direction = vec.currentEnd.clone().normalize();
+        const length = vec.currentEnd.length();
+        
+        if (length > 0) {
+            const thickness = this.getArrowThickness();
+            vec.arrow = this.createSmoothArrow(
+                direction,
+                new THREE.Vector3(0, 0, 0),
+                length,
+                vec.color,
+                thickness.headLength,
+                thickness.headWidth
+            );
+            if (vec.visible) {
+                this.scene.add(vec.arrow);
+            }
+        }
     }
 
     removeVector(id) {
@@ -1296,10 +1528,41 @@ class VectoramaApp {
         }
     }
 
+    toggleVectorVisibility(id) {
+        const vec = this.vectors.find(v => v.id === id);
+        if (vec) {
+            vec.visible = !vec.visible;
+            
+            // Show or hide the arrow in the scene
+            if (vec.visible) {
+                this.scene.add(vec.arrow);
+            } else {
+                this.scene.remove(vec.arrow);
+            }
+            
+            // Update the list to reflect the change
+            this.updateObjectsList();
+        }
+    }
+
+    toggleMatrixActive(id) {
+        // Radio button behavior: activate this one, deactivate all others
+        if (this.selectedMatrixId === id) {
+            // Already active, deactivate it
+            this.selectedMatrixId = null;
+        } else {
+            // Activate this matrix
+            this.selectedMatrixId = id;
+        }
+        
+        // Update the list to reflect the change
+        this.updateObjectsList();
+    }
+
     clearVectors() {
         this.vectors.forEach(vec => this.scene.remove(vec.arrow));
         this.vectors = [];
-        this.updateVectorList();
+        this.updateObjectsList();
     }
 
     resetVectors() {
@@ -1320,16 +1583,226 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            this.scene.add(vec.arrow);
+            if (vec.visible) {
+                this.scene.add(vec.arrow);
+            }
         });
         this.updateVectorList();
     }
 
+    getNextMatrixLetter() {
+        const alphabet = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'; // Skip I
+        for (let letter of alphabet) {
+            if (!this.usedMatrixLetters.has(letter)) {
+                return letter;
+            }
+        }
+        // If all letters used, start doubling
+        return 'A' + (this.matrices.length + 1);
+    }
+
+    addMatrix() {
+        const name = this.getNextMatrixLetter();
+        this.usedMatrixLetters.add(name);
+        
+        // Create identity matrix by default
+        const size = this.dimension === '2d' ? 2 : 3;
+        const values = [];
+        for (let i = 0; i < size; i++) {
+            values[i] = [];
+            for (let j = 0; j < size; j++) {
+                values[i][j] = i === j ? 1 : 0; // Identity matrix
+            }
+        }
+        
+        // Use consistent purple color for all matrices (not visual objects)
+        const color = new THREE.Color(0x904AE2); // Purple
+        
+        const matrix = {
+            id: Date.now(),
+            name: name,
+            values: values,
+            color: color
+        };
+        
+        this.matrices.push(matrix);
+        
+        // Auto-select this matrix if it's the first one
+        if (this.matrices.length === 1) {
+            this.selectedMatrixId = matrix.id;
+        }
+        
+        this.updateObjectsList();
+    }
+
+    addPresetMatrix(preset) {
+        const name = this.getNextMatrixLetter();
+        this.usedMatrixLetters.add(name);
+        
+        const size = this.dimension === '2d' ? 2 : 3;
+        let values = [];
+        
+        // Initialize values array
+        for (let i = 0; i < size; i++) {
+            values[i] = [];
+            for (let j = 0; j < size; j++) {
+                values[i][j] = 0;
+            }
+        }
+        
+        // Set values based on preset
+        if (size === 2) {
+            switch(preset) {
+                case 'rotation-45':
+                    const cos45 = Math.cos(Math.PI / 4);
+                    const sin45 = Math.sin(Math.PI / 4);
+                    values[0][0] = cos45; values[0][1] = -sin45;
+                    values[1][0] = sin45; values[1][1] = cos45;
+                    break;
+                case 'rotation-90':
+                    values[0][0] = 0; values[0][1] = -1;
+                    values[1][0] = 1; values[1][1] = 0;
+                    break;
+                case 'scale-2x':
+                    values[0][0] = 2; values[0][1] = 0;
+                    values[1][0] = 0; values[1][1] = 2;
+                    break;
+                case 'shear-x':
+                    values[0][0] = 1; values[0][1] = 1;
+                    values[1][0] = 0; values[1][1] = 1;
+                    break;
+                case 'reflection-x':
+                    values[0][0] = 1; values[0][1] = 0;
+                    values[1][0] = 0; values[1][1] = -1;
+                    break;
+                case 'reflection-y':
+                    values[0][0] = -1; values[0][1] = 0;
+                    values[1][0] = 0; values[1][1] = 1;
+                    break;
+            }
+        } else {
+            // 3D presets
+            switch(preset) {
+                case 'rotation-45':
+                    const cos45 = Math.cos(Math.PI / 4);
+                    const sin45 = Math.sin(Math.PI / 4);
+                    values[0][0] = cos45; values[0][1] = -sin45; values[0][2] = 0;
+                    values[1][0] = sin45; values[1][1] = cos45; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
+                    break;
+                case 'rotation-90':
+                    values[0][0] = 0; values[0][1] = -1; values[0][2] = 0;
+                    values[1][0] = 1; values[1][1] = 0; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
+                    break;
+                case 'scale-2x':
+                    values[0][0] = 2; values[0][1] = 0; values[0][2] = 0;
+                    values[1][0] = 0; values[1][1] = 2; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 2;
+                    break;
+                case 'shear-x':
+                    values[0][0] = 1; values[0][1] = 1; values[0][2] = 0;
+                    values[1][0] = 0; values[1][1] = 1; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
+                    break;
+                case 'reflection-x':
+                    values[0][0] = 1; values[0][1] = 0; values[0][2] = 0;
+                    values[1][0] = 0; values[1][1] = -1; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
+                    break;
+                case 'reflection-y':
+                    values[0][0] = -1; values[0][1] = 0; values[0][2] = 0;
+                    values[1][0] = 0; values[1][1] = 1; values[1][2] = 0;
+                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
+                    break;
+            }
+        }
+        
+        const color = new THREE.Color(0x904AE2); // Purple
+        
+        const matrix = {
+            id: Date.now(),
+            name: name,
+            values: values,
+            color: color
+        };
+        
+        this.matrices.push(matrix);
+        
+        // Auto-select this matrix if it's the first one
+        if (this.matrices.length === 1) {
+            this.selectedMatrixId = matrix.id;
+        }
+        
+        this.updateObjectsList();
+    }
+
+    removeMatrix(id) {
+        const index = this.matrices.findIndex(m => m.id === id);
+        if (index !== -1) {
+            const matrix = this.matrices[index];
+            this.usedMatrixLetters.delete(matrix.name);
+            this.matrices.splice(index, 1);
+            
+            // If this was the selected matrix, select the first one or null
+            if (this.selectedMatrixId === id) {
+                this.selectedMatrixId = this.matrices.length > 0 ? this.matrices[0].id : null;
+            }
+            
+            this.updateObjectsList();
+        }
+    }
+
+    toggleMatrixActive(id) {
+        // Radio button behavior: activate this one, deactivate all others
+        if (this.selectedMatrixId === id) {
+            // Already active, deactivate it
+            this.selectedMatrixId = null;
+        } else {
+            // Activate this matrix
+            this.selectedMatrixId = id;
+        }
+        
+        // Update the list to reflect the change
+        this.updateObjectsList();
+    }
+
+    getMatrixById(id) {
+        return this.matrices.find(m => m.id === id);
+    }
+
     animateTransformation() {
         if (this.isAnimating || this.vectors.length === 0) return;
+        
+        // Get selected matrix
+        if (!this.selectedMatrixId) {
+            alert('Please add a matrix and activate it by clicking the purple indicator');
+            return;
+        }
+        
+        const selectedMatrix = this.getMatrixById(this.selectedMatrixId);
+        if (!selectedMatrix) {
+            alert('Selected matrix not found');
+            return;
+        }
+        
+        // Convert matrix values to THREE.Matrix3
+        const matrix = new THREE.Matrix3();
+        if (this.dimension === '2d') {
+            matrix.set(
+                selectedMatrix.values[0][0], selectedMatrix.values[0][1], 0,
+                selectedMatrix.values[1][0], selectedMatrix.values[1][1], 0,
+                0, 0, 1
+            );
+        } else {
+            matrix.set(
+                selectedMatrix.values[0][0], selectedMatrix.values[0][1], selectedMatrix.values[0][2],
+                selectedMatrix.values[1][0], selectedMatrix.values[1][1], selectedMatrix.values[1][2],
+                selectedMatrix.values[2][0], selectedMatrix.values[2][1], selectedMatrix.values[2][2]
+            );
+        }
 
         this.isAnimating = true;
-        const matrix = this.getTransformationMatrix();
         const duration = this.animationSpeed * 1000;
         const startTime = Date.now();
 
@@ -1360,7 +1833,9 @@ class VectoramaApp {
                     thickness.headLength,
                     thickness.headWidth
                 );
-                this.scene.add(vec.arrow);
+                if (vec.visible) {
+                    this.scene.add(vec.arrow);
+                }
             });
 
             this.updateVectorList();
@@ -1647,7 +2122,9 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            this.scene.add(vec.arrow);
+            if (vec.visible) {
+                this.scene.add(vec.arrow);
+            }
         });
     }
 
@@ -1667,12 +2144,24 @@ class VectoramaApp {
             
             // Create new cylinder with updated thickness
             const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
-            const material = new THREE.MeshBasicMaterial({
-                color: lineObj.mesh.material.color,
+            
+            // Preserve the material properties including textures
+            const oldMaterial = lineObj.mesh.material;
+            const materialProps = {
                 transparent: true,
-                opacity: lineObj.mesh.material.opacity,
-                depthTest: false
-            });
+                opacity: oldMaterial.opacity,
+                depthTest: oldMaterial.depthTest,
+                depthWrite: oldMaterial.depthWrite
+            };
+            
+            // Preserve texture if it exists (for solid mode)
+            if (oldMaterial.map) {
+                materialProps.map = oldMaterial.map;
+            } else {
+                materialProps.color = oldMaterial.color;
+            }
+            
+            const material = new THREE.MeshBasicMaterial(materialProps);
             
             const cylinder = new THREE.Mesh(geometry, material);
             

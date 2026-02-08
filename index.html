@@ -37,17 +37,76 @@
             <h1>Vectorama</h1>
             <p class="subtitle" id="app-subtitle">Interactive Vector Mathematics</p>
             
-            <!-- App Mode Selector -->
-            <div class="app-mode-selector">
-                <button id="app-mode-transform" class="app-mode-btn active">Transform</button>
-                <button id="app-mode-geometry" class="app-mode-btn">Geometry</button>
+            <!-- Top Button Row -->
+            <div class="top-button-row">
+                <!-- Split Button: Add with Dropdown -->
+                <div class="split-button-container">
+                    <button id="add-main-btn" class="split-button-main">
+                        <span style="font-size: 16px;">+</span>&nbsp;Add
+                    </button>
+                    <button id="add-dropdown-toggle" class="split-button-dropdown" title="Show examples">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="2,4 6,8 10,4"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Add Dropdown Menu (hidden by default) -->
+                <div id="add-dropdown" class="add-dropdown" style="display: none;">
+                    <div class="dropdown-item" data-action="add-vector">
+                        <strong>+</strong> Add Vector
+                    </div>
+                    <div class="dropdown-item" data-action="add-matrix">
+                        <strong>+</strong> Add Matrix
+                    </div>
+                    <div class="dropdown-separator"></div>
+                    <div class="dropdown-header">Transformations</div>
+                    <div class="dropdown-item" data-action="rotation-45">
+                        Rotation 45°
+                    </div>
+                    <div class="dropdown-item" data-action="rotation-90">
+                        Rotation 90°
+                    </div>
+                    <div class="dropdown-item" data-action="scale-2x">
+                        Scale 2×
+                    </div>
+                    <div class="dropdown-item" data-action="shear-x">
+                        Shear X
+                    </div>
+                    <div class="dropdown-item" data-action="reflection-x">
+                        Reflection X
+                    </div>
+                    <div class="dropdown-item" data-action="reflection-y">
+                        Reflection Y
+                    </div>
+                </div>
+                
+                <button id="reset-axes-btn" class="top-btn" title="Reset View">
+                    RESET<br>AXES
+                </button>
+                
+                <button id="mode-toggle-btn" class="top-btn" title="Toggle Transform/Geometry Mode">
+                    <span id="mode-label">Transform</span>
+                </button>
             </div>
             
-            <!-- View Controls -->
-            <div class="view-controls">
-                <button id="reset-view-btn" class="secondary-btn">Reset View</button>
-                <button id="toggle-grid-btn" class="secondary-btn">Hide Grid</button>
-                <button id="toggle-invariant-btn" class="secondary-btn">Invariant: Pulse</button>
+            <!-- Second Button Row -->
+            <div class="top-button-row">
+                <button id="grid-toggle-btn" class="top-btn" title="Toggle Grid">
+                    <span id="grid-label">Hide Grid</span>
+                </button>
+                
+                <button id="invariant-toggle-btn" class="top-btn" title="Cycle Invariant Display">
+                    <span id="invariant-label">Invariant:<br>Pulse</span>
+                </button>
+                
+                <button id="dimension-toggle-btn" class="top-btn" title="Toggle 2D/3D">
+                    <span id="dimension-label">3D</span>
+                </button>
+            </div>
+            
+            <!-- Theme Toggle (separate) -->
+            <div style="margin-bottom: 15px;">
                 <button id="theme-toggle" class="secondary-btn" title="Toggle Theme">
                     <svg id="light-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; opacity: 0; transition: opacity 0.3s;">
                         <circle cx="12" cy="12" r="5"></circle>
@@ -67,51 +126,20 @@
                     <span style="margin-left: 6px;">Dark</span>
                 </button>
             </div>
+            
+            <!-- App Mode Selector (hidden) -->
+            <div class="app-mode-selector" style="display: none;">
+                <button id="app-mode-transform" class="app-mode-btn active">Transform</button>
+                <button id="app-mode-geometry" class="app-mode-btn">Geometry</button>
+            </div>
+
+            <!-- Objects List (matrices and vectors, shared between modes) -->
+            <div id="objects-container">
+                <!-- Matrices and vectors will be added here dynamically -->
+            </div>
 
             <!-- Transform Mode Content -->
             <div id="transform-mode-content" class="mode-content">
-                <div class="dimension-selector">
-                    <button id="mode-2d" class="mode-btn active">2D (2×2)</button>
-                    <button id="mode-3d" class="mode-btn">3D (3×3)</button>
-                </div>
-
-                <!-- 2D Matrix Input -->
-                <div id="matrix-2d" class="matrix-input">
-                    <h3>Transformation Matrix (2×2)</h3>
-                    <div class="matrix-grid matrix-2x2">
-                        <input type="number" id="m2-00" value="1" step="0.1">
-                        <input type="number" id="m2-01" value="0" step="0.1">
-                        <input type="number" id="m2-10" value="0" step="0.1">
-                        <input type="number" id="m2-11" value="1" step="0.1">
-                    </div>
-                </div>
-
-                <!-- 3D Matrix Input -->
-                <div id="matrix-3d" class="matrix-input" style="display: none;">
-                    <h3>Transformation Matrix (3×3)</h3>
-                    <div class="matrix-grid matrix-3x3">
-                        <input type="number" id="m3-00" value="1" step="0.1">
-                        <input type="number" id="m3-01" value="0" step="0.1">
-                        <input type="number" id="m3-02" value="0" step="0.1">
-                        <input type="number" id="m3-10" value="0" step="0.1">
-                        <input type="number" id="m3-11" value="1" step="0.1">
-                        <input type="number" id="m3-12" value="0" step="0.1">
-                        <input type="number" id="m3-20" value="0" step="0.1">
-                        <input type="number" id="m3-21" value="0" step="0.1">
-                        <input type="number" id="m3-22" value="1" step="0.1">
-                    </div>
-                </div>
-
-                <!-- Preset Transformations -->
-                <div class="presets">
-                    <h3>Presets</h3>
-                    <button class="preset-btn" data-preset="identity">Identity</button>
-                    <button class="preset-btn" data-preset="rotation">Rotation 45°</button>
-                    <button class="preset-btn" data-preset="scale">Scale 2x</button>
-                    <button class="preset-btn" data-preset="shear">Shear</button>
-                    <button class="preset-btn" data-preset="reflection">Reflection</button>
-                </div>
-
                 <!-- Animation Controls -->
                 <div class="animation-controls">
                     <h3>Animation</h3>
@@ -123,22 +151,10 @@
                         <span id="speed-value">2.0s</span>
                     </div>
                 </div>
-
-                <!-- Vector Display -->
-                <div class="vector-display">
-                    <h3>Vectors</h3>
-                    <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Click & drag on canvas to create</p>
-                    <div id="vector-list"></div>
-                </div>
             </div>
 
             <!-- Geometry Mode Content -->
             <div id="geometry-mode-content" class="mode-content" style="display: none;">
-                <div class="dimension-selector">
-                    <button id="geom-mode-2d" class="mode-btn active">2D</button>
-                    <button id="geom-mode-3d" class="mode-btn">3D</button>
-                </div>
-
                 <!-- Object Type Selector -->
                 <div class="geometry-type-selector">
                     <h3>Add Object</h3>
