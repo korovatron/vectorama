@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vectorama-version-0.0.5';
+const CACHE_NAME = 'vectorama-version-0.0.7';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -6,8 +6,10 @@ const urlsToCache = [
   '/app.js',
   '/manifest.json',
   '/images/vectoramaLogo.png',
-  '/images/icon-192.svg',
-  '/images/icon-512.svg',
+  '/images/panelLogo.png',
+  '/images/icon-180.png',
+  '/images/icon-192.png',
+  '/images/icon-512.png',
   'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
   'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js'
 ];

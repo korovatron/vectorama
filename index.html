@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="Interactive vector mathematics and matrix transformation visualizer in 2D and 3D">
     <title>Vectorama - Matrix & Vector Visualizer</title>
+    <link rel="icon" type="image/png" href="images/icon-192.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="images/icon-192.svg">
+    <link rel="apple-touch-icon" href="images/icon-180.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -34,8 +35,7 @@
     <div class="container">
         <!-- Control Panel -->
         <div class="control-panel">
-            <h1>Vectorama</h1>
-            <p class="subtitle" id="app-subtitle">Interactive Vector Mathematics</p>
+            <img src="images/panelLogo.png" alt="Vectorama" class="panel-logo">
             
             <!-- Top Button Row -->
             <div class="top-button-row">
@@ -124,46 +124,94 @@
             <!-- Second Button Row -->
             <div class="top-button-row">
                 <button id="grid-toggle-btn" class="top-btn" title="Toggle Grid">
-                    <span id="grid-label">Hide Grid</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg class="grid-icon" id="grid-off" width="16" height="16" viewBox="0 0 16 16">
+                            <!-- Empty square -->
+                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                        <span class="grid-separator">|</span>
+                        <svg class="grid-icon grid-active" id="grid-on" width="16" height="16" viewBox="0 0 16 16">
+                            <!-- 3x3 grid -->
+                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
+                            <line x1="6" y1="2" x2="6" y2="14" stroke="currentColor" stroke-width="1" />
+                            <line x1="10" y1="2" x2="10" y2="14" stroke="currentColor" stroke-width="1" />
+                            <line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1" />
+                            <line x1="2" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="1" />
+                        </svg>
+                    </div>
                 </button>
                 
                 <button id="invariant-toggle-btn" class="top-btn" title="Cycle Invariant Display">
-                    <span id="invariant-label">Invariant:<br>Pulse</span>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                        <span style="color: #ffffff; font-size: 9px;">Invariant</span>
+                        <div style="display: flex; font-size: 9px;">
+                            <span class="inv-option inv-active" id="inv-off">Off</span>
+                            <span class="inv-separator">|</span>
+                            <span class="inv-option" id="inv-pulse">Pulse</span>
+                            <span class="inv-separator">|</span>
+                            <span class="inv-option" id="inv-solid">Solid</span>
+                        </div>
+                    </div>
                 </button>
                 
                 <button id="dimension-toggle-btn" class="top-btn" title="Toggle 2D/3D">
-                    <span id="dimension-label">3D</span>
+                    <span class="dim-option dim-active" id="dim-2d">2D</span>
+                    <span class="dim-separator">|</span>
+                    <span class="dim-option" id="dim-3d">3D</span>
                 </button>
             </div>
             
             <!-- Third Button Row -->
             <div class="top-button-row">
                 <button id="vector-display-toggle-btn" class="top-btn" title="Cycle Vector Display Mode">
-                    <span id="vector-display-label">Display:<br>Vectors</span>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                        <span style="color: #ffffff; font-size: 9px;">Vectors</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <svg class="vec-icon" id="vec-arrow" width="16" height="16" viewBox="0 0 16 16">
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+                                        <polygon points="0 0, 4 2, 0 4" fill="currentColor" />
+                                    </marker>
+                                </defs>
+                                <line x1="2" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrowhead)" />
+                            </svg>
+                            <svg class="vec-icon vec-active" id="vec-point" width="16" height="16" viewBox="0 0 16 16">
+                                <circle cx="8" cy="8" r="3" fill="currentColor" />
+                            </svg>
+                            <svg class="vec-icon" id="vec-path" width="16" height="16" viewBox="0 0 16 16">
+                                <line x1="2" y1="11" x2="8" y2="8" stroke="currentColor" stroke-width="1.5" />
+                                <line x1="8" y1="8" x2="14" y2="5" stroke="currentColor" stroke-width="1.5" />
+                                <circle cx="2" cy="11" r="2" fill="currentColor" />
+                                <circle cx="8" cy="8" r="2" fill="currentColor" />
+                                <circle cx="14" cy="5" r="2" fill="currentColor" />
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+                
+                <button id="theme-toggle" class="top-btn" title="Toggle Theme">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg id="light-icon" class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <span class="theme-separator">|</span>
+                        <svg id="dark-icon" class="theme-icon theme-active" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </div>
                 </button>
             </div>
             
-            <!-- Theme Toggle (separate) -->
-            <div style="margin-bottom: 15px;">
-                <button id="theme-toggle" class="secondary-btn" title="Toggle Theme">
-                    <svg id="light-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; opacity: 0; transition: opacity 0.3s;">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <span style="margin: 0 6px;">Light</span>
-                    <svg id="dark-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; opacity: 1; transition: opacity 0.3s;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <span style="margin-left: 6px;">Dark</span>
-                </button>
-            </div>
+            <!-- Separator -->
+            <div class="panel-separator"></div>
             
             <!-- App Mode Selector (hidden) -->
             <div class="app-mode-selector" style="display: none;">
@@ -173,22 +221,14 @@
 
             <!-- Objects List (matrices and vectors, shared between modes) -->
             <div id="objects-container">
-                <!-- Matrices and vectors will be added here dynamically -->
+                <!-- Apply Transformation button and matrices/vectors will be added here dynamically -->
             </div>
+            
+            <!-- Separator -->
+            <div class="panel-separator"></div>
 
             <!-- Transform Mode Content -->
             <div id="transform-mode-content" class="mode-content">
-                <!-- Animation Controls -->
-                <div class="animation-controls">
-                    <h3>Animation</h3>
-                    <button id="animate-btn" class="primary-btn">Animate Transformation</button>
-                    <button id="reset-btn" class="secondary-btn">Reset</button>
-                    <div class="slider-control">
-                        <label for="speed-slider">Animation Speed:</label>
-                        <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
-                        <span id="speed-value">2.0s</span>
-                    </div>
-                </div>
             </div>
 
             <!-- Geometry Mode Content -->

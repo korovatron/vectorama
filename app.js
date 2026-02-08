@@ -20,6 +20,31 @@ startBtn.addEventListener('click', () => {
     }
 });
 
+// Allow space bar to start the app from title screen
+// Allow ESC to return to title screen
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !appInitialized) {
+        e.preventDefault(); // Prevent page scroll
+        titleScreen.classList.add('hidden');
+        mainApp.style.display = 'block';
+        
+        const app = new VectoramaApp();
+        window.vectoramaApp = app;
+        appInitialized = true;
+    } else if (e.code === 'Escape' && appInitialized) {
+        // Return to title screen
+        titleScreen.classList.remove('hidden');
+        mainApp.style.display = 'none';
+        appInitialized = false;
+        
+        // Clean up the app instance if needed
+        if (window.vectoramaApp && window.vectoramaApp.cleanup) {
+            window.vectoramaApp.cleanup();
+        }
+        window.vectoramaApp = null;
+    }
+});
+
 // iOS viewport height fix - necessary for full-screen rendering into notch and chrome areas
 // Sets a CSS variable for the actual viewport height, which works around iOS Safari's 100vh issue
 function setActualVH() {
@@ -46,8 +71,11 @@ const darkIcon = document.getElementById('dark-icon');
 const savedTheme = localStorage.getItem('theme') || 'dark';
 if (savedTheme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
-    lightIcon.style.opacity = '1';
-    darkIcon.style.opacity = '0';
+    lightIcon.classList.add('theme-active');
+    darkIcon.classList.remove('theme-active');
+} else {
+    lightIcon.classList.remove('theme-active');
+    darkIcon.classList.add('theme-active');
 }
 
 themeToggle.addEventListener('click', () => {
@@ -57,13 +85,13 @@ themeToggle.addEventListener('click', () => {
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     
-    // Animate icon transition
+    // Toggle active class
     if (newTheme === 'light') {
-        lightIcon.style.opacity = '1';
-        darkIcon.style.opacity = '0';
+        lightIcon.classList.add('theme-active');
+        darkIcon.classList.remove('theme-active');
     } else {
-        lightIcon.style.opacity = '0';
-        darkIcon.style.opacity = '1';
+        lightIcon.classList.remove('theme-active');
+        darkIcon.classList.add('theme-active');
     }
     
     // Update scene background if app exists
@@ -124,9 +152,14 @@ class VectoramaApp {
         this.invariantLines = []; // Store invariant line objects (eigenvectors)
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
-        this.invariantDisplayMode = 'pulse'; // 'off', 'solid', 'pulse'
-        this.vectorDisplayMode = 'vectors'; // 'vectors', 'points', 'path'
+        this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
+        this.vectorDisplayMode = 'points'; // 'vectors', 'points', 'path'
         this.pathLines = []; // Store path visualization lines
+        
+        // Unique ID counters
+        this.nextVectorId = 1;
+        this.nextMatrixId = 1;
+        this.nextGeometryId = 1;
         
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
@@ -134,6 +167,9 @@ class VectoramaApp {
         this.createGrid();
         this.createAxes();
         this.animate();
+        
+        // Initialize with default content
+        this.initializeDefaultContent();
         
         // Visualize invariant spaces for initial identity matrix after scene is ready
         requestAnimationFrame(() => {
@@ -632,7 +668,10 @@ class VectoramaApp {
         const material = new THREE.MeshBasicMaterial({ 
             color: color,
             depthWrite: true,
-            depthTest: true
+            depthTest: true,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
         });
         const shaft = new THREE.Mesh(shaftGeometry, material);
         shaft.position.copy(direction.clone().multiplyScalar(shaftLength / 2));
@@ -656,6 +695,7 @@ class VectoramaApp {
         
         group.add(shaft, head);
         group.position.copy(origin);
+        group.renderOrder = 1; // Render after axes (which have default renderOrder of 0)
         
         return group;
     }
@@ -687,6 +727,48 @@ class VectoramaApp {
         head.quaternion.copy(quaternion);
         
         return head;
+    }
+
+    initializeDefaultContent() {
+        // Initialize 2D mode with a reflection matrix and a vector
+        this.addMatrix();
+        // Set to reflection across x-axis: [[1, 0], [0, -1]]
+        if (this.matrices2D.length > 0) {
+            this.matrices2D[0].values = [[1, 0], [0, -1]];
+        }
+        this.addVector(1, 2, 0);
+        
+        // Pre-initialize 3D mode data (without adding to scene)
+        // Add matrix data directly
+        const matrix3D = {
+            id: this.nextMatrixId++,
+            name: 'A',
+            values: [[0, -1, 0], [1, 0, 0], [0, 0, 1]], // Rotation about z-axis
+            color: new THREE.Color(0x904AE2)
+        };
+        this.matrices3D.push(matrix3D);
+        this.usedMatrixLetters3D.add('A');
+        this.selectedMatrixId3D = matrix3D.id;
+        
+        // Pre-store vector data for 3D (will be created when switching to 3D)
+        // Just store the coordinates, actual vector will be created by switchDimension
+        const colorHex = this.vectorColors[this.colorIndex3D % this.vectorColors.length];
+        this.colorIndex3D++;
+        
+        // Create a minimal vector object for 3D that will be fully initialized on dimension switch
+        const vector3D = {
+            arrow: null,
+            pointSphere: null,
+            originalEnd: new THREE.Vector3(2, 3, -3),
+            currentEnd: new THREE.Vector3(2, 3, -3),
+            color: new THREE.Color(colorHex),
+            id: this.nextVectorId++,
+            visible: true
+        };
+        this.vectors3D.push(vector3D);
+        
+        // Update the display for 2D mode
+        this.updateObjectsList();
     }
 
     initEventListeners() {
@@ -802,18 +884,6 @@ class VectoramaApp {
             btn.addEventListener('click', () => this.switchGeometryType(btn.dataset.type));
         });
 
-        // Transform mode - Animation controls
-        document.getElementById('animate-btn').addEventListener('click', () => this.animateTransformation());
-        document.getElementById('reset-btn').addEventListener('click', () => this.resetVectors());
-
-        // Speed slider
-        const speedSlider = document.getElementById('speed-slider');
-        const speedValue = document.getElementById('speed-value');
-        speedSlider.addEventListener('input', (e) => {
-            this.animationSpeed = parseFloat(e.target.value);
-            speedValue.textContent = `${this.animationSpeed.toFixed(1)}s`;
-        });
-
         // Geometry mode - Add buttons
         document.getElementById('add-vector-btn').addEventListener('click', () => this.addGeometryVector());
         document.getElementById('add-line-btn').addEventListener('click', () => this.addGeometryLine());
@@ -906,9 +976,16 @@ class VectoramaApp {
         this.isResizing = true; // Prevent animation loop from interfering
 
         // Update dimension button label
-        const dimensionLabel = document.getElementById('dimension-label');
-        if (dimensionLabel) {
-            dimensionLabel.textContent = dimension === '2d' ? '2D' : '3D';
+        const dim2d = document.getElementById('dim-2d');
+        const dim3d = document.getElementById('dim-3d');
+        if (dim2d && dim3d) {
+            if (dimension === '2d') {
+                dim2d.classList.add('dim-active');
+                dim3d.classList.remove('dim-active');
+            } else {
+                dim3d.classList.add('dim-active');
+                dim2d.classList.remove('dim-active');
+            }
         }
         
         // Show/hide appropriate vector presets
@@ -1064,6 +1141,42 @@ class VectoramaApp {
             this.colorIndex = this.colorIndex3D;
         }
         
+        // Ensure all vectors have their THREE.js objects created
+        this.vectors.forEach(vec => {
+            if (!vec.arrow || !vec.pointSphere) {
+                const x = vec.originalEnd.x;
+                const y = vec.originalEnd.y;
+                const z = vec.originalEnd.z;
+                
+                const origin = new THREE.Vector3(0, 0, 0);
+                const direction = new THREE.Vector3(x, y, z).normalize();
+                const length = Math.sqrt(x * x + y * y + z * z);
+                
+                const thickness = this.getArrowThickness();
+                vec.arrow = this.createSmoothArrow(
+                    direction,
+                    origin,
+                    length,
+                    vec.color,
+                    thickness.headLength,
+                    thickness.headWidth
+                );
+                
+                // Create point sphere
+                const pointSize = 0.15;
+                const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
+                const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                    color: vec.color,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1,
+                    polygonOffsetUnits: -1
+                });
+                vec.pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                vec.pointSphere.position.copy(new THREE.Vector3(x, y, z));
+                vec.pointSphere.renderOrder = 1;
+            }
+        });
+        
         // Update vector visualization for new dimension
         this.updateVectorDisplay();
         
@@ -1093,10 +1206,17 @@ class VectoramaApp {
             this.gridHelper.visible = this.gridVisible;
         }
         
-        // Update button text
-        const btn = document.getElementById('grid-toggle-btn');
-        if (btn) {
-            document.getElementById('grid-label').textContent = this.gridVisible ? 'Hide Grid' : 'Show Grid';
+        // Update icon active states
+        const gridOff = document.getElementById('grid-off');
+        const gridOn = document.getElementById('grid-on');
+        if (gridOff && gridOn) {
+            if (this.gridVisible) {
+                gridOff.classList.remove('grid-active');
+                gridOn.classList.add('grid-active');
+            } else {
+                gridOn.classList.remove('grid-active');
+                gridOff.classList.add('grid-active');
+            }
         }
     }
     
@@ -1110,15 +1230,22 @@ class VectoramaApp {
             this.invariantDisplayMode = 'pulse';
         }
         
-        // Update button text
-        const btn = document.getElementById('invariant-toggle-btn');
-        if (btn) {
-            const labels = {
-                'pulse': 'Invariant:<br>Pulse',
-                'solid': 'Invariant:<br>Solid',
-                'off': 'Invariant:<br>Off'
-            };
-            document.getElementById('invariant-label').innerHTML = labels[this.invariantDisplayMode];
+        // Update button active states
+        const invOff = document.getElementById('inv-off');
+        const invPulse = document.getElementById('inv-pulse');
+        const invSolid = document.getElementById('inv-solid');
+        if (invOff && invPulse && invSolid) {
+            invOff.classList.remove('inv-active');
+            invPulse.classList.remove('inv-active');
+            invSolid.classList.remove('inv-active');
+            
+            if (this.invariantDisplayMode === 'off') {
+                invOff.classList.add('inv-active');
+            } else if (this.invariantDisplayMode === 'pulse') {
+                invPulse.classList.add('inv-active');
+            } else if (this.invariantDisplayMode === 'solid') {
+                invSolid.classList.add('inv-active');
+            }
         }
         
         // Re-visualize to apply the new mode
@@ -1138,15 +1265,22 @@ class VectoramaApp {
         const nextIndex = (currentIndex + 1) % modes.length;
         this.vectorDisplayMode = modes[nextIndex];
         
-        // Update button label
-        const label = document.getElementById('vector-display-label');
-        if (label) {
-            const labels = {
-                'vectors': 'Display:<br>Vectors',
-                'points': 'Display:<br>Points',
-                'path': 'Display:<br>Path'
-            };
-            label.innerHTML = labels[this.vectorDisplayMode];
+        // Update button active states
+        const vecArrow = document.getElementById('vec-arrow');
+        const vecPoint = document.getElementById('vec-point');
+        const vecPath = document.getElementById('vec-path');
+        if (vecArrow && vecPoint && vecPath) {
+            vecArrow.classList.remove('vec-active');
+            vecPoint.classList.remove('vec-active');
+            vecPath.classList.remove('vec-active');
+            
+            if (this.vectorDisplayMode === 'vectors') {
+                vecArrow.classList.add('vec-active');
+            } else if (this.vectorDisplayMode === 'points') {
+                vecPoint.classList.add('vec-active');
+            } else if (this.vectorDisplayMode === 'path') {
+                vecPath.classList.add('vec-active');
+            }
         }
         
         // Update vector visualization
@@ -1376,9 +1510,15 @@ class VectoramaApp {
         // Create point sphere for points mode
         const pointSize = 0.15;
         const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ color: color });
+        const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: color,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
         const pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
         pointSphere.position.copy(new THREE.Vector3(x, y, z));
+        pointSphere.renderOrder = 1; // Render after axes
 
         const vector = {
             arrow: arrow,
@@ -1386,7 +1526,7 @@ class VectoramaApp {
             originalEnd: new THREE.Vector3(x, y, z),
             currentEnd: new THREE.Vector3(x, y, z),
             color: color,
-            id: Date.now(),
+            id: this.nextVectorId++,
             visible: true
         };
 
@@ -1467,10 +1607,14 @@ class VectoramaApp {
                     const material = new THREE.MeshBasicMaterial({ 
                         color: startVec.color,
                         depthWrite: true,
-                        depthTest: true
+                        depthTest: true,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1,
+                        polygonOffsetUnits: -1
                     });
                     
                     const cylinder = new THREE.Mesh(geometry, material);
+                    cylinder.renderOrder = 1; // Render after axes
                     
                     // Position at midpoint
                     const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
@@ -1491,6 +1635,25 @@ class VectoramaApp {
     updateObjectsList() {
         const container = document.getElementById('objects-container');
         container.innerHTML = '';
+
+        // Add Apply Transformation button if matrices exist
+        const animateBtn = document.createElement('button');
+        animateBtn.id = 'animate-btn';
+        animateBtn.className = 'apply-transformation-btn';
+        animateBtn.title = 'Apply Transformation';
+        if (this.matrices.length > 0) {
+            animateBtn.style.display = 'flex';
+        } else {
+            animateBtn.style.display = 'none';
+        }
+        animateBtn.innerHTML = `
+            <svg width="12" height="14" viewBox="0 0 12 14" style="margin-right: 8px;">
+                <polygon points="0,0 0,14 12,7" fill="currentColor" />
+            </svg>
+            APPLY TRANSFORMATION
+        `;
+        animateBtn.addEventListener('click', () => this.animateTransformation());
+        container.appendChild(animateBtn);
 
         // Render matrices first
         this.matrices.forEach(matrix => {
@@ -1654,7 +1817,12 @@ class VectoramaApp {
         colorIndicator.style.backgroundColor = vec.visible ? vec.color.getStyle() : 'transparent';
         colorIndicator.title = `Click to ${vec.visible ? 'hide' : 'show'} vector`;
         colorIndicator.style.cursor = 'pointer';
-        colorIndicator.addEventListener('click', () => this.toggleVectorVisibility(vec.id));
+        colorIndicator.setAttribute('data-vector-id', vec.id);
+        colorIndicator.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const vectorId = parseInt(e.currentTarget.getAttribute('data-vector-id'));
+            this.toggleVectorVisibility(vectorId);
+        });
         controls.appendChild(colorIndicator);
 
         // Remove button
@@ -1833,7 +2001,7 @@ class VectoramaApp {
         const color = new THREE.Color(0x904AE2); // Purple
         
         const matrix = {
-            id: Date.now(),
+            id: this.nextMatrixId++,
             name: name,
             values: values,
             color: color
@@ -1943,7 +2111,7 @@ class VectoramaApp {
         const color = new THREE.Color(0x904AE2); // Purple
         
         const matrix = {
-            id: Date.now(),
+            id: this.nextMatrixId++,
             name: name,
             values: values,
             color: color
@@ -2323,7 +2491,7 @@ class VectoramaApp {
             type: 'line',
             mesh: line,
             equation: `r = (${ax}, ${ay}${this.dimension === '3d' ? `, ${az}` : ''}) + t(${bx}, ${by}${this.dimension === '3d' ? `, ${bz}` : ''})`,
-            id: Date.now()
+            id: this.nextGeometryId++
         };
 
         this.geometryObjects.push(lineObj);
@@ -2365,7 +2533,7 @@ class VectoramaApp {
             type: 'plane',
             mesh: plane,
             equation: `${a}x + ${b}y + ${c}z = ${d}`,
-            id: Date.now()
+            id: this.nextGeometryId++
         };
 
         this.geometryObjects.push(planeObj);

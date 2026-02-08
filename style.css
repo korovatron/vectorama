@@ -13,7 +13,7 @@
     --text-secondary: #888;
     --accent-color: #4A90E2;
     --accent-hover: #6BA3E8;
-    --panel-bg: rgba(42, 63, 90, 0.95);
+    --panel-bg: rgba(26, 47, 66, 0.95);
     --border-color: #555;
     --input-bg: #3A4F6A;
     --button-bg: #4A90E2;
@@ -94,29 +94,27 @@ body {
 }
 
 .start-btn {
-    padding: 15px 50px;
-    font-size: 1.2em;
-    font-weight: 600;
-    background: var(--accent-color);
-    color: white;
-    border: none;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid #555;
+    padding: 12px 30px;
+    font-size: 1em;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+    transition: filter 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    min-width: 180px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
 
 .start-btn:hover {
-    background: var(--accent-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(74, 144, 226, 0.6);
+    filter: brightness(1.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .start-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 10px rgba(74, 144, 226, 0.4);
+    filter: brightness(1.1);
 }
 
 .container {
@@ -134,9 +132,9 @@ body {
     right: 20px;
     right: max(20px, calc(env(safe-area-inset-right) + 20px));
     z-index: 1001;
-    width: 45px;
-    height: 45px;
-    background: var(--accent-color);
+    width: 40px;
+    height: 40px;
+    background: rgba(42, 63, 90, 0.95);
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -144,31 +142,38 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     padding: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
     transition: all 0.3s ease;
     touch-action: manipulation; /* Prevents double-tap zoom delay on mobile */
     -webkit-tap-highlight-color: transparent; /* Removes tap highlight on mobile */
 }
 
 .panel-toggle-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    background: rgba(74, 144, 226, 0.9);
+}
+
+.panel-toggle-btn.active {
+    background: rgba(231, 76, 60, 0.9);
+}
+
+.panel-toggle-btn.active:hover {
+    background: rgba(192, 57, 43, 0.95);
 }
 
 .panel-toggle-btn span {
     display: block;
-    width: 25px;
-    height: 3px;
-    background: white;
+    width: 20px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 2px;
     transition: all 0.3s ease;
 }
 
 /* Hamburger to X animation */
 .panel-toggle-btn.active span:nth-child(1) {
-    transform: translateY(8px) rotate(45deg);
+    transform: rotate(45deg) translate(5px, 5px);
 }
 
 .panel-toggle-btn.active span:nth-child(2) {
@@ -176,7 +181,7 @@ body {
 }
 
 .panel-toggle-btn.active span:nth-child(3) {
-    transform: translateY(-8px) rotate(-45deg);
+    transform: rotate(-45deg) translate(6px, -6px);
 }
 
 /* Control Panel */
@@ -218,6 +223,14 @@ body {
     font-size: 28px;
 }
 
+.panel-logo {
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+    margin: 0 auto 15px;
+    display: block;
+}
+
 .subtitle {
     color: var(--text-secondary);
     font-size: 14px;
@@ -229,6 +242,11 @@ body {
     margin-bottom: 10px;
     color: var(--text-primary);
     font-size: 16px;
+}
+
+.panel-separator {
+    border-top: 1px solid #555;
+    margin: 15px 0;
 }
 
 /* Top Button Row */
@@ -258,6 +276,71 @@ body {
 
 .top-btn:hover {
     background: #354d6b;
+}
+
+.dim-option {
+    color: #666;
+    transition: color 0.2s;
+}
+
+.dim-option.dim-active {
+    color: #ffffff;
+}
+
+.dim-separator {
+    margin: 0 6px;
+    color: #666;
+}
+
+.inv-option {
+    color: #666;
+    transition: color 0.2s;
+}
+
+.inv-option.inv-active {
+    color: #ffffff;
+}
+
+.inv-separator {
+    margin: 0 3px;
+    color: #666;
+}
+
+.vec-icon {
+    color: #666;
+    transition: color 0.2s;
+    cursor: pointer;
+}
+
+.vec-icon.vec-active {
+    color: #ffffff;
+}
+
+.grid-icon {
+    color: #666;
+    transition: color 0.2s;
+    cursor: pointer;
+}
+
+.grid-icon.grid-active {
+    color: #ffffff;
+}
+
+.grid-separator {
+    color: #666;
+}
+
+.theme-icon {
+    color: #666;
+    transition: color 0.2s;
+}
+
+.theme-icon.theme-active {
+    color: #ffffff;
+}
+
+.theme-separator {
+    color: #666;
 }
 
 .split-button-container {
@@ -613,6 +696,27 @@ body {
 .primary-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+}
+
+.apply-transformation-btn {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #2A3F5A;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.apply-transformation-btn:hover {
+    background: #354d6b;
 }
 
 .secondary-btn {
