@@ -161,6 +161,11 @@ class VectoramaApp {
         this.nextMatrixId = 1;
         this.nextGeometryId = 1;
         
+        // Google Analytics tracking
+        this.lastAnalyticsEvent = 0;
+        this.lastPanelEvent = 0;
+        this.analyticsThrottleMs = 30000; // Send event max once per 30 seconds
+        
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
         this.initEventListeners();
@@ -222,6 +227,9 @@ class VectoramaApp {
             ONE: THREE.TOUCH.PAN,
             TWO: THREE.TOUCH.DOLLY_PAN
         };
+        
+        // Track graph interactions (pan/zoom) for analytics
+        this.controls.addEventListener('change', () => this.trackEngagement());
 
         // Raycaster for clicking
         this.raycaster = new THREE.Raycaster();
@@ -776,6 +784,23 @@ class VectoramaApp {
         const panelToggleBtn = document.getElementById('panel-toggle-btn');
         const controlPanel = document.querySelector('.control-panel');
         
+        // Track panel interactions for analytics
+        if (controlPanel) {
+            const trackPanelInteraction = () => {
+                const now = Date.now();
+                if (typeof gtag !== 'undefined' && (now - this.lastPanelEvent) >= this.analyticsThrottleMs) {
+                    gtag('event', 'VECTOR_panel_interaction', {
+                        'event_category': 'engagement',
+                        'event_label': this.dimension + '_' + this.appMode
+                    });
+                    this.lastPanelEvent = now;
+                }
+            };
+            
+            controlPanel.addEventListener('click', () => trackPanelInteraction(), { passive: true });
+            controlPanel.addEventListener('touchstart', () => trackPanelInteraction(), { passive: true });
+        }
+        
         panelToggleBtn.addEventListener('click', () => {
             this.panelOpen = !this.panelOpen;
             controlPanel.classList.toggle('closed');
@@ -900,6 +925,19 @@ class VectoramaApp {
 
         // Matrix input changes
         this.addMatrixInputListeners();
+    }
+    
+    trackEngagement() {
+        // Throttled Google Analytics event for user engagement tracking
+        // Only sends event if gtag exists and throttle period has elapsed
+        const now = Date.now();
+        if (typeof gtag !== 'undefined' && (now - this.lastAnalyticsEvent) >= this.analyticsThrottleMs) {
+            gtag('event', 'VECTOR_interaction', {
+                'event_category': 'engagement',
+                'event_label': this.dimension + '_' + this.appMode
+            });
+            this.lastAnalyticsEvent = now;
+        }
     }
 
     addMatrixInputListeners() {
