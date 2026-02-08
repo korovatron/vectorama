@@ -1068,4 +1068,31 @@ body {
         width: 40px;
         height: 40px;
     }
+    
+    /* Adjust matrix sizing for mobile */
+    .matrix-bracket {
+        font-size: 60px;
+        transform: translateY(-8px);
+    }
+    
+    .matrix-item .matrix-grid input {
+        width: 38px;
+        padding: 3px;
+        font-size: 11px;
+    }
+    
+    .matrix-item .color-indicator {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .matrix-item .remove-btn {
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+    }
+    
+    .matrix-item .matrix-name {
+        font-size: 16px;
+    }
 }
