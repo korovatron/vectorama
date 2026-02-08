@@ -1040,9 +1040,6 @@ class VectoramaApp {
                 ONE: THREE.TOUCH.PAN,
                 TWO: THREE.TOUCH.DOLLY_PAN
             };
-            
-            // Update instructions
-            document.getElementById('control-instructions').textContent = '🖱️ Right click: Create vectors | Left click: Pan | Scroll: Zoom';
         } else {
             // Enable full 3D camera control
             this.camera.position.set(5, 5, 5);
@@ -1062,9 +1059,6 @@ class VectoramaApp {
                 ONE: THREE.TOUCH.ROTATE,
                 TWO: THREE.TOUCH.DOLLY_PAN
             };
-            
-            // Update instructions
-            document.getElementById('control-instructions').textContent = '🖱️ Middle click: Create vectors | Left click: Rotate | Right click: Pan | Scroll: Zoom';
         }
 
         this.controls.update();
@@ -2009,16 +2003,14 @@ class VectoramaApp {
         
         this.matrices.push(matrix);
         
-        // Auto-select this matrix if it's the first one
-        if (this.matrices.length === 1) {
-            this.selectedMatrixId = matrix.id;
-            
-            // Update dimension-specific storage
-            if (this.dimension === '2d') {
-                this.selectedMatrixId2D = this.selectedMatrixId;
-            } else {
-                this.selectedMatrixId3D = this.selectedMatrixId;
-            }
+        // Auto-select this newly added matrix
+        this.selectedMatrixId = matrix.id;
+        
+        // Update dimension-specific storage
+        if (this.dimension === '2d') {
+            this.selectedMatrixId2D = this.selectedMatrixId;
+        } else {
+            this.selectedMatrixId3D = this.selectedMatrixId;
         }
         
         this.visualizeInvariantSpaces();
@@ -2119,16 +2111,14 @@ class VectoramaApp {
         
         this.matrices.push(matrix);
         
-        // Auto-select this matrix if it's the first one
-        if (this.matrices.length === 1) {
-            this.selectedMatrixId = matrix.id;
-            
-            // Update dimension-specific storage
-            if (this.dimension === '2d') {
-                this.selectedMatrixId2D = this.selectedMatrixId;
-            } else {
-                this.selectedMatrixId3D = this.selectedMatrixId;
-            }
+        // Auto-select this newly added matrix
+        this.selectedMatrixId = matrix.id;
+        
+        // Update dimension-specific storage
+        if (this.dimension === '2d') {
+            this.selectedMatrixId2D = this.selectedMatrixId;
+        } else {
+            this.selectedMatrixId3D = this.selectedMatrixId;
         }
         
         this.visualizeInvariantSpaces();
