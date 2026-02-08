@@ -83,6 +83,9 @@ body {
     width: auto;
     height: auto;
     object-fit: contain;
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: auto;
 }
 
 .title-tagline {
@@ -281,6 +284,9 @@ body {
     height: auto;
     margin: 0 auto 15px;
     display: block;
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: auto;
 }
 
 .subtitle {
