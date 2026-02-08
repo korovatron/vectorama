@@ -208,7 +208,7 @@ class VectoramaApp {
             
             // Make grid transparent like 3D grid lines
             this.gridHelper.material.transparent = true;
-            this.gridHelper.material.opacity = 0.3;
+            this.gridHelper.material.opacity = 0.5;
             
             this.scene.add(this.gridHelper);
             
@@ -237,7 +237,7 @@ class VectoramaApp {
             this.axisNumbers.visible = this.gridVisible;
             this.scene.add(this.axisNumbers);
         } else {
-            // 3D: Create three grid planes at x=0, y=0, z=0
+            // 3D: Create grid plane at y=0 (XZ plane - ground)
             this.gridHelper = new THREE.Group();
             const gridSize = 30; // Grid extent
             const halfGridSize = gridSize / 2;
@@ -246,28 +246,8 @@ class VectoramaApp {
             const lineMaterial = new THREE.LineBasicMaterial({ 
                 color: 0x888888,
                 transparent: true,
-                opacity: 0.3
+                opacity: 0.5
             });
-            
-            // YZ plane (x=0) - lines parallel to Y and Z
-            for (let yi = -halfGridSize; yi <= halfGridSize; yi++) {
-                const y = yi * spacing;
-                const geometry = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(0, y, -halfSize),
-                    new THREE.Vector3(0, y, halfSize)
-                ]);
-                const line = new THREE.Line(geometry, lineMaterial.clone());
-                this.gridHelper.add(line);
-            }
-            for (let zi = -halfGridSize; zi <= halfGridSize; zi++) {
-                const z = zi * spacing;
-                const geometry = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(0, -halfSize, z),
-                    new THREE.Vector3(0, halfSize, z)
-                ]);
-                const line = new THREE.Line(geometry, lineMaterial.clone());
-                this.gridHelper.add(line);
-            }
             
             // XZ plane (y=0) - lines parallel to X and Z
             for (let xi = -halfGridSize; xi <= halfGridSize; xi++) {
@@ -284,26 +264,6 @@ class VectoramaApp {
                 const geometry = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(-halfSize, 0, z),
                     new THREE.Vector3(halfSize, 0, z)
-                ]);
-                const line = new THREE.Line(geometry, lineMaterial.clone());
-                this.gridHelper.add(line);
-            }
-            
-            // XY plane (z=0) - lines parallel to X and Y
-            for (let xi = -halfGridSize; xi <= halfGridSize; xi++) {
-                const x = xi * spacing;
-                const geometry = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(x, -halfSize, 0),
-                    new THREE.Vector3(x, halfSize, 0)
-                ]);
-                const line = new THREE.Line(geometry, lineMaterial.clone());
-                this.gridHelper.add(line);
-            }
-            for (let yi = -halfGridSize; yi <= halfGridSize; yi++) {
-                const y = yi * spacing;
-                const geometry = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(-halfSize, y, 0),
-                    new THREE.Vector3(halfSize, y, 0)
                 ]);
                 const line = new THREE.Line(geometry, lineMaterial.clone());
                 this.gridHelper.add(line);
