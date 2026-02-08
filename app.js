@@ -109,6 +109,8 @@ class VectoramaApp {
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'pulse'; // 'off', 'solid', 'pulse'
+        this.vectorDisplayMode = 'vectors'; // 'vectors', 'points', 'path'
+        this.pathLines = []; // Store path visualization lines
         
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
@@ -769,6 +771,9 @@ class VectoramaApp {
         // Second button row - Dimension toggle
         document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
         
+        // Third button row - Vector display mode toggle
+        document.getElementById('vector-display-toggle-btn').addEventListener('click', () => this.toggleVectorDisplayMode());
+        
         // App mode switching (legacy)
         document.getElementById('app-mode-transform').addEventListener('click', () => this.switchAppMode('transform'));
         document.getElementById('app-mode-geometry').addEventListener('click', () => this.switchAppMode('geometry'));
@@ -886,8 +891,7 @@ class VectoramaApp {
 
         // Update UI based on current app mode and dimension
         if (this.appMode === 'transform') {
-            // Update matrices to match new dimension
-            this.updateObjectsList();
+            // Matrices will be updated after resizing below
         } else {
             // Geometry mode
             if (dimension === '2d') {
@@ -1012,6 +1016,45 @@ class VectoramaApp {
             }
         });
         
+        // Update vectors for new dimension
+        this.vectors.forEach(vec => {
+            if (dimension === '2d') {
+                // Flatten vectors to 2D - set z to 0
+                vec.originalEnd.z = 0;
+                vec.currentEnd.z = 0;
+            }
+            // Note: When going from 2D to 3D, vectors keep their z=0 which is fine
+            
+            // Remove old arrow from scene before creating new one
+            if (vec.arrow) {
+                this.scene.remove(vec.arrow);
+            }
+            
+            // Recreate arrow and point sphere for new dimension
+            const direction = vec.currentEnd.clone().normalize();
+            const length = vec.currentEnd.length();
+            
+            if (length > 0) {
+                const thickness = this.getArrowThickness();
+                vec.arrow = this.createSmoothArrow(
+                    direction,
+                    new THREE.Vector3(0, 0, 0),
+                    length,
+                    vec.color,
+                    thickness.headLength,
+                    thickness.headWidth
+                );
+                
+                // Update point sphere position
+                if (vec.pointSphere) {
+                    vec.pointSphere.position.copy(vec.currentEnd);
+                }
+            }
+        });
+        
+        // Update vector visualization for new dimension
+        this.updateVectorDisplay();
+        
         // Update objects list to show/hide z-coordinate and resize matrices
         this.updateObjectsList();
         this.clearInvariantSpaces();
@@ -1073,6 +1116,28 @@ class VectoramaApp {
         // Toggle between 2D and 3D
         const newDimension = this.dimension === '2d' ? '3d' : '2d';
         this.switchDimension(newDimension);
+    }
+
+    toggleVectorDisplayMode() {
+        // Cycle through: vectors -> points -> path -> vectors
+        const modes = ['vectors', 'points', 'path'];
+        const currentIndex = modes.indexOf(this.vectorDisplayMode);
+        const nextIndex = (currentIndex + 1) % modes.length;
+        this.vectorDisplayMode = modes[nextIndex];
+        
+        // Update button label
+        const label = document.getElementById('vector-display-label');
+        if (label) {
+            const labels = {
+                'vectors': 'Display:<br>Vectors',
+                'points': 'Display:<br>Points',
+                'path': 'Display:<br>Path'
+            };
+            label.innerHTML = labels[this.vectorDisplayMode];
+        }
+        
+        // Update vector visualization
+        this.updateVectorDisplay();
     }
 
     getTransformationMatrix() {
@@ -1295,8 +1360,16 @@ class VectoramaApp {
             thickness.headWidth
         );
 
+        // Create point sphere for points mode
+        const pointSize = 0.15;
+        const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: color });
+        const pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        pointSphere.position.copy(new THREE.Vector3(x, y, z));
+
         const vector = {
             arrow: arrow,
+            pointSphere: pointSphere,
             originalEnd: new THREE.Vector3(x, y, z),
             currentEnd: new THREE.Vector3(x, y, z),
             color: color,
@@ -1305,12 +1378,75 @@ class VectoramaApp {
         };
 
         this.vectors.push(vector);
-        this.scene.add(arrow);
+        
+        // Add appropriate visualization based on current mode
+        this.updateVectorDisplay();
         this.updateObjectsList();
     }
 
     updateVectorList() {
         this.updateObjectsList();
+    }
+    
+    updateVectorDisplay() {
+        // Remove all current visualizations
+        this.vectors.forEach(vec => {
+            if (vec.arrow) this.scene.remove(vec.arrow);
+            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+        });
+        
+        // Clear path lines
+        this.pathLines.forEach(line => this.scene.remove(line));
+        this.pathLines = [];
+        
+        // Add appropriate visualizations based on mode
+        if (this.vectorDisplayMode === 'vectors') {
+            // Show arrows for visible vectors
+            this.vectors.forEach(vec => {
+                if (vec.visible && vec.arrow) {
+                    this.scene.add(vec.arrow);
+                }
+            });
+        } else if (this.vectorDisplayMode === 'points') {
+            // Show points for visible vectors
+            this.vectors.forEach(vec => {
+                if (vec.visible && vec.pointSphere) {
+                    this.scene.add(vec.pointSphere);
+                }
+            });
+        } else if (this.vectorDisplayMode === 'path') {
+            // Show points and connecting lines for visible vectors
+            const visibleVectors = this.vectors.filter(v => v.visible);
+            
+            visibleVectors.forEach(vec => {
+                if (vec.pointSphere) {
+                    this.scene.add(vec.pointSphere);
+                }
+            });
+            
+            // Create lines connecting the points in sequence
+            if (visibleVectors.length > 1) {
+                for (let i = 0; i < visibleVectors.length; i++) {
+                    const startVec = visibleVectors[i];
+                    const endVec = visibleVectors[(i + 1) % visibleVectors.length]; // Wrap around to first
+                    
+                    const points = [
+                        startVec.currentEnd.clone(),
+                        endVec.currentEnd.clone()
+                    ];
+                    
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: startVec.color,
+                        linewidth: 2
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    
+                    this.pathLines.push(line);
+                    this.scene.add(line);
+                }
+            }
+        }
     }
     
     updateObjectsList() {
@@ -1513,17 +1649,32 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            if (vec.visible) {
-                this.scene.add(vec.arrow);
+            
+            // Update point sphere position
+            if (vec.pointSphere) {
+                vec.pointSphere.position.copy(vec.currentEnd);
             }
+            
+            // Re-add to scene based on current mode and visibility
+            this.updateVectorDisplay();
         }
     }
 
     removeVector(id) {
         const index = this.vectors.findIndex(v => v.id === id);
         if (index !== -1) {
-            this.scene.remove(this.vectors[index].arrow);
+            const vec = this.vectors[index];
+            // Remove all visualizations
+            if (vec.arrow) this.scene.remove(vec.arrow);
+            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            
             this.vectors.splice(index, 1);
+            
+            // Rebuild path if in path mode
+            if (this.vectorDisplayMode === 'path') {
+                this.updateVectorDisplay();
+            }
+            
             this.updateVectorList();
         }
     }
@@ -1533,12 +1684,8 @@ class VectoramaApp {
         if (vec) {
             vec.visible = !vec.visible;
             
-            // Show or hide the arrow in the scene
-            if (vec.visible) {
-                this.scene.add(vec.arrow);
-            } else {
-                this.scene.remove(vec.arrow);
-            }
+            // Update visualization based on current mode
+            this.updateVectorDisplay();
             
             // Update the list to reflect the change
             this.updateObjectsList();
@@ -1555,12 +1702,20 @@ class VectoramaApp {
             this.selectedMatrixId = id;
         }
         
+        // Update invariant spaces visualization
+        this.visualizeInvariantSpaces();
+        
         // Update the list to reflect the change
         this.updateObjectsList();
     }
 
     clearVectors() {
-        this.vectors.forEach(vec => this.scene.remove(vec.arrow));
+        this.vectors.forEach(vec => {
+            if (vec.arrow) this.scene.remove(vec.arrow);
+            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+        });
+        this.pathLines.forEach(line => this.scene.remove(line));
+        this.pathLines = [];
         this.vectors = [];
         this.updateObjectsList();
     }
@@ -1583,10 +1738,15 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            if (vec.visible) {
-                this.scene.add(vec.arrow);
+            
+            // Update point sphere position
+            if (vec.pointSphere) {
+                vec.pointSphere.position.copy(original);
             }
         });
+        
+        // Rebuild visualization based on current mode
+        this.updateVectorDisplay();
         this.updateVectorList();
     }
 
@@ -1753,26 +1913,15 @@ class VectoramaApp {
         }
     }
 
-    toggleMatrixActive(id) {
-        // Radio button behavior: activate this one, deactivate all others
-        if (this.selectedMatrixId === id) {
-            // Already active, deactivate it
-            this.selectedMatrixId = null;
-        } else {
-            // Activate this matrix
-            this.selectedMatrixId = id;
-        }
-        
-        // Update the list to reflect the change
-        this.updateObjectsList();
-    }
-
     getMatrixById(id) {
         return this.matrices.find(m => m.id === id);
     }
 
     animateTransformation() {
         if (this.isAnimating || this.vectors.length === 0) return;
+        
+        // Clear any existing visualizations before starting
+        this.updateVectorDisplay();
         
         // Get selected matrix
         if (!this.selectedMatrixId) {
@@ -1823,7 +1972,11 @@ class VectoramaApp {
                 const direction = current.clone().normalize();
                 const length = current.length();
                 
-                this.scene.remove(vec.arrow);
+                // Remove old arrow from scene first
+                if (vec.arrow) {
+                    this.scene.remove(vec.arrow);
+                }
+                
                 const thickness = this.getArrowThickness();
                 vec.arrow = this.createSmoothArrow(
                     direction,
@@ -1833,12 +1986,15 @@ class VectoramaApp {
                     thickness.headLength,
                     thickness.headWidth
                 );
-                if (vec.visible) {
-                    this.scene.add(vec.arrow);
+                
+                // Update point sphere position
+                if (vec.pointSphere) {
+                    vec.pointSphere.position.copy(current);
                 }
             });
 
-            this.updateVectorList();
+            // Update visualization based on current mode
+            this.updateVectorDisplay();
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
@@ -1849,6 +2005,9 @@ class VectoramaApp {
                 this.vectors.forEach(vec => {
                     vec.originalEnd.copy(vec.currentEnd);
                 });
+                
+                // Final update of objects list
+                this.updateVectorList();
             }
         };
 
@@ -2112,7 +2271,6 @@ class VectoramaApp {
             const direction = vec.currentEnd.clone().normalize();
             const length = vec.currentEnd.length();
             
-            this.scene.remove(vec.arrow);
             const thickness = this.getArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
@@ -2122,10 +2280,10 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            if (vec.visible) {
-                this.scene.add(vec.arrow);
-            }
         });
+        
+        // Update visualization based on current mode
+        this.updateVectorDisplay();
     }
 
     updateInvariantLineThickness() {
@@ -2207,6 +2365,18 @@ class VectoramaApp {
                 } else if (axis === 'z') {
                     sprite.position.set(0, -labelOffset, value);
                 }
+            }
+        });
+    }
+
+    updatePointSphereScales() {
+        // Update all point sphere scales to maintain consistent screen size
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const scale = distanceToTarget * 0.04; // Adjust multiplier for desired screen size
+        
+        this.vectors.forEach(vec => {
+            if (vec.pointSphere) {
+                vec.pointSphere.scale.set(scale, scale, scale);
             }
         });
     }
@@ -3069,6 +3239,7 @@ class VectoramaApp {
         this.updateAxesLength();
         this.updateGridSpacing();
         this.updateNumberLabelScales();
+        this.updatePointSphereScales();
         this.updateInvariantSpaceColors();
         this.renderer.render(this.scene, this.camera);
     }
