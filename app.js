@@ -76,10 +76,26 @@ class VectoramaApp {
     constructor() {
         this.appMode = 'transform'; // 'transform' or 'geometry'
         this.dimension = '2d'; // '2d' or '3d'
-        this.vectors = [];
-        this.matrices = []; // Store multiple transformation matrices
-        this.usedMatrixLetters = new Set(); // Track used letter names
-        this.selectedMatrixId = null; // Currently selected matrix for animation
+        
+        // Separate storage for 2D and 3D modes
+        this.vectors2D = [];
+        this.vectors3D = [];
+        this.matrices2D = [];
+        this.matrices3D = [];
+        this.usedMatrixLetters2D = new Set();
+        this.usedMatrixLetters3D = new Set();
+        this.selectedMatrixId2D = null;
+        this.selectedMatrixId3D = null;
+        this.colorIndex2D = 0;
+        this.colorIndex3D = 0;
+        
+        // Active references (point to current dimension)
+        this.vectors = this.vectors2D;
+        this.matrices = this.matrices2D;
+        this.usedMatrixLetters = this.usedMatrixLetters2D;
+        this.selectedMatrixId = this.selectedMatrixId2D;
+        this.colorIndex = this.colorIndex2D;
+        
         this.geometryObjects = []; // For geometry mode: lines, planes, etc.
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -750,6 +766,9 @@ class VectoramaApp {
                            action.startsWith('shear-') || action.startsWith('reflection-')) {
                     // Add a preset matrix
                     this.addPresetMatrix(action);
+                } else if (action.startsWith('preset-')) {
+                    // Add preset vector group
+                    this.addPresetVectors(action);
                 }
                 
                 // Close dropdown
@@ -880,6 +899,9 @@ class VectoramaApp {
     }
 
     switchDimension(dimension) {
+        // Save old dimension before changing
+        const oldDimension = this.dimension;
+        
         this.dimension = dimension;
         this.isResizing = true; // Prevent animation loop from interfering
 
@@ -888,6 +910,14 @@ class VectoramaApp {
         if (dimensionLabel) {
             dimensionLabel.textContent = dimension === '2d' ? '2D' : '3D';
         }
+        
+        // Show/hide appropriate vector presets
+        document.querySelectorAll('.preset-2d').forEach(el => {
+            el.style.display = dimension === '2d' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.preset-3d').forEach(el => {
+            el.style.display = dimension === '3d' ? 'block' : 'none';
+        });
 
         // Update UI based on current app mode and dimension
         if (this.appMode === 'transform') {
@@ -996,68 +1026,51 @@ class VectoramaApp {
         this.isDragging = false;
         this.controls.enabled = true;
         
-        // Update matrices for new dimension
-        this.matrices.forEach(matrix => {
-            const oldSize = matrix.values.length;
-            const newSize = dimension === '2d' ? 2 : 3;
-            
-            if (newSize > oldSize) {
-                // Expanding from 2D to 3D - add third row/column
-                for (let i = 0; i < oldSize; i++) {
-                    matrix.values[i][2] = 0; // Add third column
-                }
-                matrix.values[2] = [0, 0, 1]; // Add third row (identity)
-            } else if (newSize < oldSize) {
-                // Shrinking from 3D to 2D - remove third row/column
-                for (let i = 0; i < 2; i++) {
-                    matrix.values[i] = matrix.values[i].slice(0, 2);
-                }
-                matrix.values = matrix.values.slice(0, 2);
-            }
-        });
+        // Save current dimension's state before switching
+        if (oldDimension === '2d') {
+            this.vectors2D = this.vectors;
+            this.matrices2D = this.matrices;
+            this.usedMatrixLetters2D = this.usedMatrixLetters;
+            this.selectedMatrixId2D = this.selectedMatrixId;
+            this.colorIndex2D = this.colorIndex;
+        } else {
+            this.vectors3D = this.vectors;
+            this.matrices3D = this.matrices;
+            this.usedMatrixLetters3D = this.usedMatrixLetters;
+            this.selectedMatrixId3D = this.selectedMatrixId;
+            this.colorIndex3D = this.colorIndex;
+        }
         
-        // Update vectors for new dimension
+        // Clear current visualizations from scene
         this.vectors.forEach(vec => {
-            if (dimension === '2d') {
-                // Flatten vectors to 2D - set z to 0
-                vec.originalEnd.z = 0;
-                vec.currentEnd.z = 0;
-            }
-            // Note: When going from 2D to 3D, vectors keep their z=0 which is fine
-            
-            // Remove old arrow from scene before creating new one
-            if (vec.arrow) {
-                this.scene.remove(vec.arrow);
-            }
-            
-            // Recreate arrow and point sphere for new dimension
-            const direction = vec.currentEnd.clone().normalize();
-            const length = vec.currentEnd.length();
-            
-            if (length > 0) {
-                const thickness = this.getArrowThickness();
-                vec.arrow = this.createSmoothArrow(
-                    direction,
-                    new THREE.Vector3(0, 0, 0),
-                    length,
-                    vec.color,
-                    thickness.headLength,
-                    thickness.headWidth
-                );
-                
-                // Update point sphere position
-                if (vec.pointSphere) {
-                    vec.pointSphere.position.copy(vec.currentEnd);
-                }
-            }
+            if (vec.arrow) this.scene.remove(vec.arrow);
+            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
         });
+        this.pathLines.forEach(line => this.scene.remove(line));
+        this.pathLines = [];
+        
+        // Swap to the new dimension's data
+        if (dimension === '2d') {
+            this.vectors = this.vectors2D;
+            this.matrices = this.matrices2D;
+            this.usedMatrixLetters = this.usedMatrixLetters2D;
+            this.selectedMatrixId = this.selectedMatrixId2D;
+            this.colorIndex = this.colorIndex2D;
+        } else {
+            this.vectors = this.vectors3D;
+            this.matrices = this.matrices3D;
+            this.usedMatrixLetters = this.usedMatrixLetters3D;
+            this.selectedMatrixId = this.selectedMatrixId3D;
+            this.colorIndex = this.colorIndex3D;
+        }
         
         // Update vector visualization for new dimension
         this.updateVectorDisplay();
         
-        // Update objects list to show/hide z-coordinate and resize matrices
+        // Update objects list
         this.updateObjectsList();
         this.clearInvariantSpaces();
+        this.visualizeInvariantSpaces();
     }
 
     resetView() {
@@ -1424,26 +1437,52 @@ class VectoramaApp {
                 }
             });
             
-            // Create lines connecting the points in sequence
+            // Create lines connecting the points in sequence using cylinders (same as axes)
             if (visibleVectors.length > 1) {
+                const thickness = this.getArrowThickness();
+                const lineRadius = thickness.headWidth * 0.15; // Same thickness as axes
+                const radialSegments = this.dimension === '2d' ? 3 : 16;
+                
                 for (let i = 0; i < visibleVectors.length; i++) {
                     const startVec = visibleVectors[i];
                     const endVec = visibleVectors[(i + 1) % visibleVectors.length]; // Wrap around to first
                     
-                    const points = [
-                        startVec.currentEnd.clone(),
-                        endVec.currentEnd.clone()
-                    ];
+                    const start = startVec.currentEnd.clone();
+                    const end = endVec.currentEnd.clone();
                     
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    const material = new THREE.LineBasicMaterial({ 
+                    // Create cylinder line
+                    const direction = new THREE.Vector3().subVectors(end, start);
+                    const length = direction.length();
+                    direction.normalize();
+                    
+                    const geometry = new THREE.CylinderGeometry(
+                        lineRadius,
+                        lineRadius,
+                        length,
+                        radialSegments,
+                        1,
+                        false
+                    );
+                    
+                    const material = new THREE.MeshBasicMaterial({ 
                         color: startVec.color,
-                        linewidth: 2
+                        depthWrite: true,
+                        depthTest: true
                     });
-                    const line = new THREE.Line(geometry, material);
                     
-                    this.pathLines.push(line);
-                    this.scene.add(line);
+                    const cylinder = new THREE.Mesh(geometry, material);
+                    
+                    // Position at midpoint
+                    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                    cylinder.position.copy(midpoint);
+                    
+                    // Orient along direction
+                    const axis = new THREE.Vector3(0, 1, 0);
+                    const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
+                    cylinder.quaternion.copy(quaternion);
+                    
+                    this.pathLines.push(cylinder);
+                    this.scene.add(cylinder);
                 }
             }
         }
@@ -1702,6 +1741,13 @@ class VectoramaApp {
             this.selectedMatrixId = id;
         }
         
+        // Update dimension-specific storage
+        if (this.dimension === '2d') {
+            this.selectedMatrixId2D = this.selectedMatrixId;
+        } else {
+            this.selectedMatrixId3D = this.selectedMatrixId;
+        }
+        
         // Update invariant spaces visualization
         this.visualizeInvariantSpaces();
         
@@ -1717,6 +1763,14 @@ class VectoramaApp {
         this.pathLines.forEach(line => this.scene.remove(line));
         this.pathLines = [];
         this.vectors = [];
+        
+        // Update the dimension-specific storage
+        if (this.dimension === '2d') {
+            this.vectors2D = this.vectors;
+        } else {
+            this.vectors3D = this.vectors;
+        }
+        
         this.updateObjectsList();
     }
 
@@ -1790,8 +1844,16 @@ class VectoramaApp {
         // Auto-select this matrix if it's the first one
         if (this.matrices.length === 1) {
             this.selectedMatrixId = matrix.id;
+            
+            // Update dimension-specific storage
+            if (this.dimension === '2d') {
+                this.selectedMatrixId2D = this.selectedMatrixId;
+            } else {
+                this.selectedMatrixId3D = this.selectedMatrixId;
+            }
         }
         
+        this.visualizeInvariantSpaces();
         this.updateObjectsList();
     }
 
@@ -1892,9 +1954,144 @@ class VectoramaApp {
         // Auto-select this matrix if it's the first one
         if (this.matrices.length === 1) {
             this.selectedMatrixId = matrix.id;
+            
+            // Update dimension-specific storage
+            if (this.dimension === '2d') {
+                this.selectedMatrixId2D = this.selectedMatrixId;
+            } else {
+                this.selectedMatrixId3D = this.selectedMatrixId;
+            }
         }
         
+        this.visualizeInvariantSpaces();
         this.updateObjectsList();
+    }
+
+    addPresetVectors(preset) {
+        // Clear existing vectors first
+        this.clearVectors();
+        
+        // Define preset vector coordinates
+        let vectors = [];
+        
+        switch(preset) {
+            // 2D Presets
+            case 'preset-square':
+                // Unit square vertices
+                vectors = [
+                    [0, 0, 0],
+                    [1, 0, 0],
+                    [1, 1, 0],
+                    [0, 1, 0]
+                ];
+                break;
+                
+            case 'preset-triangle':
+                // Equilateral triangle
+                vectors = [
+                    [0, 0, 0],
+                    [1, 0, 0],
+                    [0.5, 0.866, 0]
+                ];
+                break;
+                
+            case 'preset-pentagon':
+                // Regular pentagon
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 2 * Math.PI / 5) - Math.PI / 2; // Start from top
+                    vectors.push([Math.cos(angle), Math.sin(angle), 0]);
+                }
+                break;
+                
+            case 'preset-star':
+                // 5-pointed star
+                const outerRadius = 1;
+                const innerRadius = 0.382; // Golden ratio for aesthetics
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i * Math.PI / 5) - Math.PI / 2; // Start from top
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    vectors.push([radius * Math.cos(angle), radius * Math.sin(angle), 0]);
+                }
+                break;
+                
+            case 'preset-circle':
+                // Circle approximation with 8 points
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i * 2 * Math.PI / 8); // Start from right
+                    vectors.push([Math.cos(angle), Math.sin(angle), 0]);
+                }
+                break;
+                
+            // 3D Presets
+            case 'preset-cube':
+                // Unit cube vertices (all 8 corners)
+                vectors = [
+                    [0, 0, 0],
+                    [1, 0, 0],
+                    [1, 1, 0],
+                    [0, 1, 0],
+                    [0, 0, 1],
+                    [1, 0, 1],
+                    [1, 1, 1],
+                    [0, 1, 1]
+                ];
+                break;
+                
+            case 'preset-tetrahedron':
+                // Regular tetrahedron (4 vertices forming a triangular pyramid)
+                // Centered and oriented nicely
+                const a = 1 / Math.sqrt(2);
+                vectors = [
+                    [1, 0, -a],
+                    [-1, 0, -a],
+                    [0, 1, a],
+                    [0, -1, a]
+                ];
+                break;
+                
+            case 'preset-octahedron':
+                // Regular octahedron (6 vertices, like two pyramids)
+                vectors = [
+                    [1, 0, 0],
+                    [-1, 0, 0],
+                    [0, 1, 0],
+                    [0, -1, 0],
+                    [0, 0, 1],
+                    [0, 0, -1]
+                ];
+                break;
+                
+            case 'preset-sphere':
+                // Sphere approximation with multiple rings at different latitudes
+                const rings = 4; // Number of latitude rings
+                const pointsPerRing = 6; // Points around each ring
+                
+                // Top pole
+                vectors.push([0, 0, 1]);
+                
+                // Rings at different latitudes
+                for (let ring = 1; ring < rings; ring++) {
+                    const phi = (ring * Math.PI) / rings; // Latitude angle
+                    const z = Math.cos(phi);
+                    const ringRadius = Math.sin(phi);
+                    
+                    for (let i = 0; i < pointsPerRing; i++) {
+                        const theta = (i * 2 * Math.PI) / pointsPerRing; // Longitude angle
+                        vectors.push([
+                            ringRadius * Math.cos(theta),
+                            ringRadius * Math.sin(theta),
+                            z
+                        ]);
+                    }
+                }
+                
+                // Bottom pole
+                vectors.push([0, 0, -1]);
+                break;
+        }
+        
+        // Add all vectors
+        vectors.forEach(v => this.addVector(v[0], v[1], v[2]));
     }
 
     removeMatrix(id) {
@@ -1907,6 +2104,13 @@ class VectoramaApp {
             // If this was the selected matrix, select the first one or null
             if (this.selectedMatrixId === id) {
                 this.selectedMatrixId = this.matrices.length > 0 ? this.matrices[0].id : null;
+                
+                // Update dimension-specific storage
+                if (this.dimension === '2d') {
+                    this.selectedMatrixId2D = this.selectedMatrixId;
+                } else {
+                    this.selectedMatrixId3D = this.selectedMatrixId;
+                }
             }
             
             this.updateObjectsList();
@@ -1962,10 +2166,57 @@ class VectoramaApp {
 
             this.vectors.forEach(vec => {
                 const original = vec.originalEnd.clone();
-                const transformed = original.clone().applyMatrix3(matrix);
                 
-                // Interpolate between original and transformed
-                const current = original.clone().lerp(transformed, eased);
+                // Apply fractional transformation by decomposing and interpolating
+                let current;
+                
+                if (this.dimension === '2d') {
+                    // For 2D, decompose into rotation, scale, and shear for proper interpolation
+                    const a = selectedMatrix.values[0][0];
+                    const b = selectedMatrix.values[0][1];
+                    const c = selectedMatrix.values[1][0];
+                    const d = selectedMatrix.values[1][1];
+                    
+                    // Decompose using polar decomposition
+                    // Extract rotation angle
+                    const angle = Math.atan2(c, a);
+                    
+                    // Extract scale
+                    const sx = Math.sqrt(a * a + c * c);
+                    const sy = (a * d - b * c) / sx; // determinant / sx
+                    
+                    // Interpolate components
+                    const interpAngle = angle * eased;
+                    const interpSx = 1 + (sx - 1) * eased;
+                    const interpSy = 1 + (sy - 1) * eased;
+                    
+                    // Reconstruct matrix
+                    const cos = Math.cos(interpAngle);
+                    const sin = Math.sin(interpAngle);
+                    
+                    const interpMatrix = new THREE.Matrix3();
+                    interpMatrix.set(
+                        interpSx * cos, interpSx * sin, 0,
+                        interpSy * -sin, interpSy * cos, 0,
+                        0, 0, 1
+                    );
+                    
+                    current = original.clone().applyMatrix3(interpMatrix);
+                } else {
+                    // For 3D, use simpler linear interpolation of matrix elements
+                    // (proper 3D rotation interpolation would require quaternions)
+                    const identityMatrix = new THREE.Matrix3().identity();
+                    const interpolatedMatrix = new THREE.Matrix3();
+                    
+                    for (let i = 0; i < 9; i++) {
+                        interpolatedMatrix.elements[i] = 
+                            identityMatrix.elements[i] * (1 - eased) + 
+                            matrix.elements[i] * eased;
+                    }
+                    
+                    current = original.clone().applyMatrix3(interpolatedMatrix);
+                }
+                
                 vec.currentEnd.copy(current);
 
                 // Update arrow
@@ -2267,9 +2518,24 @@ class VectoramaApp {
         // Recreate all vectors with updated thickness based on current camera distance
         if (this.isAnimating) return; // Don't update during animation
         
+        // Throttle updates - only update if camera distance changed significantly
+        const currentDistance = this.camera.position.distanceTo(this.controls.target);
+        const distanceChange = Math.abs(currentDistance - this.lastCameraDistance);
+        const relativeChange = this.lastCameraDistance > 0 ? distanceChange / this.lastCameraDistance : 1;
+        
+        // Only update if distance changed by more than 10%
+        if (relativeChange < 0.1) return;
+        
+        this.lastCameraDistance = currentDistance;
+        
         this.vectors.forEach(vec => {
             const direction = vec.currentEnd.clone().normalize();
             const length = vec.currentEnd.length();
+            
+            // Remove old arrow from scene
+            if (vec.arrow) {
+                this.scene.remove(vec.arrow);
+            }
             
             const thickness = this.getArrowThickness();
             vec.arrow = this.createSmoothArrow(
@@ -2372,7 +2638,7 @@ class VectoramaApp {
     updatePointSphereScales() {
         // Update all point sphere scales to maintain consistent screen size
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.04; // Adjust multiplier for desired screen size
+        const scale = distanceToTarget * 0.08; // Larger for better visibility
         
         this.vectors.forEach(vec => {
             if (vec.pointSphere) {
@@ -3240,6 +3506,7 @@ class VectoramaApp {
         this.updateGridSpacing();
         this.updateNumberLabelScales();
         this.updatePointSphereScales();
+        this.updateVectorThickness();
         this.updateInvariantSpaceColors();
         this.renderer.render(this.scene, this.camera);
     }
