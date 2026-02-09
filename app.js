@@ -3291,27 +3291,30 @@ class VectoramaApp {
         // Draw text
         context.fillStyle = '#00FFFF'; // Cyan for plane intersection lines
         context.font = 'bold 50px Arial';
-        context.textAlign = 'left';
+        context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText(text, 10, 64);
+        context.fillText(text, 512, 64);
         
-        // Create sprite from canvas
+        // Create texture and plane mesh instead of sprite
         const texture = new THREE.CanvasTexture(canvas);
-        const spriteMaterial = new THREE.SpriteMaterial({
+        const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             depthWrite: false,
-            depthTest: false
+            depthTest: false,
+            side: THREE.DoubleSide
         });
-        const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.renderOrder = 1000; // Render on top
         
         // Scale based on camera distance
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.05;
-        sprite.scale.set(scale * 8, scale, 1);
+        const scale = distanceToTarget * 0.08;
         
-        return sprite;
+        // Create plane geometry oriented along the line
+        const geometry = new THREE.PlaneGeometry(scale * 8, scale);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = 1001; // Render on top
+        
+        return mesh;
     }
 
     updateIntersections() {
@@ -3428,11 +3431,27 @@ class VectoramaApp {
                 
                 lineMesh.renderOrder = 2;
                 
-                // Create equation label
+                // Create equation label oriented along the line
                 const label = this.createLineEquationLabel(point, direction);
-                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.2;
+                
+                // Position label at midpoint
                 label.position.copy(midpoint);
-                label.position.y += labelOffset;
+                
+                // Orient label so text runs along the line
+                // Calculate perpendicular offset direction
+                const cameraDir = new THREE.Vector3().subVectors(this.camera.position, midpoint).normalize();
+                const perpendicular = new THREE.Vector3().crossVectors(dir, cameraDir).normalize();
+                const outward = new THREE.Vector3().crossVectors(perpendicular, dir).normalize();
+                
+                // Offset the label perpendicular to the line
+                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
+                label.position.add(outward.multiplyScalar(labelOffset));
+                
+                // Create rotation matrix to align plane with line
+                // X axis (width) = line direction, Y axis (height) = perpendicular, Z axis (normal) = outward
+                const rotMatrix = new THREE.Matrix4();
+                rotMatrix.makeBasis(dir, perpendicular, outward);
+                label.quaternion.setFromRotationMatrix(rotMatrix);
                 
                 // Store line and label
                 this.planeIntersectionLines.push({ line: lineMesh, label });
