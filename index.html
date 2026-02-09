@@ -71,6 +71,12 @@
                     <div class="dropdown-item" data-action="add-matrix">
                         <strong>+</strong> Add Matrix
                     </div>
+                    <div class="dropdown-item" data-action="add-line">
+                        <strong>+</strong> Add Line
+                    </div>
+                    <div class="dropdown-item" data-action="add-plane">
+                        <strong>+</strong> Add Plane
+                    </div>
                     <div class="dropdown-separator"></div>
                     <div class="dropdown-header">Transformations</div>
                     <div class="dropdown-item" data-action="rotation-45">
@@ -126,10 +132,6 @@
                 
                 <button id="reset-axes-btn" class="top-btn" title="Reset View">
                     RESET<br>AXES
-                </button>
-                
-                <button id="mode-toggle-btn" class="top-btn" title="Toggle Transform/Geometry Mode">
-                    <span id="mode-label">Transform</span>
                 </button>
             </div>
             
@@ -224,16 +226,10 @@
             
             <!-- Separator -->
             <div class="panel-separator"></div>
-            
-            <!-- App Mode Selector (hidden) -->
-            <div class="app-mode-selector" style="display: none;">
-                <button id="app-mode-transform" class="app-mode-btn active">Transform</button>
-                <button id="app-mode-geometry" class="app-mode-btn">Geometry</button>
-            </div>
 
-            <!-- Objects List (matrices and vectors, shared between modes) -->
+            <!-- Objects List (unified: matrices, planes, lines, vectors) -->
             <div id="objects-container">
-                <!-- Apply Transformation button and matrices/vectors will be added here dynamically -->
+                <!-- Apply Transformation button and all objects will be added here dynamically -->
             </div>
             
             <!-- Separator -->
@@ -241,67 +237,6 @@
 
             <!-- Transform Mode Content -->
             <div id="transform-mode-content" class="mode-content">
-            </div>
-
-            <!-- Geometry Mode Content -->
-            <div id="geometry-mode-content" class="mode-content" style="display: none;">
-                <!-- Object Type Selector -->
-                <div class="geometry-type-selector">
-                    <h3>Add Object</h3>
-                    <button class="geometry-type-btn active" data-type="vector">Vector</button>
-                    <button class="geometry-type-btn" data-type="line">Line</button>
-                    <button class="geometry-type-btn" data-type="plane">Plane</button>
-                </div>
-
-                <!-- Vector Input -->
-                <div id="geom-vector-input" class="geometry-input">
-                    <h3>Vector</h3>
-                    <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Drag on canvas or enter coordinates</p>
-                    <div class="coord-input">
-                        <label>x: <input type="number" id="vec-x" value="0" step="0.1"></label>
-                        <label>y: <input type="number" id="vec-y" value="0" step="0.1"></label>
-                        <label id="vec-z-container">z: <input type="number" id="vec-z" value="0" step="0.1"></label>
-                    </div>
-                    <button id="add-vector-btn" class="primary-btn">Add Vector</button>
-                </div>
-
-                <!-- Line Input -->
-                <div id="geom-line-input" class="geometry-input" style="display: none;">
-                    <h3>Line Equation</h3>
-                    <p style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Parametric: r = a + tb</p>
-                    <div class="coord-input">
-                        <label style="margin-bottom: 8px; display: block; color: #bbb;">Point a:</label>
-                        <label>x: <input type="number" id="line-ax" value="0" step="0.1"></label>
-                        <label>y: <input type="number" id="line-ay" value="0" step="0.1"></label>
-                        <label id="line-az-container">z: <input type="number" id="line-az" value="0" step="0.1"></label>
-                    </div>
-                    <div class="coord-input" style="margin-top: 10px;">
-                        <label style="margin-bottom: 8px; display: block; color: #bbb;">Direction b:</label>
-                        <label>x: <input type="number" id="line-bx" value="1" step="0.1"></label>
-                        <label>y: <input type="number" id="line-by" value="0" step="0.1"></label>
-                        <label id="line-bz-container">z: <input type="number" id="line-bz" value="0" step="0.1"></label>
-                    </div>
-                    <button id="add-line-btn" class="primary-btn">Add Line</button>
-                </div>
-
-                <!-- Plane Input -->
-                <div id="geom-plane-input" class="geometry-input" style="display: none;">
-                    <h3>Plane Equation</h3>
-                    <p style="font-size: 12px; color: #aaa; margin-bottom: 8px;">ax + by + cz = d</p>
-                    <div class="coord-input">
-                        <label>a: <input type="number" id="plane-a" value="0" step="0.1"></label>
-                        <label>b: <input type="number" id="plane-b" value="0" step="0.1"></label>
-                        <label>c: <input type="number" id="plane-c" value="1" step="0.1"></label>
-                        <label>d: <input type="number" id="plane-d" value="0" step="0.1"></label>
-                    </div>
-                    <button id="add-plane-btn" class="primary-btn">Add Plane</button>
-                </div>
-
-                <!-- Geometry Objects List -->
-                <div class="vector-display">
-                    <h3>Objects</h3>
-                    <div id="geometry-list"></div>
-                </div>
             </div>
         </div>
 

@@ -102,7 +102,6 @@ themeToggle.addEventListener('click', () => {
 
 class VectoramaApp {
     constructor() {
-        this.appMode = 'transform'; // 'transform' or 'geometry'
         this.dimension = '2d'; // '2d' or '3d'
         
         // Separate storage for 2D and 3D modes
@@ -110,6 +109,9 @@ class VectoramaApp {
         this.vectors3D = [];
         this.matrices2D = [];
         this.matrices3D = [];
+        this.lines2D = [];
+        this.lines3D = [];
+        this.planes3D = []; // Planes only in 3D
         this.usedMatrixLetters2D = new Set();
         this.usedMatrixLetters3D = new Set();
         this.selectedMatrixId2D = null;
@@ -120,11 +122,12 @@ class VectoramaApp {
         // Active references (point to current dimension)
         this.vectors = this.vectors2D;
         this.matrices = this.matrices2D;
+        this.lines = this.lines2D;
+        this.planes = this.planes3D; // Will always reference 3D planes
         this.usedMatrixLetters = this.usedMatrixLetters2D;
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.colorIndex = this.colorIndex2D;
         
-        this.geometryObjects = []; // For geometry mode: lines, planes, etc.
         this.isAnimating = false;
         this.animationSpeed = 2.0;
         this.isDragging = false;
@@ -133,7 +136,6 @@ class VectoramaApp {
         this.axisLengthZ = 100; // Dynamic Z axis length
         this.lastCameraDistance = 0; // Track camera distance for vector thickness updates
         this.tempArrow = null;
-        this.geometryType = 'vector'; // 'vector', 'line', 'plane'
         this.gridVisible = true; // Grid visibility state
         this.currentGridSpacing = 1; // Current grid spacing
         this.isResizing = false; // Flag to prevent animation loop interference
@@ -159,7 +161,8 @@ class VectoramaApp {
         // Unique ID counters
         this.nextVectorId = 1;
         this.nextMatrixId = 1;
-        this.nextGeometryId = 1;
+        this.nextLineId = 1;
+        this.nextPlaneId = 1;
         
         // Google Analytics tracking
         this.lastAnalyticsEvent = 0;
@@ -791,7 +794,7 @@ class VectoramaApp {
                 if (typeof gtag !== 'undefined' && (now - this.lastPanelEvent) >= this.analyticsThrottleMs) {
                     gtag('event', 'VECTOR_panel_interaction', {
                         'event_category': 'engagement',
-                        'event_label': this.dimension + '_' + this.appMode
+                        'event_label': this.dimension
                     });
                     this.lastPanelEvent = now;
                 }
@@ -832,9 +835,6 @@ class VectoramaApp {
             }
         }, { passive: true });
         
-        // Top button row - Mode toggle
-        document.getElementById('mode-toggle-btn').addEventListener('click', () => this.toggleAppMode());
-        
         // Top button row - Reset axes
         document.getElementById('reset-axes-btn').addEventListener('click', () => this.resetView());
         
@@ -869,6 +869,12 @@ class VectoramaApp {
                     }
                 } else if (action === 'add-matrix') {
                     this.addMatrix();
+                } else if (action === 'add-line') {
+                    this.addLine();
+                } else if (action === 'add-plane') {
+                    if (this.dimension === '3d') {
+                        this.addPlane();
+                    }
                 } else if (action.startsWith('rotation-') || action.startsWith('scale-') || 
                            action.startsWith('shear-') || action.startsWith('reflection-')) {
                     // Add a preset matrix
@@ -899,20 +905,6 @@ class VectoramaApp {
         
         // Third button row - Vector display mode toggle
         document.getElementById('vector-display-toggle-btn').addEventListener('click', () => this.toggleVectorDisplayMode());
-        
-        // App mode switching (legacy)
-        document.getElementById('app-mode-transform').addEventListener('click', () => this.switchAppMode('transform'));
-        document.getElementById('app-mode-geometry').addEventListener('click', () => this.switchAppMode('geometry'));
-
-        // Geometry type switching
-        document.querySelectorAll('.geometry-type-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.switchGeometryType(btn.dataset.type));
-        });
-
-        // Geometry mode - Add buttons
-        document.getElementById('add-vector-btn').addEventListener('click', () => this.addGeometryVector());
-        document.getElementById('add-line-btn').addEventListener('click', () => this.addGeometryLine());
-        document.getElementById('add-plane-btn').addEventListener('click', () => this.addGeometryPlane());
 
         // Canvas drag to add vectors
         this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
@@ -934,7 +926,7 @@ class VectoramaApp {
         if (typeof gtag !== 'undefined' && (now - this.lastAnalyticsEvent) >= this.analyticsThrottleMs) {
             gtag('event', 'VECTOR_interaction', {
                 'event_category': 'engagement',
-                'event_label': this.dimension + '_' + this.appMode
+                'event_label': this.dimension
             });
             this.lastAnalyticsEvent = now;
         }
@@ -949,61 +941,6 @@ class VectoramaApp {
                 this.visualizeInvariantSpaces();
             });
         });
-    }
-
-    switchAppMode(mode) {
-        this.appMode = mode;
-
-        // Update UI
-        document.querySelectorAll('.app-mode-btn').forEach(btn => btn.classList.remove('active'));
-        
-        if (mode === 'transform') {
-            document.getElementById('app-mode-transform').classList.add('active');
-            document.getElementById('transform-mode-content').style.display = 'block';
-            document.getElementById('geometry-mode-content').style.display = 'none';
-            // Update the mode toggle button label
-            document.getElementById('mode-label').textContent = 'Transform';
-        } else {
-            document.getElementById('app-mode-geometry').classList.add('active');
-            document.getElementById('transform-mode-content').style.display = 'none';
-            document.getElementById('geometry-mode-content').style.display = 'block';
-            // Update the mode toggle button label
-            document.getElementById('mode-label').textContent = 'Geometry';
-        }
-
-        // Clear and reset
-        this.clearVectors();
-        this.clearGeometryObjects();
-        this.clearInvariantSpaces();
-    }
-    
-    toggleAppMode() {
-        // Toggle between transform and geometry modes
-        const newMode = this.appMode === 'transform' ? 'geometry' : 'transform';
-        this.switchAppMode(newMode);
-    }
-
-    switchGeometryType(type) {
-        this.geometryType = type;
-
-        // Update UI
-        document.querySelectorAll('.geometry-type-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.type === type) {
-                btn.classList.add('active');
-            }
-        });
-
-        // Show/hide appropriate input sections
-        document.getElementById('geom-vector-input').style.display = type === 'vector' ? 'block' : 'none';
-        document.getElementById('geom-line-input').style.display = type === 'line' ? 'block' : 'none';
-        document.getElementById('geom-plane-input').style.display = type === 'plane' ? 'block' : 'none';
-
-        // Hide/show z coordinate for planes (only in 3D)
-        if (type === 'plane' && this.dimension === '2d') {
-            // In 2D, plane input doesn't make sense, switch to line
-            this.switchGeometryType('line');
-        }
     }
 
     switchDimension(dimension) {
@@ -1033,31 +970,6 @@ class VectoramaApp {
         document.querySelectorAll('.preset-3d').forEach(el => {
             el.style.display = dimension === '3d' ? 'block' : 'none';
         });
-
-        // Update UI based on current app mode and dimension
-        if (this.appMode === 'transform') {
-            // Matrices will be updated after resizing below
-        } else {
-            // Geometry mode
-            if (dimension === '2d') {
-                // Hide z-coordinate inputs in 2D
-                document.getElementById('vec-z-container').style.display = 'none';
-                document.getElementById('line-az-container').style.display = 'none';
-                document.getElementById('line-bz-container').style.display = 'none';
-                // Hide plane option in 2D (planes are 3D only)
-                document.querySelector('[data-type="plane"]').style.display = 'none';
-                if (this.geometryType === 'plane') {
-                    this.switchGeometryType('line');
-                }
-            } else {
-                // Show z-coordinate inputs in 3D
-                document.getElementById('vec-z-container').style.display = 'inline';
-                document.getElementById('line-az-container').style.display = 'inline';
-                document.getElementById('line-bz-container').style.display = 'inline';
-                // Show plane option in 3D
-                document.querySelector('[data-type="plane"]').style.display = 'inline-block';
-            }
-        }
 
         // Update camera and controls
         if (dimension === '2d') {
@@ -1139,12 +1051,15 @@ class VectoramaApp {
         if (oldDimension === '2d') {
             this.vectors2D = this.vectors;
             this.matrices2D = this.matrices;
+            this.lines2D = this.lines;
             this.usedMatrixLetters2D = this.usedMatrixLetters;
             this.selectedMatrixId2D = this.selectedMatrixId;
             this.colorIndex2D = this.colorIndex;
         } else {
             this.vectors3D = this.vectors;
             this.matrices3D = this.matrices;
+            this.lines3D = this.lines;
+            this.planes3D = this.planes;
             this.usedMatrixLetters3D = this.usedMatrixLetters;
             this.selectedMatrixId3D = this.selectedMatrixId;
             this.colorIndex3D = this.colorIndex;
@@ -1155,6 +1070,12 @@ class VectoramaApp {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
         });
+        this.lines.forEach(line => {
+            if (line.mesh) this.scene.remove(line.mesh);
+        });
+        this.planes.forEach(plane => {
+            if (plane.mesh) this.scene.remove(plane.mesh);
+        });
         this.pathLines.forEach(line => this.scene.remove(line));
         this.pathLines = [];
         
@@ -1162,12 +1083,16 @@ class VectoramaApp {
         if (dimension === '2d') {
             this.vectors = this.vectors2D;
             this.matrices = this.matrices2D;
+            this.lines = this.lines2D;
+            this.planes = []; // No planes in 2D
             this.usedMatrixLetters = this.usedMatrixLetters2D;
             this.selectedMatrixId = this.selectedMatrixId2D;
             this.colorIndex = this.colorIndex2D;
         } else {
             this.vectors = this.vectors3D;
             this.matrices = this.matrices3D;
+            this.lines = this.lines3D;
+            this.planes = this.planes3D;
             this.usedMatrixLetters = this.usedMatrixLetters3D;
             this.selectedMatrixId = this.selectedMatrixId3D;
             this.colorIndex = this.colorIndex3D;
@@ -1208,6 +1133,10 @@ class VectoramaApp {
                 vec.pointSphere.renderOrder = 1;
             }
         });
+        
+        // Re-render lines and planes
+        this.lines.forEach(line => this.renderLine(line));
+        this.planes.forEach(plane => this.renderPlane(plane));
         
         // Update vector visualization for new dimension
         this.updateVectorDisplay();
@@ -1692,7 +1621,19 @@ class VectoramaApp {
             this.renderMatrixItem(container, matrix);
         });
 
-        // Then render vectors
+        // Render planes second (3D only)
+        if (this.dimension === '3d') {
+            this.planes.forEach(plane => {
+                this.renderPlaneItem(container, plane);
+            });
+        }
+
+        // Render lines third
+        this.lines.forEach(line => {
+            this.renderLineItem(container, line);
+        });
+
+        // Then render vectors last
         this.vectors.forEach(vec => {
             this.renderVectorItem(container, vec);
         });
@@ -1878,6 +1819,111 @@ class VectoramaApp {
         item.appendChild(mainRow);
         container.appendChild(item);
     }
+    
+    renderLineItem(container, line) {
+        const item = document.createElement('div');
+        item.className = line.visible ? 'vector-item' : 'vector-item disabled';
+        item.style.borderLeftColor = line.color;
+        item.setAttribute('data-line-id', line.id);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'vector-main-row';
+
+        // Line equation container
+        const lineInfo = document.createElement('div');
+        lineInfo.className = 'vector-coordinates';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.style.fontWeight = 'bold';
+        nameSpan.style.marginRight = '8px';
+        nameSpan.textContent = line.name;
+        lineInfo.appendChild(nameSpan);
+        
+        const eqSpan = document.createElement('span');
+        eqSpan.style.fontSize = '0.9em';
+        eqSpan.style.color = 'rgba(255, 255, 255, 0.7)';
+        const dim = this.dimension;
+        eqSpan.textContent = dim === '2d' 
+            ? `(${line.point.x}, ${line.point.y}) + t(${line.direction.x}, ${line.direction.y})`
+            : `(${line.point.x}, ${line.point.y}, ${line.point.z}) + t(${line.direction.x}, ${line.direction.y}, ${line.direction.z})`;
+        lineInfo.appendChild(eqSpan);
+        
+        mainRow.appendChild(lineInfo);
+
+        // Controls
+        const controls = document.createElement('div');
+        controls.className = 'vector-controls';
+
+        const colorIndicator = document.createElement('div');
+        colorIndicator.className = 'color-indicator';
+        colorIndicator.style.backgroundColor = line.visible ? line.color : 'transparent';
+        colorIndicator.title = `Click to ${line.visible ? 'hide' : 'show'} line`;
+        colorIndicator.style.cursor = 'pointer';
+        colorIndicator.addEventListener('click', () => this.toggleLineVisibility(line.id));
+        controls.appendChild(colorIndicator);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Delete line';
+        removeBtn.addEventListener('click', () => this.removeLine(line.id));
+        controls.appendChild(removeBtn);
+
+        mainRow.appendChild(controls);
+        item.appendChild(mainRow);
+        container.appendChild(item);
+    }
+    
+    renderPlaneItem(container, plane) {
+        const item = document.createElement('div');
+        item.className = plane.visible ? 'vector-item' : 'vector-item disabled';
+        item.style.borderLeftColor = plane.color;
+        item.setAttribute('data-plane-id', plane.id);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'vector-main-row';
+
+        // Plane equation container
+        const planeInfo = document.createElement('div');
+        planeInfo.className = 'vector-coordinates';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.style.fontWeight = 'bold';
+        nameSpan.style.marginRight = '8px';
+        nameSpan.textContent = plane.name;
+        planeInfo.appendChild(nameSpan);
+        
+        const eqSpan = document.createElement('span');
+        eqSpan.style.fontSize = '0.9em';
+        eqSpan.style.color = 'rgba(255, 255, 255, 0.7)';
+        eqSpan.textContent = `${plane.a}x + ${plane.b}y + ${plane.c}z = ${plane.d}`;
+        planeInfo.appendChild(eqSpan);
+        
+        mainRow.appendChild(planeInfo);
+
+        // Controls
+        const controls = document.createElement('div');
+        controls.className = 'vector-controls';
+
+        const colorIndicator = document.createElement('div');
+        colorIndicator.className = 'color-indicator';
+        colorIndicator.style.backgroundColor = plane.visible ? plane.color : 'transparent';
+        colorIndicator.title = `Click to ${plane.visible ? 'hide' : 'show'} plane`;
+        colorIndicator.style.cursor = 'pointer';
+        colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
+        controls.appendChild(colorIndicator);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Delete plane';
+        removeBtn.addEventListener('click', () => this.removePlane(plane.id));
+        controls.appendChild(removeBtn);
+
+        mainRow.appendChild(controls);
+        item.appendChild(mainRow);
+        container.appendChild(item);
+    }
 
     updateVectorArrow(vec) {
         // Remove old arrow
@@ -1936,6 +1982,52 @@ class VectoramaApp {
             this.updateVectorDisplay();
             
             // Update the list to reflect the change
+            this.updateObjectsList();
+        }
+    }
+    
+    toggleLineVisibility(id) {
+        const line = this.lines.find(l => l.id === id);
+        if (line) {
+            line.visible = !line.visible;
+            if (line.mesh) {
+                line.mesh.visible = line.visible;
+            }
+            this.updateObjectsList();
+        }
+    }
+    
+    togglePlaneVisibility(id) {
+        const plane = this.planes.find(p => p.id === id);
+        if (plane) {
+            plane.visible = !plane.visible;
+            if (plane.mesh) {
+                plane.mesh.visible = plane.visible;
+            }
+            this.updateObjectsList();
+        }
+    }
+    
+    removeLine(id) {
+        const index = this.lines.findIndex(l => l.id === id);
+        if (index !== -1) {
+            const line = this.lines[index];
+            if (line.mesh) {
+                this.scene.remove(line.mesh);
+            }
+            this.lines.splice(index, 1);
+            this.updateObjectsList();
+        }
+    }
+    
+    removePlane(id) {
+        const index = this.planes.findIndex(p => p.id === id);
+        if (index !== -1) {
+            const plane = this.planes[index];
+            if (plane.mesh) {
+                this.scene.remove(plane.mesh);
+            }
+            this.planes.splice(index, 1);
             this.updateObjectsList();
         }
     }
@@ -2452,35 +2544,54 @@ class VectoramaApp {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
-    // Geometry Mode Functions
-    clearGeometryObjects() {
-        this.geometryObjects.forEach(obj => {
-            this.scene.remove(obj.mesh);
-        });
-        this.geometryObjects = [];
-        document.getElementById('geometry-list').innerHTML = '';
+    // Line and Plane Functions
+    addLine(ax = 0, ay = 1, az = 0, bx = 1, by = 0, bz = 0) {
+        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
+        this.colorIndex++;
+        
+        const line = {
+            id: this.nextLineId++,
+            name: `L${this.lines.length + 1}`,
+            point: { x: ax, y: ay, z: az },
+            direction: { x: bx, y: by, z: bz },
+            color: colorHex,
+            visible: true,
+            mesh: null
+        };
+        
+        this.lines.push(line);
+        this.renderLine(line);
+        this.updateObjectsList();
+        return line;
     }
 
-    addGeometryVector() {
-        const x = parseFloat(document.getElementById('vec-x').value);
-        const y = parseFloat(document.getElementById('vec-y').value);
-        const z = this.dimension === '3d' ? parseFloat(document.getElementById('vec-z').value) : 0;
-
-        if (x === 0 && y === 0 && z === 0) return; // Don't add zero vector
-
-        this.addVector(x, y, z);
+    addPlane(a = 0, b = 0, c = 1, d = 0) {
+        if (this.dimension === '2d') return;
+        
+        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
+        this.colorIndex++;
+        
+        const plane = {
+            id: this.nextPlaneId++,
+            name: `P${this.planes.length + 1}`,
+            a, b, c, d,
+            color: colorHex,
+            visible: true,
+            mesh: null
+        };
+        
+        this.planes.push(plane);
+        this.renderPlane(plane);
+        this.updateObjectsList();
+        return plane;
     }
 
-    addGeometryLine() {
-        const ax = parseFloat(document.getElementById('line-ax').value);
-        const ay = parseFloat(document.getElementById('line-ay').value);
-        const az = this.dimension === '3d' ? parseFloat(document.getElementById('line-az').value) : 0;
+    renderLine(line) {
+        // Remove existing mesh if any
+        if (line.mesh) {
+            this.scene.remove(line.mesh);
+        }
 
-        const bx = parseFloat(document.getElementById('line-bx').value);
-        const by = parseFloat(document.getElementById('line-by').value);
-        const bz = this.dimension === '3d' ? parseFloat(document.getElementById('line-bz').value) : 0;
-
-        // Create line geometry
         const points = [];
         const tMin = -10;
         const tMax = 10;
@@ -2489,101 +2600,48 @@ class VectoramaApp {
         for (let i = 0; i <= steps; i++) {
             const t = tMin + (tMax - tMin) * (i / steps);
             points.push(new THREE.Vector3(
-                ax + t * bx,
-                ay + t * by,
-                az + t * bz
+                line.point.x + t * line.direction.x,
+                line.point.y + t * line.direction.y,
+                line.point.z + t * line.direction.z
             ));
         }
 
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const color = new THREE.Color().setHSL(Math.random(), 0.85, 0.45);
-        const material = new THREE.LineBasicMaterial({ color: color });
-        const line = new THREE.Line(geometry, material);
-
-        this.scene.add(line);
-
-        const lineObj = {
-            type: 'line',
-            mesh: line,
-            equation: `r = (${ax}, ${ay}${this.dimension === '3d' ? `, ${az}` : ''}) + t(${bx}, ${by}${this.dimension === '3d' ? `, ${bz}` : ''})`,
-            id: this.nextGeometryId++
-        };
-
-        this.geometryObjects.push(lineObj);
-        this.updateGeometryList();
+        const material = new THREE.LineBasicMaterial({ color: new THREE.Color(line.color) });
+        line.mesh = new THREE.Line(geometry, material);
+        line.mesh.visible = line.visible;
+        this.scene.add(line.mesh);
     }
 
-    addGeometryPlane() {
-        if (this.dimension === '2d') return; // Planes only in 3D
+    renderPlane(plane) {
+        if (this.dimension === '2d') return;
+        
+        // Remove existing mesh if any
+        if (plane.mesh) {
+            this.scene.remove(plane.mesh);
+        }
 
-        const a = parseFloat(document.getElementById('plane-a').value);
-        const b = parseFloat(document.getElementById('plane-b').value);
-        const c = parseFloat(document.getElementById('plane-c').value);
-        const d = parseFloat(document.getElementById('plane-d').value);
-
-        if (a === 0 && b === 0 && c === 0) return; // Invalid plane
-
-        // Create plane mesh with random color
         const geometry = new THREE.PlaneGeometry(20, 20);
-        const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
         const material = new THREE.MeshBasicMaterial({ 
-            color: color, 
+            color: new THREE.Color(plane.color),
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.5,
-            depthWrite: false // Prevent z-fighting with grid lines
+            depthWrite: false
         });
-        const plane = new THREE.Mesh(geometry, material);
+        plane.mesh = new THREE.Mesh(geometry, material);
 
-        // Position and orient plane based on equation ax + by + cz = d
+        // Position and orient based on equation ax + by + cz = d
+        const { a, b, c, d } = plane;
+        if (a === 0 && b === 0 && c === 0) return; // Invalid plane
+        
         const normal = new THREE.Vector3(a, b, c).normalize();
         const distance = d / Math.sqrt(a * a + b * b + c * c);
         
-        plane.position.copy(normal.clone().multiplyScalar(distance));
-        plane.lookAt(plane.position.clone().add(normal));
-
-        this.scene.add(plane);
-
-        const planeObj = {
-            type: 'plane',
-            mesh: plane,
-            equation: `${a}x + ${b}y + ${c}z = ${d}`,
-            id: this.nextGeometryId++
-        };
-
-        this.geometryObjects.push(planeObj);
-        this.updateGeometryList();
-    }
-
-    updateGeometryList() {
-        const listEl = document.getElementById('geometry-list');
-        listEl.innerHTML = '';
-
-        this.geometryObjects.forEach(obj => {
-            const item = document.createElement('div');
-            item.className = 'vector-item';
-            
-            const text = document.createElement('span');
-            text.textContent = `${obj.type}: ${obj.equation}`;
-            
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.textContent = '×';
-            deleteBtn.addEventListener('click', () => this.removeGeometryObject(obj.id));
-            
-            item.appendChild(text);
-            item.appendChild(deleteBtn);
-            listEl.appendChild(item);
-        });
-    }
-
-    removeGeometryObject(id) {
-        const index = this.geometryObjects.findIndex(obj => obj.id === id);
-        if (index !== -1) {
-            this.scene.remove(this.geometryObjects[index].mesh);
-            this.geometryObjects.splice(index, 1);
-            this.updateGeometryList();
-        }
+        plane.mesh.position.copy(normal.clone().multiplyScalar(distance));
+        plane.mesh.lookAt(plane.mesh.position.clone().add(normal));
+        plane.mesh.visible = plane.visible;
+        this.scene.add(plane.mesh);
     }
 
     onWindowResize() {
@@ -3399,8 +3457,8 @@ class VectoramaApp {
         // Clear existing invariant spaces
         this.clearInvariantSpaces();
         
-        // Only show invariant spaces in transform mode and when not off
-        if (this.appMode !== 'transform' || this.invariantDisplayMode === 'off') {
+        // Only show invariant spaces when not off
+        if (this.invariantDisplayMode === 'off') {
             // Also update eigenvalue panel (it handles hiding itself if needed)
             this.updateEigenvaluePanel();
             return;
@@ -3706,12 +3764,6 @@ class VectoramaApp {
         const panel = document.getElementById('eigenvalue-panel');
         const valuesDiv = document.getElementById('eigenvalue-values');
         const headerSpan = panel.querySelector('.eigenvalue-header span');
-        
-        // Only show panel in transform mode when not showing as off
-        if (this.appMode !== 'transform') {
-            panel.style.display = 'none';
-            return;
-        }
         
         // Hide panel if no matrix is selected
         if (!this.selectedMatrixId) {
