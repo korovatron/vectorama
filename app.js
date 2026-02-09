@@ -1829,24 +1829,138 @@ class VectoramaApp {
         const mainRow = document.createElement('div');
         mainRow.className = 'vector-main-row';
 
-        // Line equation container
+        // Line equation container with editable inputs
         const lineInfo = document.createElement('div');
         lineInfo.className = 'vector-coordinates';
+        lineInfo.style.display = 'flex';
+        lineInfo.style.flexWrap = 'wrap';
+        lineInfo.style.gap = '6px';
+        lineInfo.style.alignItems = 'center';
         
         const nameSpan = document.createElement('span');
         nameSpan.style.fontWeight = 'bold';
-        nameSpan.style.marginRight = '8px';
-        nameSpan.textContent = line.name;
+        nameSpan.style.marginRight = '4px';
+        nameSpan.textContent = line.name + ':';
         lineInfo.appendChild(nameSpan);
         
-        const eqSpan = document.createElement('span');
-        eqSpan.style.fontSize = '0.9em';
-        eqSpan.style.color = 'rgba(255, 255, 255, 0.7)';
-        const dim = this.dimension;
-        eqSpan.textContent = dim === '2d' 
-            ? `(${line.point.x}, ${line.point.y}) + t(${line.direction.x}, ${line.direction.y})`
-            : `(${line.point.x}, ${line.point.y}, ${line.point.z}) + t(${line.direction.x}, ${line.direction.y}, ${line.direction.z})`;
-        lineInfo.appendChild(eqSpan);
+        // Point inputs: (x₀, y₀, z₀)
+        const formatNum = (val) => {
+            if (Math.abs(val) < 0.001) return '0';
+            const nearestInt = Math.round(val);
+            if (Math.abs(val - nearestInt) < 0.0001) return nearestInt.toString();
+            return val.toFixed(2);
+        };
+        
+        const pointLabel = document.createElement('span');
+        pointLabel.textContent = '(';
+        pointLabel.style.fontSize = '0.9em';
+        lineInfo.appendChild(pointLabel);
+        
+        // Point x
+        const pxInput = document.createElement('input');
+        pxInput.type = 'number';
+        pxInput.step = '0.1';
+        pxInput.value = formatNum(line.point.x);
+        pxInput.style.width = '50px';
+        pxInput.addEventListener('input', (e) => {
+            line.point.x = parseFloat(e.target.value) || 0;
+            this.renderLine(line);
+        });
+        lineInfo.appendChild(pxInput);
+        
+        const comma1 = document.createElement('span');
+        comma1.textContent = ',';
+        comma1.style.fontSize = '0.9em';
+        lineInfo.appendChild(comma1);
+        
+        // Point y
+        const pyInput = document.createElement('input');
+        pyInput.type = 'number';
+        pyInput.step = '0.1';
+        pyInput.value = formatNum(line.point.y);
+        pyInput.style.width = '50px';
+        pyInput.addEventListener('input', (e) => {
+            line.point.y = parseFloat(e.target.value) || 0;
+            this.renderLine(line);
+        });
+        lineInfo.appendChild(pyInput);
+        
+        if (this.dimension === '3d') {
+            const comma2 = document.createElement('span');
+            comma2.textContent = ',';
+            comma2.style.fontSize = '0.9em';
+            lineInfo.appendChild(comma2);
+            
+            // Point z
+            const pzInput = document.createElement('input');
+            pzInput.type = 'number';
+            pzInput.step = '0.1';
+            pzInput.value = formatNum(line.point.z);
+            pzInput.style.width = '50px';
+            pzInput.addEventListener('input', (e) => {
+                line.point.z = parseFloat(e.target.value) || 0;
+                this.renderLine(line);
+            });
+            lineInfo.appendChild(pzInput);
+        }
+        
+        const closeParen = document.createElement('span');
+        closeParen.textContent = ') + t(';
+        closeParen.style.fontSize = '0.9em';
+        lineInfo.appendChild(closeParen);
+        
+        // Direction x
+        const dxInput = document.createElement('input');
+        dxInput.type = 'number';
+        dxInput.step = '0.1';
+        dxInput.value = formatNum(line.direction.x);
+        dxInput.style.width = '50px';
+        dxInput.addEventListener('input', (e) => {
+            line.direction.x = parseFloat(e.target.value) || 0;
+            this.renderLine(line);
+        });
+        lineInfo.appendChild(dxInput);
+        
+        const comma3 = document.createElement('span');
+        comma3.textContent = ',';
+        comma3.style.fontSize = '0.9em';
+        lineInfo.appendChild(comma3);
+        
+        // Direction y
+        const dyInput = document.createElement('input');
+        dyInput.type = 'number';
+        dyInput.step = '0.1';
+        dyInput.value = formatNum(line.direction.y);
+        dyInput.style.width = '50px';
+        dyInput.addEventListener('input', (e) => {
+            line.direction.y = parseFloat(e.target.value) || 0;
+            this.renderLine(line);
+        });
+        lineInfo.appendChild(dyInput);
+        
+        if (this.dimension === '3d') {
+            const comma4 = document.createElement('span');
+            comma4.textContent = ',';
+            comma4.style.fontSize = '0.9em';
+            lineInfo.appendChild(comma4);
+            
+            // Direction z
+            const dzInput = document.createElement('input');
+            dzInput.type = 'number';
+            dzInput.step = '0.1';
+            dzInput.value = formatNum(line.direction.z);
+            dzInput.style.width = '50px';
+            dzInput.addEventListener('input', (e) => {
+                line.direction.z = parseFloat(e.target.value) || 0;
+                this.renderLine(line);
+            });
+            lineInfo.appendChild(dzInput);
+        }
+        
+        const finalParen = document.createElement('span');
+        finalParen.textContent = ')';
+        finalParen.style.fontSize = '0.9em';
+        lineInfo.appendChild(finalParen);
         
         mainRow.appendChild(lineInfo);
 
@@ -1883,21 +1997,89 @@ class VectoramaApp {
         const mainRow = document.createElement('div');
         mainRow.className = 'vector-main-row';
 
-        // Plane equation container
+        // Plane equation container with editable inputs
         const planeInfo = document.createElement('div');
         planeInfo.className = 'vector-coordinates';
+        planeInfo.style.display = 'flex';
+        planeInfo.style.flexWrap = 'wrap';
+        planeInfo.style.gap = '6px';
+        planeInfo.style.alignItems = 'center';
         
         const nameSpan = document.createElement('span');
         nameSpan.style.fontWeight = 'bold';
-        nameSpan.style.marginRight = '8px';
-        nameSpan.textContent = plane.name;
+        nameSpan.style.marginRight = '4px';
+        nameSpan.textContent = plane.name + ':';
         planeInfo.appendChild(nameSpan);
         
-        const eqSpan = document.createElement('span');
-        eqSpan.style.fontSize = '0.9em';
-        eqSpan.style.color = 'rgba(255, 255, 255, 0.7)';
-        eqSpan.textContent = `${plane.a}x + ${plane.b}y + ${plane.c}z = ${plane.d}`;
-        planeInfo.appendChild(eqSpan);
+        const formatNum = (val) => {
+            if (Math.abs(val) < 0.001) return '0';
+            const nearestInt = Math.round(val);
+            if (Math.abs(val - nearestInt) < 0.0001) return nearestInt.toString();
+            return val.toFixed(2);
+        };
+        
+        // Coefficient a (for x)
+        const aInput = document.createElement('input');
+        aInput.type = 'number';
+        aInput.step = '0.1';
+        aInput.value = formatNum(plane.a);
+        aInput.style.width = '50px';
+        aInput.addEventListener('input', (e) => {
+            plane.a = parseFloat(e.target.value) || 0;
+            this.renderPlane(plane);
+        });
+        planeInfo.appendChild(aInput);
+        
+        const xLabel = document.createElement('span');
+        xLabel.textContent = 'x +';
+        xLabel.style.fontSize = '0.9em';
+        planeInfo.appendChild(xLabel);
+        
+        // Coefficient b (for y)
+        const bInput = document.createElement('input');
+        bInput.type = 'number';
+        bInput.step = '0.1';
+        bInput.value = formatNum(plane.b);
+        bInput.style.width = '50px';
+        bInput.addEventListener('input', (e) => {
+            plane.b = parseFloat(e.target.value) || 0;
+            this.renderPlane(plane);
+        });
+        planeInfo.appendChild(bInput);
+        
+        const yLabel = document.createElement('span');
+        yLabel.textContent = 'y +';
+        yLabel.style.fontSize = '0.9em';
+        planeInfo.appendChild(yLabel);
+        
+        // Coefficient c (for z)
+        const cInput = document.createElement('input');
+        cInput.type = 'number';
+        cInput.step = '0.1';
+        cInput.value = formatNum(plane.c);
+        cInput.style.width = '50px';
+        cInput.addEventListener('input', (e) => {
+            plane.c = parseFloat(e.target.value) || 0;
+            this.renderPlane(plane);
+        });
+        planeInfo.appendChild(cInput);
+        
+        const zLabel = document.createElement('span');
+        zLabel.textContent = 'z =';
+        zLabel.style.fontSize = '0.9em';
+        planeInfo.appendChild(zLabel);
+        
+        // Constant d
+        const dInput = document.createElement('input');
+        dInput.type = 'number';
+        dInput.step = '0.1';
+        dInput.value = formatNum(plane.d);
+        dInput.style.width = '50px';
+        dInput.addEventListener('input', (e) => {
+            plane.d = parseFloat(e.target.value) || 0;
+            this.renderPlane(plane);
+        });
+        planeInfo.appendChild(dInput);
         
         mainRow.appendChild(planeInfo);
 
