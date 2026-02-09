@@ -3226,6 +3226,51 @@ class VectoramaApp {
         return { point, direction };
     }
 
+    calculateLineLineIntersection(line1, line2) {
+        // Two lines: r1 = p1 + s*d1 and r2 = p2 + t*d2
+        // They intersect if we can find s and t such that p1 + s*d1 = p2 + t*d2
+        
+        const p1 = new THREE.Vector3(line1.point.x, line1.point.y, line1.point.z);
+        const d1 = new THREE.Vector3(line1.direction.x, line1.direction.y, line1.direction.z).normalize();
+        const p2 = new THREE.Vector3(line2.point.x, line2.point.y, line2.point.z);
+        const d2 = new THREE.Vector3(line2.direction.x, line2.direction.y, line2.direction.z).normalize();
+        
+        // Calculate cross product of directions
+        const crossD1D2 = new THREE.Vector3().crossVectors(d1, d2);
+        const crossLengthSq = crossD1D2.lengthSq();
+        
+        // If cross product is zero, lines are parallel
+        if (crossLengthSq < 0.0001) {
+            return null;
+        }
+        
+        // Vector from p1 to p2
+        const p1ToP2 = new THREE.Vector3().subVectors(p2, p1);
+        
+        // Check if lines intersect (not skew)
+        // Lines intersect if (p2 - p1) · (d1 × d2) = 0
+        const dotProduct = p1ToP2.dot(crossD1D2);
+        
+        if (Math.abs(dotProduct) > 0.01) {
+            // Lines are skew (don't intersect)
+            return null;
+        }
+        
+        // Calculate parameter s for line1
+        // s = ((p2 - p1) × d2) · (d1 × d2) / |d1 × d2|^2
+        const crossP1ToP2D2 = new THREE.Vector3().crossVectors(p1ToP2, d2);
+        const s = crossP1ToP2D2.dot(crossD1D2) / crossLengthSq;
+        
+        // Calculate intersection point
+        const intersection = new THREE.Vector3(
+            p1.x + s * d1.x,
+            p1.y + s * d1.y,
+            p1.z + s * d1.z
+        );
+        
+        return intersection;
+    }
+
     createIntersectionLabel(point) {
         // Format coordinates for display
         const x = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
@@ -3456,6 +3501,44 @@ class VectoramaApp {
                 // Store line and label
                 this.planeIntersectionLines.push({ line: lineMesh, label });
                 this.scene.add(lineMesh);
+                this.scene.add(label);
+            }
+        }
+        
+        // Check all line-line pairs
+        for (let i = 0; i < this.lines.length; i++) {
+            const line1 = this.lines[i];
+            if (!line1.visible) continue;
+            
+            for (let j = i + 1; j < this.lines.length; j++) {
+                const line2 = this.lines[j];
+                if (!line2.visible) continue;
+                
+                const intersection = this.calculateLineLineIntersection(line1, line2);
+                if (!intersection) continue;
+                
+                // Create marker sphere
+                const thickness = this.getArrowThickness();
+                const markerRadius = thickness.headWidth * 0.5; // Slightly larger for visibility
+                const sphereGeometry = new THREE.SphereGeometry(markerRadius, 16, 16);
+                const sphereMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF00FF, // Magenta for line-line intersections
+                    depthWrite: true,
+                    depthTest: true
+                });
+                const marker = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                marker.position.copy(intersection);
+                marker.renderOrder = 2;
+                
+                // Create label
+                const label = this.createIntersectionLabel(intersection);
+                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
+                label.position.copy(intersection);
+                label.position.x += labelOffset;
+                
+                // Store marker and label
+                this.intersectionMarkers.push({ marker, label });
+                this.scene.add(marker);
                 this.scene.add(label);
             }
         }
