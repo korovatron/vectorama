@@ -3276,7 +3276,9 @@ class VectoramaApp {
         const x = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
         const y = Math.abs(point.y) < 0.01 ? 0 : parseFloat(point.y.toFixed(2));
         const z = Math.abs(point.z) < 0.01 ? 0 : parseFloat(point.z.toFixed(2));
-        const text = `(${x}, ${y}, ${z})`;
+        
+        // In 2D mode, only show x and y coordinates
+        const text = this.dimension === '2d' ? `(${x}, ${y})` : `(${x}, ${y}, ${z})`;
         
         // Create canvas for the text
         const canvas = document.createElement('canvas');
@@ -3406,10 +3408,11 @@ class VectoramaApp {
         
         // Check all plane-plane pairs (3D only)
         if (this.dimension === '3d') {
-            const plane1 = this.planes[i];
-            if (!plane1.visible) continue;
-            
-            for (let j = i + 1; j < this.planes.length; j++) {
+            for (let i = 0; i < this.planes.length; i++) {
+                const plane1 = this.planes[i];
+                if (!plane1.visible) continue;
+                
+                for (let j = i + 1; j < this.planes.length; j++) {
                 const plane2 = this.planes[j];
                 if (!plane2.visible) continue;
                 
