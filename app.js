@@ -1858,13 +1858,6 @@ class VectoramaApp {
             return val.toFixed(2);
         };
         
-        const formatNum = (val) => {
-            if (Math.abs(val) < 0.001) return '0';
-            const nearestInt = Math.round(val);
-            if (Math.abs(val - nearestInt) < 0.0001) return nearestInt.toString();
-            return val.toFixed(2);
-        };
-        
         // Point x
         const pxInput = document.createElement('input');
         pxInput.type = 'number';
