@@ -2827,8 +2827,8 @@ class VectoramaApp {
             this.scene.remove(line.mesh);
         }
 
-        const tMin = -10;
-        const tMax = 10;
+        const tMin = -100;
+        const tMax = 100;
         
         // Calculate start and end points
         const start = new THREE.Vector3(
