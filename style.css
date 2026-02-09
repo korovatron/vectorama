@@ -646,6 +646,38 @@ body {
 
 .matrix-grid input[type=number] {
     -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Equation inputs for lines and planes */
+.equation-input {
+    width: 50px;
+    padding: 6px 8px;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--input-bg);
+    color: var(--text-primary);
+}
+
+.equation-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    filter: brightness(1.15);
+}
+
+/* Hide number input spinners for equation inputs */
+.equation-input::-webkit-outer-spin-button,
+.equation-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.equation-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 /* Presets */
@@ -744,6 +776,7 @@ body {
 
 .coord-input input[type=number] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 #geometry-list {
@@ -1104,6 +1137,7 @@ body {
 
 .vector-coord-input input[type=number] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 /* Canvas Container */

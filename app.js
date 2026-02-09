@@ -1861,7 +1861,7 @@ class VectoramaApp {
         pxInput.type = 'number';
         pxInput.step = '0.1';
         pxInput.value = formatNum(line.point.x);
-        pxInput.style.width = '50px';
+        pxInput.className = 'equation-input';
         pxInput.addEventListener('input', (e) => {
             line.point.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
@@ -1878,7 +1878,7 @@ class VectoramaApp {
         pyInput.type = 'number';
         pyInput.step = '0.1';
         pyInput.value = formatNum(line.point.y);
-        pyInput.style.width = '50px';
+        pyInput.className = 'equation-input';
         pyInput.addEventListener('input', (e) => {
             line.point.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
@@ -1896,7 +1896,7 @@ class VectoramaApp {
             pzInput.type = 'number';
             pzInput.step = '0.1';
             pzInput.value = formatNum(line.point.z);
-            pzInput.style.width = '50px';
+            pzInput.className = 'equation-input';
             pzInput.addEventListener('input', (e) => {
                 line.point.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
@@ -1914,7 +1914,7 @@ class VectoramaApp {
         dxInput.type = 'number';
         dxInput.step = '0.1';
         dxInput.value = formatNum(line.direction.x);
-        dxInput.style.width = '50px';
+        dxInput.className = 'equation-input';
         dxInput.addEventListener('input', (e) => {
             line.direction.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
@@ -1931,7 +1931,7 @@ class VectoramaApp {
         dyInput.type = 'number';
         dyInput.step = '0.1';
         dyInput.value = formatNum(line.direction.y);
-        dyInput.style.width = '50px';
+        dyInput.className = 'equation-input';
         dyInput.addEventListener('input', (e) => {
             line.direction.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
@@ -1949,7 +1949,7 @@ class VectoramaApp {
             dzInput.type = 'number';
             dzInput.step = '0.1';
             dzInput.value = formatNum(line.direction.z);
-            dzInput.style.width = '50px';
+            dzInput.className = 'equation-input';
             dzInput.addEventListener('input', (e) => {
                 line.direction.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
@@ -2023,7 +2023,7 @@ class VectoramaApp {
         aInput.type = 'number';
         aInput.step = '0.1';
         aInput.value = formatNum(plane.a);
-        aInput.style.width = '50px';
+        aInput.className = 'equation-input';
         aInput.addEventListener('input', (e) => {
             plane.a = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
@@ -2040,7 +2040,7 @@ class VectoramaApp {
         bInput.type = 'number';
         bInput.step = '0.1';
         bInput.value = formatNum(plane.b);
-        bInput.style.width = '50px';
+        bInput.className = 'equation-input';
         bInput.addEventListener('input', (e) => {
             plane.b = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
@@ -2057,7 +2057,7 @@ class VectoramaApp {
         cInput.type = 'number';
         cInput.step = '0.1';
         cInput.value = formatNum(plane.c);
-        cInput.style.width = '50px';
+        cInput.className = 'equation-input';
         cInput.addEventListener('input', (e) => {
             plane.c = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
@@ -2074,7 +2074,7 @@ class VectoramaApp {
         dInput.type = 'number';
         dInput.step = '0.1';
         dInput.value = formatNum(plane.d);
-        dInput.style.width = '50px';
+        dInput.className = 'equation-input';
         dInput.addEventListener('input', (e) => {
             plane.d = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
