@@ -1850,6 +1850,8 @@ class VectoramaApp {
         pxInput.className = 'equation-input';
         pxInput.addEventListener('input', (e) => {
             line.point.x = parseFloat(e.target.value) || 0;
+            line.currentPoint.x = line.point.x; // Keep current values in sync
+            line.originalPoint.x = line.point.x; // Keep original values in sync
             this.renderLine(line);
             this.updateIntersections();
         });
@@ -1868,6 +1870,8 @@ class VectoramaApp {
         pyInput.className = 'equation-input';
         pyInput.addEventListener('input', (e) => {
             line.point.y = parseFloat(e.target.value) || 0;
+            line.currentPoint.y = line.point.y; // Keep current values in sync
+            line.originalPoint.y = line.point.y; // Keep original values in sync
             this.renderLine(line);
             this.updateIntersections();
         });
@@ -1887,6 +1891,8 @@ class VectoramaApp {
             pzInput.className = 'equation-input';
             pzInput.addEventListener('input', (e) => {
                 line.point.z = parseFloat(e.target.value) || 0;
+                line.currentPoint.z = line.point.z; // Keep current values in sync
+                line.originalPoint.z = line.point.z; // Keep original values in sync
                 this.renderLine(line);
                 this.updateIntersections();
             });
@@ -1919,6 +1925,8 @@ class VectoramaApp {
         dxInput.className = 'equation-input';
         dxInput.addEventListener('input', (e) => {
             line.direction.x = parseFloat(e.target.value) || 0;
+            line.currentDirection.x = line.direction.x; // Keep current values in sync
+            line.originalDirection.x = line.direction.x; // Keep original values in sync
             this.renderLine(line);
             this.updateIntersections();
         });
@@ -1937,6 +1945,8 @@ class VectoramaApp {
         dyInput.className = 'equation-input';
         dyInput.addEventListener('input', (e) => {
             line.direction.y = parseFloat(e.target.value) || 0;
+            line.currentDirection.y = line.direction.y; // Keep current values in sync
+            line.originalDirection.y = line.direction.y; // Keep original values in sync
             this.renderLine(line);
             this.updateIntersections();
         });
@@ -1956,6 +1966,8 @@ class VectoramaApp {
             dzInput.className = 'equation-input';
             dzInput.addEventListener('input', (e) => {
                 line.direction.z = parseFloat(e.target.value) || 0;
+                line.currentDirection.z = line.direction.z; // Keep current values in sync
+                line.originalDirection.z = line.direction.z; // Keep original values in sync
                 this.renderLine(line);
                 this.updateIntersections();
             });
@@ -2039,6 +2051,8 @@ class VectoramaApp {
         aInput.className = 'equation-input';
         aInput.addEventListener('input', (e) => {
             plane.a = parseFloat(e.target.value) || 0;
+            plane.currentA = plane.a; // Keep current values in sync
+            plane.originalA = plane.a; // Keep original values in sync
             this.renderPlane(plane);
             this.updateIntersections();
         });
@@ -2057,6 +2071,8 @@ class VectoramaApp {
         bInput.className = 'equation-input';
         bInput.addEventListener('input', (e) => {
             plane.b = parseFloat(e.target.value) || 0;
+            plane.currentB = plane.b; // Keep current values in sync
+            plane.originalB = plane.b; // Keep original values in sync
             this.renderPlane(plane);
             this.updateIntersections();
         });
@@ -2083,6 +2099,8 @@ class VectoramaApp {
         cInput.className = 'equation-input';
         cInput.addEventListener('input', (e) => {
             plane.c = parseFloat(e.target.value) || 0;
+            plane.currentC = plane.c; // Keep current values in sync
+            plane.originalC = plane.c; // Keep original values in sync
             this.renderPlane(plane);
             this.updateIntersections();
         });
@@ -2101,6 +2119,8 @@ class VectoramaApp {
         dInput.className = 'equation-input';
         dInput.addEventListener('input', (e) => {
             plane.d = parseFloat(e.target.value) || 0;
+            plane.currentD = plane.d; // Keep current values in sync
+            plane.originalD = plane.d; // Keep original values in sync
             this.renderPlane(plane);
             this.updateIntersections();
         });
@@ -2633,7 +2653,7 @@ class VectoramaApp {
     }
 
     animateTransformation(matrixId = null) {
-        if (this.isAnimating || this.vectors.length === 0) return;
+        if (this.isAnimating || (this.vectors.length === 0 && this.lines.length === 0 && this.planes.length === 0)) return;
         
         // Auto-close panel on mobile/narrow screens to see the animation
         if (window.innerWidth < 768 && this.panelOpen) {
@@ -2669,6 +2689,7 @@ class VectoramaApp {
         
         // Convert matrix values to THREE.Matrix3
         const matrix = new THREE.Matrix3();
+        let matrix4; // For 3D transformations and plane transformations
         if (this.dimension === '2d') {
             matrix.set(
                 selectedMatrix.values[0][0], selectedMatrix.values[0][1], 0,
@@ -2681,6 +2702,8 @@ class VectoramaApp {
                 selectedMatrix.values[1][0], selectedMatrix.values[1][1], selectedMatrix.values[1][2],
                 selectedMatrix.values[2][0], selectedMatrix.values[2][1], selectedMatrix.values[2][2]
             );
+            // Also create Matrix4 for plane transformations
+            matrix4 = new THREE.Matrix4().setFromMatrix3(matrix);
         }
 
         this.isAnimating = true;
@@ -2737,6 +2760,88 @@ class VectoramaApp {
             // Update visualization based on current mode
             this.updateVectorDisplay();
 
+            // Transform lines
+            this.lines.forEach(line => {
+                // Transform point and direction
+                const originalPoint = new THREE.Vector3(line.originalPoint.x, line.originalPoint.y, line.originalPoint.z);
+                const originalDirection = new THREE.Vector3(line.originalDirection.x, line.originalDirection.y, line.originalDirection.z);
+                
+                // Use linear interpolation for transformations
+                const identityMatrix = new THREE.Matrix3().identity();
+                const interpolatedMatrix = new THREE.Matrix3();
+                
+                for (let i = 0; i < 9; i++) {
+                    interpolatedMatrix.elements[i] = 
+                        identityMatrix.elements[i] * (1 - eased) + 
+                        matrix.elements[i] * eased;
+                }
+                
+                // Transform point and direction
+                const transformedPoint = originalPoint.clone().applyMatrix3(interpolatedMatrix);
+                const transformedDirection = originalDirection.clone().applyMatrix3(interpolatedMatrix);
+                
+                // Update current values
+                line.currentPoint.x = transformedPoint.x;
+                line.currentPoint.y = transformedPoint.y;
+                line.currentPoint.z = transformedPoint.z;
+                line.currentDirection.x = transformedDirection.x;
+                line.currentDirection.y = transformedDirection.y;
+                line.currentDirection.z = transformedDirection.z;
+                
+                // Re-render line with transformed values
+                this.renderLine(line);
+            });
+
+            // Transform planes (only in 3D)
+            if (this.dimension === '3d' && matrix4) {
+                this.planes.forEach(plane => {
+                    // For plane transformations, we need the inverse transpose of the transformation matrix
+                    const originalNormal = new THREE.Vector3(plane.originalA, plane.originalB, plane.originalC);
+                    const originalD = plane.originalD;
+                    
+                    // Use linear interpolation for transformations
+                    const identityMatrix4 = new THREE.Matrix4().identity();
+                    const interpolatedMatrix4 = new THREE.Matrix4();
+                    
+                    for (let i = 0; i < 16; i++) {
+                        interpolatedMatrix4.elements[i] = 
+                            identityMatrix4.elements[i] * (1 - eased) + 
+                            matrix4.elements[i] * eased;
+                    }
+                    
+                    // Get inverse transpose for normal transformation
+                    const inverseTranspose = interpolatedMatrix4.clone().invert().transpose();
+                    
+                    // Transform the normal vector (a, b, c)
+                    const transformedNormal = originalNormal.clone().applyMatrix4(inverseTranspose);
+                    
+                    // For the d component, we need to consider how the transformation affects distance
+                    // Simple approach: transform a point on the original plane and recalculate d
+                    let transformedD = originalD;
+                    if (originalNormal.length() > 0) {
+                        // Find a point on the original plane
+                        const originalNormalNorm = originalNormal.clone().normalize();
+                        const pointOnOriginalPlane = originalNormalNorm.clone().multiplyScalar(-originalD);
+                        
+                        // Transform this point
+                        const transformedPoint = pointOnOriginalPlane.clone().applyMatrix4(interpolatedMatrix4);
+                        
+                        // Recalculate d using the transformed point and normal
+                        const transformedNormalNorm = transformedNormal.clone().normalize();
+                        transformedD = -transformedPoint.dot(transformedNormalNorm);
+                    }
+                    
+                    // Update current values
+                    plane.currentA = transformedNormal.x;
+                    plane.currentB = transformedNormal.y;
+                    plane.currentC = transformedNormal.z;
+                    plane.currentD = transformedD;
+                    
+                    // Re-render plane with transformed values
+                    this.renderPlane(plane);
+                });
+            }
+
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
@@ -2747,8 +2852,41 @@ class VectoramaApp {
                     vec.originalEnd.copy(vec.currentEnd);
                 });
                 
-                // Final update of objects list
-                this.updateVectorList();
+                // Update original line positions/directions to transformed values
+                this.lines.forEach(line => {
+                    line.originalPoint.x = line.currentPoint.x;
+                    line.originalPoint.y = line.currentPoint.y;
+                    line.originalPoint.z = line.currentPoint.z;
+                    line.originalDirection.x = line.currentDirection.x;
+                    line.originalDirection.y = line.currentDirection.y;
+                    line.originalDirection.z = line.currentDirection.z;
+                    
+                    // Update main point/direction references
+                    line.point.x = line.currentPoint.x;
+                    line.point.y = line.currentPoint.y;
+                    line.point.z = line.currentPoint.z;
+                    line.direction.x = line.currentDirection.x;
+                    line.direction.y = line.currentDirection.y;
+                    line.direction.z = line.currentDirection.z;
+                });
+                
+                // Update original plane coefficients to transformed values
+                this.planes.forEach(plane => {
+                    plane.originalA = plane.currentA;
+                    plane.originalB = plane.currentB;
+                    plane.originalC = plane.currentC;
+                    plane.originalD = plane.currentD;
+                    
+                    // Update main coefficient references
+                    plane.a = plane.currentA;
+                    plane.b = plane.currentB;
+                    plane.c = plane.currentC;
+                    plane.d = plane.currentD;
+                });
+                
+                // Final update of objects list and intersections
+                this.updateObjectsList();
+                this.updateIntersections();
             }
         };
 
@@ -2769,6 +2907,10 @@ class VectoramaApp {
             name: `L${this.lines.length + 1}`,
             point: { x: ax, y: ay, z: az },
             direction: { x: bx, y: by, z: bz },
+            originalPoint: { x: ax, y: ay, z: az },
+            originalDirection: { x: bx, y: by, z: bz },
+            currentPoint: { x: ax, y: ay, z: az },
+            currentDirection: { x: bx, y: by, z: bz },
             color: colorHex,
             visible: true,
             mesh: null
@@ -2791,6 +2933,8 @@ class VectoramaApp {
             id: this.nextPlaneId++,
             name: `P${this.planes.length + 1}`,
             a, b, c, d,
+            originalA: a, originalB: b, originalC: c, originalD: d,
+            currentA: a, currentB: b, currentC: c, currentD: d,
             color: colorHex,
             visible: true,
             mesh: null
@@ -2812,17 +2956,19 @@ class VectoramaApp {
         const tMin = -100;
         const tMax = 100;
         
-        // Calculate start and end points
+        // Calculate start and end points using current values (for animation support)
+        const currentPoint = line.currentPoint || line.point;
+        const currentDirection = line.currentDirection || line.direction;
         const start = new THREE.Vector3(
-            line.point.x + tMin * line.direction.x,
-            line.point.y + tMin * line.direction.y,
-            line.point.z + tMin * line.direction.z
+            currentPoint.x + tMin * currentDirection.x,
+            currentPoint.y + tMin * currentDirection.y,
+            currentPoint.z + tMin * currentDirection.z
         );
         
         const end = new THREE.Vector3(
-            line.point.x + tMax * line.direction.x,
-            line.point.y + tMax * line.direction.y,
-            line.point.z + tMax * line.direction.z
+            currentPoint.x + tMax * currentDirection.x,
+            currentPoint.y + tMax * currentDirection.y,
+            currentPoint.z + tMax * currentDirection.z
         );
         
         // Use cylinder for visible thickness (same approach as axes)
@@ -2882,8 +3028,12 @@ class VectoramaApp {
         });
         plane.mesh = new THREE.Mesh(geometry, material);
 
-        // Position and orient based on equation ax + by + cz = d
-        const { a, b, c, d } = plane;
+        // Position and orient based on equation ax + by + cz = d using current values (for animation support)
+        // Fall back to main values if current values are not set
+        const a = plane.currentA !== undefined ? plane.currentA : plane.a;
+        const b = plane.currentB !== undefined ? plane.currentB : plane.b;
+        const c = plane.currentC !== undefined ? plane.currentC : plane.c;
+        const d = plane.currentD !== undefined ? plane.currentD : plane.d;
         if (a === 0 && b === 0 && c === 0) return; // Invalid plane
         
         const normal = new THREE.Vector3(a, b, c).normalize();
