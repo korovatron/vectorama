@@ -1120,7 +1120,7 @@ class VectoramaApp {
                 );
                 
                 // Create point sphere
-                const pointSize = 0.15;
+                const pointSize = 0.08;
                 const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
                 const sphereMaterial = new THREE.MeshBasicMaterial({ 
                     color: vec.color,
@@ -1469,7 +1469,7 @@ class VectoramaApp {
         );
 
         // Create point sphere for points mode
-        const pointSize = 0.15;
+        const pointSize = 0.08;
         const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({ 
             color: color,
@@ -2827,23 +2827,57 @@ class VectoramaApp {
             this.scene.remove(line.mesh);
         }
 
-        const points = [];
         const tMin = -10;
         const tMax = 10;
-        const steps = 100;
-
-        for (let i = 0; i <= steps; i++) {
-            const t = tMin + (tMax - tMin) * (i / steps);
-            points.push(new THREE.Vector3(
-                line.point.x + t * line.direction.x,
-                line.point.y + t * line.direction.y,
-                line.point.z + t * line.direction.z
-            ));
-        }
-
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ color: new THREE.Color(line.color) });
-        line.mesh = new THREE.Line(geometry, material);
+        
+        // Calculate start and end points
+        const start = new THREE.Vector3(
+            line.point.x + tMin * line.direction.x,
+            line.point.y + tMin * line.direction.y,
+            line.point.z + tMin * line.direction.z
+        );
+        
+        const end = new THREE.Vector3(
+            line.point.x + tMax * line.direction.x,
+            line.point.y + tMax * line.direction.y,
+            line.point.z + tMax * line.direction.z
+        );
+        
+        // Use cylinder for visible thickness (same approach as axes)
+        const thickness = this.getArrowThickness();
+        const lineRadius = thickness.headWidth * 0.2; // Slightly thicker than path lines
+        const radialSegments = this.dimension === '2d' ? 3 : 16;
+        
+        const direction = new THREE.Vector3().subVectors(end, start);
+        const length = direction.length();
+        direction.normalize();
+        
+        const geometry = new THREE.CylinderGeometry(
+            lineRadius,
+            lineRadius,
+            length,
+            radialSegments,
+            1,
+            false
+        );
+        
+        const material = new THREE.MeshBasicMaterial({ 
+            color: new THREE.Color(line.color),
+            depthWrite: true,
+            depthTest: true
+        });
+        
+        line.mesh = new THREE.Mesh(geometry, material);
+        
+        // Position at midpoint
+        const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+        line.mesh.position.copy(midpoint);
+        
+        // Orient along direction
+        const axis = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
+        line.mesh.quaternion.copy(quaternion);
+        
         line.mesh.visible = line.visible;
         this.scene.add(line.mesh);
     }
