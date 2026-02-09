@@ -157,6 +157,7 @@ class VectoramaApp {
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
         this.vectorDisplayMode = 'points'; // 'vectors', 'points', 'path'
         this.pathLines = []; // Store path visualization lines
+        this.intersectionMarkers = []; // Store line-plane intersection markers
         
         // Unique ID counters
         this.nextVectorId = 1;
@@ -1145,6 +1146,7 @@ class VectoramaApp {
         this.updateObjectsList();
         this.clearInvariantSpaces();
         this.visualizeInvariantSpaces();
+        this.updateIntersections();
     }
 
     resetView() {
@@ -1888,6 +1890,7 @@ class VectoramaApp {
         pxInput.addEventListener('input', (e) => {
             line.point.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
+            this.updateIntersections();
         });
         aRow.appendChild(pxInput);
         
@@ -1905,6 +1908,7 @@ class VectoramaApp {
         pyInput.addEventListener('input', (e) => {
             line.point.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
+            this.updateIntersections();
         });
         aRow.appendChild(pyInput);
         
@@ -1923,6 +1927,7 @@ class VectoramaApp {
             pzInput.addEventListener('input', (e) => {
                 line.point.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
+                this.updateIntersections();
             });
             aRow.appendChild(pzInput);
         }
@@ -1954,6 +1959,7 @@ class VectoramaApp {
         dxInput.addEventListener('input', (e) => {
             line.direction.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
+            this.updateIntersections();
         });
         bRow.appendChild(dxInput);
         
@@ -1971,6 +1977,7 @@ class VectoramaApp {
         dyInput.addEventListener('input', (e) => {
             line.direction.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
+            this.updateIntersections();
         });
         bRow.appendChild(dyInput);
         
@@ -1989,6 +1996,7 @@ class VectoramaApp {
             dzInput.addEventListener('input', (e) => {
                 line.direction.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
+                this.updateIntersections();
             });
             bRow.appendChild(dzInput);
         }
@@ -2071,6 +2079,7 @@ class VectoramaApp {
         aInput.addEventListener('input', (e) => {
             plane.a = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
+            this.updateIntersections();
         });
         row1.appendChild(aInput);
         
@@ -2088,6 +2097,7 @@ class VectoramaApp {
         bInput.addEventListener('input', (e) => {
             plane.b = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
+            this.updateIntersections();
         });
         row1.appendChild(bInput);
         
@@ -2113,6 +2123,7 @@ class VectoramaApp {
         cInput.addEventListener('input', (e) => {
             plane.c = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
+            this.updateIntersections();
         });
         row2.appendChild(cInput);
         
@@ -2130,6 +2141,7 @@ class VectoramaApp {
         dInput.addEventListener('input', (e) => {
             plane.d = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
+            this.updateIntersections();
         });
         row2.appendChild(dInput);
         
@@ -2229,6 +2241,7 @@ class VectoramaApp {
                 line.mesh.visible = line.visible;
             }
             this.updateObjectsList();
+            this.updateIntersections();
         }
     }
     
@@ -2240,6 +2253,7 @@ class VectoramaApp {
                 plane.mesh.visible = plane.visible;
             }
             this.updateObjectsList();
+            this.updateIntersections();
         }
     }
     
@@ -2252,6 +2266,7 @@ class VectoramaApp {
             }
             this.lines.splice(index, 1);
             this.updateObjectsList();
+            this.updateIntersections();
         }
     }
     
@@ -2264,6 +2279,7 @@ class VectoramaApp {
             }
             this.planes.splice(index, 1);
             this.updateObjectsList();
+            this.updateIntersections();
         }
     }
 
@@ -2797,6 +2813,7 @@ class VectoramaApp {
         this.lines.push(line);
         this.renderLine(line);
         this.updateObjectsList();
+        this.updateIntersections();
         return line;
     }
 
@@ -2818,6 +2835,7 @@ class VectoramaApp {
         this.planes.push(plane);
         this.renderPlane(plane);
         this.updateObjectsList();
+        this.updateIntersections();
         return plane;
     }
 
@@ -3021,6 +3039,7 @@ class VectoramaApp {
             this.updateVectorThickness();
             this.updateInvariantLineThickness();
             this.updateLineThickness();
+            this.updateIntersections();
             this.lastCameraDistance = distanceToTarget;
         }
     }
@@ -3124,6 +3143,133 @@ class VectoramaApp {
         this.lines.forEach(line => {
             this.renderLine(line);
         });
+    }
+
+    calculateLinePlaneIntersection(line, plane) {
+        // Line: r = point + t * direction
+        // Plane: a*x + b*y + c*z = d
+        
+        const { a, b, c, d } = plane;
+        const { point, direction } = line;
+        
+        // Calculate dot product: n · direction
+        const denominator = a * direction.x + b * direction.y + c * direction.z;
+        
+        // If denominator is 0, line is parallel to plane (no intersection or infinite intersections)
+        if (Math.abs(denominator) < 0.0001) {
+            return null;
+        }
+        
+        // Calculate t: t = (d - n · point) / (n · direction)
+        const numerator = d - (a * point.x + b * point.y + c * point.z);
+        const t = numerator / denominator;
+        
+        // Calculate intersection point
+        const intersection = new THREE.Vector3(
+            point.x + t * direction.x,
+            point.y + t * direction.y,
+            point.z + t * direction.z
+        );
+        
+        return intersection;
+    }
+
+    createIntersectionLabel(point) {
+        // Format coordinates for display
+        const x = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
+        const y = Math.abs(point.y) < 0.01 ? 0 : parseFloat(point.y.toFixed(2));
+        const z = Math.abs(point.z) < 0.01 ? 0 : parseFloat(point.z.toFixed(2));
+        const text = `(${x}, ${y}, ${z})`;
+        
+        // Create canvas for the text
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+        
+        // Clear background
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw text
+        context.fillStyle = '#FFFFFF';
+        context.font = 'bold 60px Arial';
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        context.fillText(text, 10, 64);
+        
+        // Create sprite from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthWrite: false,
+            depthTest: false
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.renderOrder = 1000; // Render on top
+        
+        // Scale based on camera distance
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const scale = distanceToTarget * 0.05;
+        sprite.scale.set(scale * 4, scale, 1);
+        
+        return sprite;
+    }
+
+    updateIntersections() {
+        // Only show intersections in 3D mode
+        if (this.dimension === '2d') {
+            this.clearIntersections();
+            return;
+        }
+        
+        // Clear existing markers
+        this.clearIntersections();
+        
+        // Check all line-plane pairs
+        this.lines.forEach(line => {
+            if (!line.visible) return;
+            
+            this.planes.forEach(plane => {
+                if (!plane.visible) return;
+                
+                const intersection = this.calculateLinePlaneIntersection(line, plane);
+                if (!intersection) return;
+                
+                // Create marker sphere
+                const thickness = this.getArrowThickness();
+                const markerRadius = thickness.headWidth * 0.4;
+                const sphereGeometry = new THREE.SphereGeometry(markerRadius, 16, 16);
+                const sphereMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFFFF00, // Yellow marker
+                    depthWrite: true,
+                    depthTest: true
+                });
+                const marker = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                marker.position.copy(intersection);
+                marker.renderOrder = 2;
+                
+                // Create label
+                const label = this.createIntersectionLabel(intersection);
+                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
+                label.position.copy(intersection);
+                label.position.x += labelOffset;
+                
+                // Store marker and label
+                this.intersectionMarkers.push({ marker, label });
+                this.scene.add(marker);
+                this.scene.add(label);
+            });
+        });
+    }
+
+    clearIntersections() {
+        // Remove all intersection markers from scene
+        this.intersectionMarkers.forEach(({ marker, label }) => {
+            this.scene.remove(marker);
+            this.scene.remove(label);
+        });
+        this.intersectionMarkers = [];
     }
 
     updateNumberLabelScales() {
