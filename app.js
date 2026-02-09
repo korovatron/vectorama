@@ -158,6 +158,7 @@ class VectoramaApp {
         this.vectorDisplayMode = 'points'; // 'vectors', 'points', 'path'
         this.pathLines = []; // Store path visualization lines
         this.intersectionMarkers = []; // Store line-plane intersection markers
+        this.planeIntersectionLines = []; // Store plane-plane intersection lines
         
         // Unique ID counters
         this.nextVectorId = 1;
@@ -3174,6 +3175,57 @@ class VectoramaApp {
         return intersection;
     }
 
+    calculatePlanePlaneIntersection(plane1, plane2) {
+        // Two planes: a1*x + b1*y + c1*z = d1 and a2*x + b2*y + c2*z = d2
+        // Intersection is a line (if planes are not parallel)
+        
+        const n1 = new THREE.Vector3(plane1.a, plane1.b, plane1.c);
+        const n2 = new THREE.Vector3(plane2.a, plane2.b, plane2.c);
+        
+        // Direction of intersection line is cross product of normals
+        const direction = new THREE.Vector3().crossVectors(n1, n2);
+        
+        // If cross product is zero, planes are parallel
+        if (direction.length() < 0.0001) {
+            return null;
+        }
+        
+        direction.normalize();
+        
+        // Find a point on the line by solving the system
+        // We need to find one point that satisfies both plane equations
+        // Use the coordinate with largest component in direction as free variable (set to 0)
+        
+        const absDir = new THREE.Vector3(Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z));
+        let point = new THREE.Vector3();
+        
+        // Choose which coordinate to set to 0 based on direction
+        if (absDir.z >= absDir.x && absDir.z >= absDir.y) {
+            // Set z = 0, solve for x and y
+            const det = plane1.a * plane2.b - plane2.a * plane1.b;
+            if (Math.abs(det) < 0.0001) return null;
+            point.x = (plane1.d * plane2.b - plane2.d * plane1.b) / det;
+            point.y = (plane1.a * plane2.d - plane2.a * plane1.d) / det;
+            point.z = 0;
+        } else if (absDir.y >= absDir.x && absDir.y >= absDir.z) {
+            // Set y = 0, solve for x and z
+            const det = plane1.a * plane2.c - plane2.a * plane1.c;
+            if (Math.abs(det) < 0.0001) return null;
+            point.x = (plane1.d * plane2.c - plane2.d * plane1.c) / det;
+            point.y = 0;
+            point.z = (plane1.a * plane2.d - plane2.a * plane1.d) / det;
+        } else {
+            // Set x = 0, solve for y and z
+            const det = plane1.b * plane2.c - plane2.b * plane1.c;
+            if (Math.abs(det) < 0.0001) return null;
+            point.x = 0;
+            point.y = (plane1.d * plane2.c - plane2.d * plane1.c) / det;
+            point.z = (plane1.b * plane2.d - plane2.b * plane1.d) / det;
+        }
+        
+        return { point, direction };
+    }
+
     createIntersectionLabel(point) {
         // Format coordinates for display
         const x = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
@@ -3212,6 +3264,52 @@ class VectoramaApp {
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
         const scale = distanceToTarget * 0.05;
         sprite.scale.set(scale * 4, scale, 1);
+        
+        return sprite;
+    }
+
+    createLineEquationLabel(point, direction) {
+        // Format line equation: r = (px, py, pz) + t(dx, dy, dz)
+        const px = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
+        const py = Math.abs(point.y) < 0.01 ? 0 : parseFloat(point.y.toFixed(2));
+        const pz = Math.abs(point.z) < 0.01 ? 0 : parseFloat(point.z.toFixed(2));
+        const dx = Math.abs(direction.x) < 0.01 ? 0 : parseFloat(direction.x.toFixed(2));
+        const dy = Math.abs(direction.y) < 0.01 ? 0 : parseFloat(direction.y.toFixed(2));
+        const dz = Math.abs(direction.z) < 0.01 ? 0 : parseFloat(direction.z.toFixed(2));
+        
+        const text = `r = (${px}, ${py}, ${pz}) + t(${dx}, ${dy}, ${dz})`;
+        
+        // Create canvas for the text
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+        
+        // Clear background
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw text
+        context.fillStyle = '#00FFFF'; // Cyan for plane intersection lines
+        context.font = 'bold 50px Arial';
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        context.fillText(text, 10, 64);
+        
+        // Create sprite from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthWrite: false,
+            depthTest: false
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.renderOrder = 1000; // Render on top
+        
+        // Scale based on camera distance
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const scale = distanceToTarget * 0.05;
+        sprite.scale.set(scale * 8, scale, 1);
         
         return sprite;
     }
@@ -3261,6 +3359,87 @@ class VectoramaApp {
                 this.scene.add(label);
             });
         });
+        
+        // Check all plane-plane pairs
+        for (let i = 0; i < this.planes.length; i++) {
+            const plane1 = this.planes[i];
+            if (!plane1.visible) continue;
+            
+            for (let j = i + 1; j < this.planes.length; j++) {
+                const plane2 = this.planes[j];
+                if (!plane2.visible) continue;
+                
+                const intersectionLine = this.calculatePlanePlaneIntersection(plane1, plane2);
+                if (!intersectionLine) continue;
+                
+                // Render the intersection line
+                const { point, direction } = intersectionLine;
+                const tMin = -100;
+                const tMax = 100;
+                
+                const start = new THREE.Vector3(
+                    point.x + tMin * direction.x,
+                    point.y + tMin * direction.y,
+                    point.z + tMin * direction.z
+                );
+                
+                const end = new THREE.Vector3(
+                    point.x + tMax * direction.x,
+                    point.y + tMax * direction.y,
+                    point.z + tMax * direction.z
+                );
+                
+                // Use cylinder for the line
+                const thickness = this.getArrowThickness();
+                const lineRadius = thickness.headWidth * 0.3; // Thicker than regular lines
+                const radialSegments = 16;
+                
+                const dir = new THREE.Vector3().subVectors(end, start);
+                const length = dir.length();
+                dir.normalize();
+                
+                const geometry = new THREE.CylinderGeometry(
+                    lineRadius,
+                    lineRadius,
+                    length,
+                    radialSegments,
+                    1,
+                    false
+                );
+                
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0x00FFFF, // Cyan for plane intersections
+                    depthWrite: true,
+                    depthTest: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const lineMesh = new THREE.Mesh(geometry, material);
+                
+                // Position at midpoint
+                const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                lineMesh.position.copy(midpoint);
+                
+                // Orient along direction
+                const axis = new THREE.Vector3(0, 1, 0);
+                const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, dir);
+                lineMesh.quaternion.copy(quaternion);
+                
+                lineMesh.renderOrder = 2;
+                
+                // Create equation label
+                const label = this.createLineEquationLabel(point, direction);
+                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.2;
+                label.position.copy(midpoint);
+                label.position.y += labelOffset;
+                
+                // Store line and label
+                this.planeIntersectionLines.push({ line: lineMesh, label });
+                this.scene.add(lineMesh);
+                this.scene.add(label);
+            }
+        }
     }
 
     clearIntersections() {
@@ -3270,6 +3449,13 @@ class VectoramaApp {
             this.scene.remove(label);
         });
         this.intersectionMarkers = [];
+        
+        // Remove all plane intersection lines
+        this.planeIntersectionLines.forEach(({ line, label }) => {
+            this.scene.remove(line);
+            this.scene.remove(label);
+        });
+        this.planeIntersectionLines = [];
     }
 
     updateNumberLabelScales() {
