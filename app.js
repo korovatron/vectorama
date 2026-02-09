@@ -3363,53 +3363,49 @@ class VectoramaApp {
     }
 
     updateIntersections() {
-        // Only show intersections in 3D mode
-        if (this.dimension === '2d') {
-            this.clearIntersections();
-            return;
-        }
-        
         // Clear existing markers
         this.clearIntersections();
         
-        // Check all line-plane pairs
-        this.lines.forEach(line => {
-            if (!line.visible) return;
-            
-            this.planes.forEach(plane => {
-                if (!plane.visible) return;
+        // Check all line-plane pairs (3D only)
+        if (this.dimension === '3d') {
+            this.lines.forEach(line => {
+                if (!line.visible) return;
                 
-                const intersection = this.calculateLinePlaneIntersection(line, plane);
-                if (!intersection) return;
-                
-                // Create marker sphere
-                const thickness = this.getArrowThickness();
-                const markerRadius = thickness.headWidth * 0.4;
-                const sphereGeometry = new THREE.SphereGeometry(markerRadius, 16, 16);
-                const sphereMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xFFFF00, // Yellow marker
-                    depthWrite: true,
-                    depthTest: true
+                this.planes.forEach(plane => {
+                    if (!plane.visible) return;
+                    
+                    const intersection = this.calculateLinePlaneIntersection(line, plane);
+                    if (!intersection) return;
+                    
+                    // Create marker sphere
+                    const thickness = this.getArrowThickness();
+                    const markerRadius = thickness.headWidth * 0.4;
+                    const sphereGeometry = new THREE.SphereGeometry(markerRadius, 16, 16);
+                    const sphereMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xFFFF00, // Yellow marker
+                        depthWrite: true,
+                        depthTest: true
+                    });
+                    const marker = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    marker.position.copy(intersection);
+                    marker.renderOrder = 2;
+                    
+                    // Create label
+                    const label = this.createIntersectionLabel(intersection);
+                    const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
+                    label.position.copy(intersection);
+                    label.position.x += labelOffset;
+                    
+                    // Store marker and label
+                    this.intersectionMarkers.push({ marker, label });
+                    this.scene.add(marker);
+                    this.scene.add(label);
                 });
-                const marker = new THREE.Mesh(sphereGeometry, sphereMaterial);
-                marker.position.copy(intersection);
-                marker.renderOrder = 2;
-                
-                // Create label
-                const label = this.createIntersectionLabel(intersection);
-                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
-                label.position.copy(intersection);
-                label.position.x += labelOffset;
-                
-                // Store marker and label
-                this.intersectionMarkers.push({ marker, label });
-                this.scene.add(marker);
-                this.scene.add(label);
             });
-        });
+        }
         
-        // Check all plane-plane pairs
-        for (let i = 0; i < this.planes.length; i++) {
+        // Check all plane-plane pairs (3D only)
+        if (this.dimension === '3d') {
             const plane1 = this.planes[i];
             if (!plane1.visible) continue;
             
@@ -3504,8 +3500,9 @@ class VectoramaApp {
                 this.scene.add(label);
             }
         }
+        }
         
-        // Check all line-line pairs
+        // Check all line-line pairs (works in both 2D and 3D)
         for (let i = 0; i < this.lines.length; i++) {
             const line1 = this.lines[i];
             if (!line1.visible) continue;
