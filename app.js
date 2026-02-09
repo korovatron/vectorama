@@ -2021,21 +2021,7 @@ class VectoramaApp {
         planeInfo.className = 'vector-coordinates';
         planeInfo.style.display = 'flex';
         planeInfo.style.flexDirection = 'column';
-        planeInfo.style.gap = '4px';
-        
-        const nameSpan = document.createElement('span');
-        nameSpan.style.fontWeight = 'bold';
-        nameSpan.style.fontSize = '0.85em';
-        nameSpan.style.marginBottom = '2px';
-        nameSpan.textContent = plane.name;
-        planeInfo.appendChild(nameSpan);
-        
-        // Equation structure
-        const eqContainer = document.createElement('div');
-        eqContainer.style.display = 'flex';
-        eqContainer.style.flexWrap = 'wrap';
-        eqContainer.style.gap = '4px';
-        eqContainer.style.alignItems = 'center';
+        planeInfo.style.gap = '3px';
         
         const formatNum = (val) => {
             if (Math.abs(val) < 0.001) return '0';
@@ -2044,7 +2030,21 @@ class VectoramaApp {
             return val.toFixed(2);
         };
         
-        // Coefficient a (for x)
+        // Header: P1
+        const nameSpan = document.createElement('span');
+        nameSpan.style.fontWeight = 'bold';
+        nameSpan.style.fontSize = '0.85em';
+        nameSpan.style.marginBottom = '2px';
+        nameSpan.textContent = plane.name;
+        planeInfo.appendChild(nameSpan);
+        
+        // Row 1: [a]x + [b]y +
+        const row1 = document.createElement('div');
+        row1.style.display = 'flex';
+        row1.style.gap = '4px';
+        row1.style.alignItems = 'center';
+        
+        // Coefficient a
         const aInput = document.createElement('input');
         aInput.type = 'number';
         aInput.step = '0.1';
@@ -2054,15 +2054,14 @@ class VectoramaApp {
             plane.a = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        eqContainer.appendChild(aInput);
+        row1.appendChild(aInput);
         
         const xLabel = document.createElement('span');
         xLabel.textContent = 'x +';
         xLabel.style.fontSize = '0.85em';
-        xLabel.style.margin = '0 2px';
-        eqContainer.appendChild(xLabel);
+        row1.appendChild(xLabel);
         
-        // Coefficient b (for y)
+        // Coefficient b
         const bInput = document.createElement('input');
         bInput.type = 'number';
         bInput.step = '0.1';
@@ -2072,15 +2071,22 @@ class VectoramaApp {
             plane.b = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        eqContainer.appendChild(bInput);
+        row1.appendChild(bInput);
         
         const yLabel = document.createElement('span');
         yLabel.textContent = 'y +';
         yLabel.style.fontSize = '0.85em';
-        yLabel.style.margin = '0 2px';
-        eqContainer.appendChild(yLabel);
+        row1.appendChild(yLabel);
         
-        // Coefficient c (for z)
+        planeInfo.appendChild(row1);
+        
+        // Row 2: [c]z = [d]
+        const row2 = document.createElement('div');
+        row2.style.display = 'flex';
+        row2.style.gap = '4px';
+        row2.style.alignItems = 'center';
+        
+        // Coefficient c
         const cInput = document.createElement('input');
         cInput.type = 'number';
         cInput.step = '0.1';
@@ -2090,13 +2096,12 @@ class VectoramaApp {
             plane.c = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        eqContainer.appendChild(cInput);
+        row2.appendChild(cInput);
         
         const zLabel = document.createElement('span');
         zLabel.textContent = 'z =';
         zLabel.style.fontSize = '0.85em';
-        zLabel.style.margin = '0 2px';
-        eqContainer.appendChild(zLabel);
+        row2.appendChild(zLabel);
         
         // Constant d
         const dInput = document.createElement('input');
@@ -2108,9 +2113,9 @@ class VectoramaApp {
             plane.d = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        eqContainer.appendChild(dInput);
+        row2.appendChild(dInput);
         
-        planeInfo.appendChild(eqContainer);
+        planeInfo.appendChild(row2);
         mainRow.appendChild(planeInfo);
 
         // Controls
