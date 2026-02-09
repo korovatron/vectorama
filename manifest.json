@@ -1,6 +1,6 @@
 {
   "id": "vectorama-matrix-visualiser",
-  "name": "Vectorama - Matrix & Vector Visualiser",
+  "name": "Vectorama",
   "short_name": "Vectorama",
   "description": "Interactive vector mathematics and matrix transformation visualizer in 2D and 3D",
   "start_url": "./index.html",
