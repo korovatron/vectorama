@@ -1737,7 +1737,8 @@ class VectoramaApp {
                 const input = document.createElement('input');
                 input.type = 'number';
                 input.step = '0.1';
-                input.value = matrix.values[row][col].toFixed(2);
+                const val = matrix.values[row][col];
+                input.value = Math.abs(val) < 0.001 ? '0' : (val % 1 === 0 ? val.toString() : val.toFixed(2));
                 input.setAttribute('data-row', row);
                 input.setAttribute('data-col', col);
                 input.addEventListener('input', (e) => {
@@ -1801,8 +1802,10 @@ class VectoramaApp {
         // Create input for x (i component)
         const xDiv = document.createElement('div');
         xDiv.className = 'vector-coord-input';
+        const xVal = vec.currentEnd.x;
+        const xFormatted = Math.abs(xVal) < 0.001 ? '0' : (xVal % 1 === 0 ? xVal.toString() : xVal.toFixed(2));
         xDiv.innerHTML = `
-            <input type="number" step="0.1" value="${vec.currentEnd.x.toFixed(2)}" data-axis="x">
+            <input type="number" step="0.1" value="${xFormatted}" data-axis="x">
             <label>i</label>
         `;
         coordsDiv.appendChild(xDiv);
@@ -1810,8 +1813,10 @@ class VectoramaApp {
         // Create input for y (j component)
         const yDiv = document.createElement('div');
         yDiv.className = 'vector-coord-input';
+        const yVal = vec.currentEnd.y;
+        const yFormatted = Math.abs(yVal) < 0.001 ? '0' : (yVal % 1 === 0 ? yVal.toString() : yVal.toFixed(2));
         yDiv.innerHTML = `
-            <input type="number" step="0.1" value="${vec.currentEnd.y.toFixed(2)}" data-axis="y">
+            <input type="number" step="0.1" value="${yFormatted}" data-axis="y">
             <label>j</label>
         `;
         coordsDiv.appendChild(yDiv);
@@ -1820,8 +1825,10 @@ class VectoramaApp {
         if (this.dimension === '3d') {
             const zDiv = document.createElement('div');
             zDiv.className = 'vector-coord-input';
+            const zVal = vec.currentEnd.z;
+            const zFormatted = Math.abs(zVal) < 0.001 ? '0' : (zVal % 1 === 0 ? zVal.toString() : zVal.toFixed(2));
             zDiv.innerHTML = `
-                <input type="number" step="0.1" value="${vec.currentEnd.z.toFixed(2)}" data-axis="z">
+                <input type="number" step="0.1" value="${zFormatted}" data-axis="z">
                 <label>k</label>
             `;
             coordsDiv.appendChild(zDiv);
@@ -2733,7 +2740,8 @@ class VectoramaApp {
         if (this.isAnimating) return; // Don't update during animation
         
         const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15;
+        const lineRadiusMultiplier = this.dimension === '2d' ? 1.8 : 2.5;
+        const lineRadius = thickness.headWidth * 0.15 * lineRadiusMultiplier;
         const lineLength = 200;
         
         this.invariantLines.forEach(lineObj => {
@@ -2770,6 +2778,9 @@ class VectoramaApp {
             const yAxis = new THREE.Vector3(0, 1, 0);
             quaternion.setFromUnitVectors(yAxis, direction);
             cylinder.quaternion.copy(quaternion);
+            
+            // Ensure invariant lines render on top of axes when overlapping
+            cylinder.renderOrder = 1;
             
             this.scene.add(cylinder);
             
@@ -3446,34 +3457,34 @@ class VectoramaApp {
     visualizeInvariantSpaces2D(matrix) {
         const eigendata = this.computeEigenvalues2D(matrix);
         
-        // Get same thickness as axes
+        // Get same thickness as axes, but make invariant lines slightly thicker for visibility
         const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15;
+        const lineRadius = thickness.headWidth * 0.15 * 1.8; // 1.8x thicker than axes
         
         eigendata.forEach((eigen, index) => {
             const direction = new THREE.Vector3(eigen.vector.x, eigen.vector.y, 0).normalize();
             
-            // Create line using cylinder geometry matching axis thickness
+            // Create line using cylinder geometry, thicker than axes
             const lineLength = 200; // Very long line
             
             const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
             
             let material;
             if (this.invariantDisplayMode === 'solid') {
-                // Use dashed texture for solid mode
+                // Use dashed texture for solid mode with higher opacity
                 const texture = this.createDashedTexture();
                 material = new THREE.MeshBasicMaterial({
                     map: texture,
                     transparent: true,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     depthTest: false
                 });
             } else {
-                // Use plain color for pulse mode
+                // Use bright magenta for pulse mode with higher opacity
                 material = new THREE.MeshBasicMaterial({
                     color: 0xff00ff,
                     transparent: true,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     depthTest: false
                 });
             }
@@ -3486,6 +3497,9 @@ class VectoramaApp {
             const yAxis = new THREE.Vector3(0, 1, 0);
             quaternion.setFromUnitVectors(yAxis, direction);
             cylinder.quaternion.copy(quaternion);
+            
+            // Ensure invariant lines render on top of axes when overlapping
+            cylinder.renderOrder = 1;
             
             this.scene.add(cylinder);
             
@@ -3501,35 +3515,35 @@ class VectoramaApp {
     visualizeInvariantSpaces3D(matrix) {
         const eigendata = this.computeEigenvalues3D(matrix);
         
-        // Get same thickness as axes
+        // Get same thickness as axes, but make invariant lines thicker for visibility
         const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15;
+        const lineRadius = thickness.headWidth * 0.15 * 2.5; // 2.5x thicker than axes
         
         eigendata.forEach((eigen, index) => {
             const direction = eigen.vector.clone().normalize();
             
-            // Create line using cylinder geometry matching axis thickness
+            // Create line using cylinder geometry, thicker than axes
             const lineLength = 200; // Very long line
             
             const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
             
             let material;
             if (this.invariantDisplayMode === 'solid') {
-                // Use dashed texture for solid mode
+                // Use dashed texture for solid mode with higher opacity
                 const texture = this.createDashedTexture();
                 material = new THREE.MeshBasicMaterial({
                     map: texture,
                     transparent: true,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     depthTest: true,
                     depthWrite: false
                 });
             } else {
-                // Use plain color for pulse mode
+                // Use bright magenta for pulse mode with higher opacity
                 material = new THREE.MeshBasicMaterial({
                     color: 0xff00ff,
                     transparent: true,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     depthTest: true,
                     depthWrite: false
                 });
@@ -3542,6 +3556,9 @@ class VectoramaApp {
             const yAxis = new THREE.Vector3(0, 1, 0);
             quaternion.setFromUnitVectors(yAxis, direction);
             cylinder.quaternion.copy(quaternion);
+            
+            // Ensure invariant lines render on top of axes when overlapping
+            cylinder.renderOrder = 1;
             
             this.scene.add(cylinder);
             

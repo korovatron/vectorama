@@ -637,6 +637,17 @@ body {
     filter: brightness(1.15);
 }
 
+/* Hide number input spinners */
+.matrix-grid input::-webkit-outer-spin-button,
+.matrix-grid input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.matrix-grid input[type=number] {
+    -moz-appearance: textfield;
+}
+
 /* Presets */
 .presets {
     margin-bottom: 20px;
@@ -722,6 +733,17 @@ body {
     outline: none;
     border-color: var(--accent-color);
     filter: brightness(1.15);
+}
+
+/* Hide number input spinners */
+.coord-input input::-webkit-outer-spin-button,
+.coord-input input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.coord-input input[type=number] {
+    -moz-appearance: textfield;
 }
 
 #geometry-list {
@@ -1071,6 +1093,17 @@ body {
 .vector-coord-input input:focus {
     border-color: var(--accent-color);
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+/* Hide number input spinners */
+.vector-coord-input input::-webkit-outer-spin-button,
+.vector-coord-input input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.vector-coord-input input[type=number] {
+    -moz-appearance: textfield;
 }
 
 /* Canvas Container */
