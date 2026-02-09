@@ -2381,55 +2381,17 @@ class VectoramaApp {
             this.vectors.forEach(vec => {
                 const original = vec.originalEnd.clone();
                 
-                // Apply fractional transformation by decomposing and interpolating
-                let current;
+                // Use linear interpolation for all transformations
+                const identityMatrix = new THREE.Matrix3().identity();
+                const interpolatedMatrix = new THREE.Matrix3();
                 
-                if (this.dimension === '2d') {
-                    // For 2D, decompose into rotation, scale, and shear for proper interpolation
-                    const a = selectedMatrix.values[0][0];
-                    const b = selectedMatrix.values[0][1];
-                    const c = selectedMatrix.values[1][0];
-                    const d = selectedMatrix.values[1][1];
-                    
-                    // Decompose using polar decomposition
-                    // Extract rotation angle
-                    const angle = Math.atan2(c, a);
-                    
-                    // Extract scale
-                    const sx = Math.sqrt(a * a + c * c);
-                    const sy = (a * d - b * c) / sx; // determinant / sx
-                    
-                    // Interpolate components
-                    const interpAngle = angle * eased;
-                    const interpSx = 1 + (sx - 1) * eased;
-                    const interpSy = 1 + (sy - 1) * eased;
-                    
-                    // Reconstruct matrix
-                    const cos = Math.cos(interpAngle);
-                    const sin = Math.sin(interpAngle);
-                    
-                    const interpMatrix = new THREE.Matrix3();
-                    interpMatrix.set(
-                        interpSx * cos, interpSx * sin, 0,
-                        interpSy * -sin, interpSy * cos, 0,
-                        0, 0, 1
-                    );
-                    
-                    current = original.clone().applyMatrix3(interpMatrix);
-                } else {
-                    // For 3D, use simpler linear interpolation of matrix elements
-                    // (proper 3D rotation interpolation would require quaternions)
-                    const identityMatrix = new THREE.Matrix3().identity();
-                    const interpolatedMatrix = new THREE.Matrix3();
-                    
-                    for (let i = 0; i < 9; i++) {
-                        interpolatedMatrix.elements[i] = 
-                            identityMatrix.elements[i] * (1 - eased) + 
-                            matrix.elements[i] * eased;
-                    }
-                    
-                    current = original.clone().applyMatrix3(interpolatedMatrix);
+                for (let i = 0; i < 9; i++) {
+                    interpolatedMatrix.elements[i] = 
+                        identityMatrix.elements[i] * (1 - eased) + 
+                        matrix.elements[i] * eased;
                 }
+                
+                const current = original.clone().applyMatrix3(interpolatedMatrix);
                 
                 vec.currentEnd.copy(current);
 
