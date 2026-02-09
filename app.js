@@ -127,6 +127,7 @@ class VectoramaApp {
         this.usedMatrixLetters = this.usedMatrixLetters2D;
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.colorIndex = this.colorIndex2D;
+        this.eigenvaluePanelMatrixId = null; // Track which matrix's info is showing in eigenvalue panel
         
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -899,9 +900,6 @@ class VectoramaApp {
         // Second button row - Grid toggle
         document.getElementById('grid-toggle-btn').addEventListener('click', () => this.toggleGrid());
         
-        // Second button row - Invariant toggle
-        document.getElementById('invariant-toggle-btn').addEventListener('click', () => this.toggleInvariant());
-        
         // Second button row - Dimension toggle
         document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
         
@@ -1145,8 +1143,13 @@ class VectoramaApp {
         
         // Update objects list
         this.updateObjectsList();
+        
+        // Reset eigenvalue panel and invariant spaces when switching dimensions
+        this.eigenvaluePanelMatrixId = null;
+        this.invariantDisplayMode = 'off';
         this.clearInvariantSpaces();
         this.visualizeInvariantSpaces();
+        this.updateEigenvaluePanel();
         this.updateIntersections();
     }
 
@@ -1184,38 +1187,6 @@ class VectoramaApp {
         }
     }
     
-    toggleInvariant() {
-        // Cycle through: pulse -> solid -> off -> pulse
-        if (this.invariantDisplayMode === 'pulse') {
-            this.invariantDisplayMode = 'solid';
-        } else if (this.invariantDisplayMode === 'solid') {
-            this.invariantDisplayMode = 'off';
-        } else {
-            this.invariantDisplayMode = 'pulse';
-        }
-        
-        // Update button active states
-        const invOff = document.getElementById('inv-off');
-        const invPulse = document.getElementById('inv-pulse');
-        const invSolid = document.getElementById('inv-solid');
-        if (invOff && invPulse && invSolid) {
-            invOff.classList.remove('inv-active');
-            invPulse.classList.remove('inv-active');
-            invSolid.classList.remove('inv-active');
-            
-            if (this.invariantDisplayMode === 'off') {
-                invOff.classList.add('inv-active');
-            } else if (this.invariantDisplayMode === 'pulse') {
-                invPulse.classList.add('inv-active');
-            } else if (this.invariantDisplayMode === 'solid') {
-                invSolid.classList.add('inv-active');
-            }
-        }
-        
-        // Re-visualize to apply the new mode
-        this.visualizeInvariantSpaces();
-    }
-    
     toggleDimension() {
         // Toggle between 2D and 3D
         const newDimension = this.dimension === '2d' ? '3d' : '2d';
@@ -1251,9 +1222,11 @@ class VectoramaApp {
         this.updateVectorDisplay();
     }
 
-    getTransformationMatrix() {
-        // Use the selected matrix, or return identity if none selected
-        if (!this.selectedMatrixId) {
+    getTransformationMatrix(matrixId = null) {
+        // Use the provided matrix ID, or fall back to selected matrix
+        const targetId = matrixId || this.selectedMatrixId;
+        
+        if (!targetId) {
             // Return identity matrix
             if (this.dimension === '2d') {
                 return new THREE.Matrix3().set(
@@ -1270,7 +1243,7 @@ class VectoramaApp {
             }
         }
         
-        const matrix = this.matrices.find(m => m.id === this.selectedMatrixId);
+        const matrix = this.matrices.find(m => m.id === targetId);
         if (!matrix) {
             // Return identity if matrix not found
             if (this.dimension === '2d') {
@@ -1600,25 +1573,6 @@ class VectoramaApp {
         const container = document.getElementById('objects-container');
         container.innerHTML = '';
 
-        // Add Apply Transformation button if matrices exist
-        const animateBtn = document.createElement('button');
-        animateBtn.id = 'animate-btn';
-        animateBtn.className = 'apply-transformation-btn';
-        animateBtn.title = 'Apply Transformation';
-        if (this.matrices.length > 0) {
-            animateBtn.style.display = 'flex';
-        } else {
-            animateBtn.style.display = 'none';
-        }
-        animateBtn.innerHTML = `
-            <svg width="12" height="14" viewBox="0 0 12 14" style="margin-right: 8px;">
-                <polygon points="0,0 0,14 12,7" fill="currentColor" />
-            </svg>
-            APPLY TRANSFORMATION
-        `;
-        animateBtn.addEventListener('click', () => this.animateTransformation());
-        container.appendChild(animateBtn);
-
         // Render matrices first
         this.matrices.forEach(matrix => {
             this.renderMatrixItem(container, matrix);
@@ -1644,8 +1598,7 @@ class VectoramaApp {
     
     renderMatrixItem(container, matrix) {
         const item = document.createElement('div');
-        const isActive = this.selectedMatrixId === matrix.id;
-        item.className = isActive ? 'matrix-item' : 'matrix-item disabled';
+        item.className = 'matrix-item';
         item.style.borderLeftColor = matrix.color.getStyle();
         item.setAttribute('data-matrix-id', matrix.id);
 
@@ -1709,14 +1662,21 @@ class VectoramaApp {
         const controls = document.createElement('div');
         controls.className = 'matrix-controls';
         
-        // Active indicator (toggles active state)
-        const activeIndicator = document.createElement('div');
-        activeIndicator.className = 'color-indicator';
-        activeIndicator.style.backgroundColor = isActive ? matrix.color.getStyle() : 'transparent';
-        activeIndicator.title = `Click to ${isActive ? 'deactivate' : 'activate'} matrix`;
-        activeIndicator.style.cursor = 'pointer';
-        activeIndicator.addEventListener('click', () => this.toggleMatrixActive(matrix.id));
-        controls.appendChild(activeIndicator);
+        // Apply transformation button (play icon)
+        const applyBtn = document.createElement('button');
+        applyBtn.className = 'matrix-apply-btn';
+        applyBtn.title = 'Apply transformation to all vectors';
+        applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
+        applyBtn.addEventListener('click', () => this.applyMatrix(matrix.id));
+        controls.appendChild(applyBtn);
+        
+        // Info button (i icon)
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'matrix-info-btn';
+        infoBtn.title = 'Show eigenvalue information';
+        infoBtn.textContent = 'i';
+        infoBtn.addEventListener('click', () => this.showMatrixInfo(matrix.id));
+        controls.appendChild(infoBtn);
         
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -2284,29 +2244,31 @@ class VectoramaApp {
         }
     }
 
-    toggleMatrixActive(id) {
-        // Radio button behavior: activate this one, deactivate all others
-        if (this.selectedMatrixId === id) {
-            // Already active, deactivate it
-            this.selectedMatrixId = null;
-        } else {
-            // Activate this matrix
-            this.selectedMatrixId = id;
-        }
-        
-        // Update dimension-specific storage
-        if (this.dimension === '2d') {
-            this.selectedMatrixId2D = this.selectedMatrixId;
-        } else {
-            this.selectedMatrixId3D = this.selectedMatrixId;
-        }
-        
-        // Update invariant spaces visualization
-        this.visualizeInvariantSpaces();
-        
-        // Update the list to reflect the change
-        this.updateObjectsList();
+    applyMatrix(id) {
+        // Apply this matrix transformation to all vectors
+        this.animateTransformation(id);
     }
+
+    showMatrixInfo(id) {
+        // Toggle eigenvalue panel for this matrix
+        if (this.eigenvaluePanelMatrixId === id) {
+            // Already showing this matrix, hide panel
+            this.eigenvaluePanelMatrixId = null;
+            // Reset invariant spaces to off when closing panel
+            this.invariantDisplayMode = 'off';
+            this.clearInvariantSpaces();
+        } else {
+            // Show panel for this matrix
+            // Reset invariant spaces to off when switching matrices
+            this.invariantDisplayMode = 'off';
+            this.clearInvariantSpaces();
+            this.eigenvaluePanelMatrixId = id;
+        }
+        
+        // Update the eigenvalue panel
+        this.updateEigenvaluePanel();
+    }
+
 
     clearVectors() {
         this.vectors.forEach(vec => {
@@ -2670,7 +2632,7 @@ class VectoramaApp {
         return this.matrices.find(m => m.id === id);
     }
 
-    animateTransformation() {
+    animateTransformation(matrixId = null) {
         if (this.isAnimating || this.vectors.length === 0) return;
         
         // Auto-close panel on mobile/narrow screens to see the animation
@@ -2692,15 +2654,16 @@ class VectoramaApp {
         // Clear any existing visualizations before starting
         this.updateVectorDisplay();
         
-        // Get selected matrix
-        if (!this.selectedMatrixId) {
-            alert('Please add a matrix and activate it by clicking the purple indicator');
+        // Get matrix to apply
+        const targetMatrixId = matrixId || this.selectedMatrixId;
+        if (!targetMatrixId) {
+            alert('Please specify a matrix to apply');
             return;
         }
         
-        const selectedMatrix = this.getMatrixById(this.selectedMatrixId);
+        const selectedMatrix = this.getMatrixById(targetMatrixId);
         if (!selectedMatrix) {
-            alert('Selected matrix not found');
+            alert('Matrix not found');
             return;
         }
         
@@ -4166,23 +4129,23 @@ class VectoramaApp {
         this.invariantPlanes = [];
     }
 
-    visualizeInvariantSpaces() {
+    visualizeInvariantSpaces(matrixId = null) {
         // Clear existing invariant spaces
         this.clearInvariantSpaces();
         
         // Only show invariant spaces when not off
         if (this.invariantDisplayMode === 'off') {
             // Also update eigenvalue panel (it handles hiding itself if needed)
-            this.updateEigenvaluePanel();
+            this.updateEigenvaluePanel(matrixId);
             return;
         }
         
-        const matrix = this.getTransformationMatrix();
+        const matrix = this.getTransformationMatrix(matrixId);
         
         // Check if matrix is a scalar multiple of identity (entire space is invariant)
         // In this case, don't show any specific invariant lines/planes
         if (this.isIdentityLike(matrix)) {
-            this.updateEigenvaluePanel();
+            this.updateEigenvaluePanel(matrixId);
             return;
         }
         
@@ -4193,7 +4156,7 @@ class VectoramaApp {
         }
         
         // Update eigenvalue info panel
-        this.updateEigenvaluePanel();
+        this.updateEigenvaluePanel(matrixId);
     }
     
     isIdentityLike(matrix) {
@@ -4473,22 +4436,25 @@ class VectoramaApp {
         });
     }
 
-    updateEigenvaluePanel() {
+    updateEigenvaluePanel(matrixId = null) {
         const panel = document.getElementById('eigenvalue-panel');
         const valuesDiv = document.getElementById('eigenvalue-values');
         const headerSpan = panel.querySelector('.eigenvalue-header span');
         
-        // Hide panel if no matrix is selected
-        if (!this.selectedMatrixId) {
+        // Use provided matrix ID or fall back to eigenvaluePanelMatrixId
+        const targetId = matrixId || this.eigenvaluePanelMatrixId;
+        
+        // Hide panel if no matrix is specified
+        if (!targetId) {
             panel.style.display = 'none';
             return;
         }
         
-        // Get the selected matrix object to extract its name
-        const selectedMatrix = this.matrices.find(m => m.id === this.selectedMatrixId);
+        // Get the matrix object to extract its name
+        const selectedMatrix = this.matrices.find(m => m.id === targetId);
         const matrixName = selectedMatrix ? selectedMatrix.name : '';
         
-        const matrix = this.getTransformationMatrix();
+        const matrix = this.getTransformationMatrix(targetId);
         
         // Compute eigenvalues based on dimension
         let eigendata;
@@ -4586,6 +4552,80 @@ class VectoramaApp {
             vecDiv.appendChild(vecValueDiv);
             valuesDiv.appendChild(vecDiv);
         });
+        
+        // Add separator and invariant spaces controls
+        const invariantSeparator = document.createElement('div');
+        invariantSeparator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        invariantSeparator.style.margin = '12px 0 8px 0';
+        valuesDiv.appendChild(invariantSeparator);
+        
+        // Invariant spaces header
+        const invariantHeader = document.createElement('div');
+        invariantHeader.className = 'eigenvalue-row eigenvalue-header';
+        invariantHeader.innerHTML = '<span>Show invariant spaces</span>';
+        invariantHeader.style.marginTop = '0';
+        invariantHeader.style.paddingTop = '0';
+        invariantHeader.style.borderBottom = 'none';
+        invariantHeader.style.paddingBottom = '6px';
+        valuesDiv.appendChild(invariantHeader);
+        
+        // Invariant display mode radio buttons
+        const invariantControls = document.createElement('div');
+        invariantControls.style.display = 'flex';
+        invariantControls.style.gap = '8px';
+        invariantControls.style.justifyContent = 'center';
+        invariantControls.style.padding = '4px 0';
+        
+        const modes = [
+            { value: 'off', label: 'Off' },
+            { value: 'pulse', label: 'Pulse' },
+            { value: 'solid', label: 'Solid' }
+        ];
+        
+        modes.forEach(mode => {
+            const btn = document.createElement('button');
+            btn.className = 'invariant-mode-btn';
+            btn.textContent = mode.label;
+            btn.style.padding = '4px 12px';
+            btn.style.fontSize = '11px';
+            btn.style.cursor = 'pointer';
+            btn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+            btn.style.borderRadius = '4px';
+            btn.style.background = this.invariantDisplayMode === mode.value ? 'rgba(100, 181, 246, 0.3)' : 'rgba(255, 255, 255, 0.05)';
+            btn.style.color = this.invariantDisplayMode === mode.value ? '#64B5F6' : 'rgba(255, 255, 255, 0.7)';
+            btn.style.transition = 'all 0.2s ease';
+            
+            btn.addEventListener('click', () => {
+                this.invariantDisplayMode = mode.value;
+                this.visualizeInvariantSpaces(targetId);
+                // Update button styles
+                invariantControls.querySelectorAll('.invariant-mode-btn').forEach((b, i) => {
+                    if (modes[i].value === mode.value) {
+                        b.style.background = 'rgba(100, 181, 246, 0.3)';
+                        b.style.color = '#64B5F6';
+                    } else {
+                        b.style.background = 'rgba(255, 255, 255, 0.05)';
+                        b.style.color = 'rgba(255, 255, 255, 0.7)';
+                    }
+                });
+            });
+            
+            btn.addEventListener('mouseenter', () => {
+                if (this.invariantDisplayMode !== mode.value) {
+                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
+                }
+            });
+            
+            btn.addEventListener('mouseleave', () => {
+                if (this.invariantDisplayMode !== mode.value) {
+                    btn.style.background = 'rgba(255, 255, 255, 0.05)';
+                }
+            });
+            
+            invariantControls.appendChild(btn);
+        });
+        
+        valuesDiv.appendChild(invariantControls);
     }
 
     animate() {

@@ -940,6 +940,50 @@ body {
     transform: scale(1.1);
 }
 
+.matrix-item .matrix-apply-btn,
+.matrix-item .matrix-info-btn {
+    width: 20px;
+    height: 20px;
+    background: #2A3F5A;
+    border: 1px solid #555;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.matrix-item .matrix-apply-btn:hover,
+.matrix-item .matrix-info-btn:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.matrix-item .matrix-apply-btn {
+    color: #4CAF50;
+}
+
+.matrix-item .matrix-apply-btn:active {
+    background: #4CAF50;
+    color: white;
+}
+
+.matrix-item .matrix-info-btn {
+    font-size: 11px;
+    font-weight: bold;
+    font-style: italic;
+    color: #64B5F6;
+}
+
+.matrix-item .matrix-info-btn:active {
+    background: #64B5F6;
+    color: white;
+}
+
 .matrix-item .remove-btn {
     width: 20px;
     height: 20px;
@@ -1174,7 +1218,7 @@ body {
     font-size: 14px;
     color: var(--text-primary);
     z-index: 100;
-    pointer-events: none;
+    pointer-events: auto;
     user-select: none;
 }
 
