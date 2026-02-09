@@ -3020,6 +3020,7 @@ class VectoramaApp {
             // Also update vector thickness when camera distance changes
             this.updateVectorThickness();
             this.updateInvariantLineThickness();
+            this.updateLineThickness();
             this.lastCameraDistance = distanceToTarget;
         }
     }
@@ -3113,6 +3114,15 @@ class VectoramaApp {
             
             // Update the reference
             lineObj.mesh = cylinder;
+        });
+    }
+
+    updateLineThickness() {
+        // Recreate all user-created lines with updated thickness based on current camera distance
+        if (this.isAnimating) return; // Don't update during animation
+        
+        this.lines.forEach(line => {
+            this.renderLine(line);
         });
     }
 
