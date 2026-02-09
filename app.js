@@ -200,7 +200,7 @@ class VectoramaApp {
         this.canvas = document.getElementById('three-canvas');
         const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
         this.camera = new THREE.PerspectiveCamera(75, aspect, 0.01, 500); // Reduced near plane to prevent clipping when zoomed close
-        this.camera.position.set(0, 0, 10); // Start looking at XY plane for 2D mode
+        this.camera.position.set(0, 0, 5); // Start zoomed in for 2D mode
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -306,18 +306,25 @@ class VectoramaApp {
             const labelOffset = distanceToTarget * 0.03; // Fixed screen-space offset
             const maxRange = Math.floor(100 / spacing);
             const range = Math.min(Math.ceil(size / 2 / spacing), maxRange);
+            
+            // Get theme-appropriate colors for axis labels
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const isLight = currentTheme === 'light';
+            const xColor = isLight ? '#cc0000' : '#ff3333'; // Darker red in light mode
+            const yColor = isLight ? '#009900' : '#33ff33'; // Darker green in light mode
+            
             for (let i = -range; i <= range; i++) {
                 if (i === 0) continue; // Skip origin
                 const value = i * spacing;
                 
-                // X axis numbers (below the axis) - gray to match axes
-                const xLabel = this.createNumberLabel(value, '#888888');
+                // X axis numbers (below the axis) - red for x-axis
+                const xLabel = this.createNumberLabel(value, xColor);
                 xLabel.position.set(value, -labelOffset, 0);
                 xLabel.userData = { axis: 'x', value: value };
                 this.axisNumbers.add(xLabel);
                 
-                // Y axis numbers (left of the axis) - gray to match axes
-                const yLabel = this.createNumberLabel(value, '#888888');
+                // Y axis numbers (left of the axis) - green for y-axis
+                const yLabel = this.createNumberLabel(value, yColor);
                 yLabel.position.set(-labelOffset, value, 0);
                 yLabel.userData = { axis: 'y', value: value };
                 this.axisNumbers.add(yLabel);
@@ -367,24 +374,32 @@ class VectoramaApp {
             const labelOffset = distanceToTarget * 0.03; // Fixed screen-space offset
             const maxRange = Math.floor(100 / spacing);
             const range = maxRange;
+            
+            // Get theme-appropriate colors for axis labels
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const isLight = currentTheme === 'light';
+            const xColor = isLight ? '#cc0000' : '#ff3333'; // Darker red in light mode
+            const yColor = isLight ? '#009900' : '#33ff33'; // Darker green in light mode
+            const zColor = isLight ? '#0000cc' : '#3333ff'; // Darker blue in light mode
+            
             for (let i = -range; i <= range; i++) {
                 if (i === 0) continue; // Skip origin
                 const value = i * spacing;
                 
-                // X axis numbers (along x axis, on XZ plane) - gray to match axes
-                const xLabel = this.createNumberLabel(value, '#888888');
+                // X axis numbers (along x axis, on XZ plane) - red for x-axis
+                const xLabel = this.createNumberLabel(value, xColor);
                 xLabel.position.set(value, 0, -labelOffset);
                 xLabel.userData = { axis: 'x', value: value };
                 this.axisNumbers.add(xLabel);
                 
-                // Y axis numbers (along y axis, on YZ plane) - gray to match axes
-                const yLabel = this.createNumberLabel(value, '#888888');
+                // Y axis numbers (along y axis, on YZ plane) - green for y-axis
+                const yLabel = this.createNumberLabel(value, yColor);
                 yLabel.position.set(-labelOffset, value, 0);
                 yLabel.userData = { axis: 'y', value: value };
                 this.axisNumbers.add(yLabel);
                 
-                // Z axis numbers (along z axis, on XZ plane) - gray to match axes
-                const zLabel = this.createNumberLabel(value, '#888888');
+                // Z axis numbers (along z axis, on XZ plane) - blue for z-axis
+                const zLabel = this.createNumberLabel(value, zColor);
                 zLabel.position.set(0, -labelOffset, value);
                 zLabel.userData = { axis: 'z', value: value };
                 this.axisNumbers.add(zLabel);
@@ -744,42 +759,51 @@ class VectoramaApp {
     }
 
     initializeDefaultContent() {
-        // Initialize 2D mode with a reflection matrix and a vector
+        // Initialize 2D mode with a 90° rotation matrix and unit square
         this.addMatrix();
-        // Set to reflection across x-axis: [[1, 0], [0, -1]]
+        // Set to 90° rotation: [[0, -1], [1, 0]]
         if (this.matrices2D.length > 0) {
-            this.matrices2D[0].values = [[1, 0], [0, -1]];
+            this.matrices2D[0].values = [[0, -1], [1, 0]];
         }
-        this.addVector(1, 2, 0);
+        // Add unit square vectors
+        this.addVector(0, 0, 0);
+        this.addVector(1, 0, 0);
+        this.addVector(1, 1, 0);
+        this.addVector(0, 1, 0);
         
         // Pre-initialize 3D mode data (without adding to scene)
-        // Add matrix data directly
+        // Add matrix data directly - composite rotation in 2 dimensions
         const matrix3D = {
             id: this.nextMatrixId++,
             name: 'A',
-            values: [[0, -1, 0], [1, 0, 0], [0, 0, 1]], // Rotation about z-axis
+            values: [[0, 1, 0], [0, 0, -1], [-1, 0, 0]], // 90° rotation about X then Y
             color: new THREE.Color(0x904AE2)
         };
         this.matrices3D.push(matrix3D);
         this.usedMatrixLetters3D.add('A');
         this.selectedMatrixId3D = matrix3D.id;
         
-        // Pre-store vector data for 3D (will be created when switching to 3D)
-        // Just store the coordinates, actual vector will be created by switchDimension
-        const colorHex = this.vectorColors[this.colorIndex3D % this.vectorColors.length];
-        this.colorIndex3D++;
+        // Pre-store unit cube vectors for 3D (will be created when switching to 3D)
+        const cubeVertices = [
+            [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+            [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
+        ];
         
-        // Create a minimal vector object for 3D that will be fully initialized on dimension switch
-        const vector3D = {
-            arrow: null,
-            pointSphere: null,
-            originalEnd: new THREE.Vector3(2, 3, -3),
-            currentEnd: new THREE.Vector3(2, 3, -3),
-            color: new THREE.Color(colorHex),
-            id: this.nextVectorId++,
-            visible: true
-        };
-        this.vectors3D.push(vector3D);
+        cubeVertices.forEach(coords => {
+            const colorHex = this.vectorColors[this.colorIndex3D % this.vectorColors.length];
+            this.colorIndex3D++;
+            
+            const vector3D = {
+                arrow: null,
+                pointSphere: null,
+                originalEnd: new THREE.Vector3(coords[0], coords[1], coords[2]),
+                currentEnd: new THREE.Vector3(coords[0], coords[1], coords[2]),
+                color: new THREE.Color(colorHex),
+                id: this.nextVectorId++,
+                visible: true
+            };
+            this.vectors3D.push(vector3D);
+        });
         
         // Update the display for 2D mode
         this.updateObjectsList();
@@ -841,17 +865,8 @@ class VectoramaApp {
         // Top button row - Reset axes
         document.getElementById('reset-axes-btn').addEventListener('click', () => this.resetView());
         
-        // Top button row - Add main button (adds vector by default)
-        document.getElementById('add-main-btn').addEventListener('click', () => {
-            if (this.dimension === '2d') {
-                this.addVector(1, 1, 0);
-            } else {
-                this.addVector(1, 1, 1);
-            }
-        });
-        
-        // Top button row - Add dropdown toggle
-        document.getElementById('add-dropdown-toggle').addEventListener('click', (e) => {
+        // Top button row - Add button opens dropdown
+        document.getElementById('add-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             const dropdown = document.getElementById('add-dropdown');
             dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
@@ -992,7 +1007,7 @@ class VectoramaApp {
             };
         } else {
             // Enable full 3D camera control
-            this.camera.position.set(5, 5, 5);
+            this.camera.position.set(3, 3, 3);
             this.camera.lookAt(0, 0, 0);
             this.controls.enableRotate = true; // Enable rotation in 3D
             this.controls.target.set(0, 0, 0);
@@ -1120,7 +1135,7 @@ class VectoramaApp {
                 );
                 
                 // Create point sphere
-                const pointSize = 0.08;
+                const pointSize = 0.15;
                 const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
                 const sphereMaterial = new THREE.MeshBasicMaterial({ 
                     color: vec.color,
@@ -1159,7 +1174,7 @@ class VectoramaApp {
             this.camera.position.set(0, 0, 10);
             this.camera.lookAt(0, 0, 0);
         } else {
-            this.camera.position.set(5, 5, 5);
+            this.camera.position.set(3, 3, 3);
             this.camera.lookAt(0, 0, 0);
         }
         this.controls.target.set(0, 0, 0);
@@ -1445,7 +1460,7 @@ class VectoramaApp {
         );
 
         // Create point sphere for points mode
-        const pointSize = 0.08;
+        const pointSize = 0.15;
         const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({ 
             color: color,
@@ -3772,6 +3787,9 @@ class VectoramaApp {
         // Update scene background color based on current theme
         const currentTheme = document.documentElement.getAttribute('data-theme');
         this.scene.background = new THREE.Color(currentTheme === 'light' ? 0xFDFDFD : 0x606060);
+        
+        // Regenerate grid and axis numbers with theme-appropriate colors
+        this.createGrid();
     }
 
     // Eigenvalue and Eigenvector Computation
@@ -3793,8 +3811,13 @@ class VectoramaApp {
         const discriminant = trace * trace - 4 * det;
         
         if (discriminant < -1e-10) {
-            // Complex eigenvalues - no real invariant lines
-            return [];
+            // Complex eigenvalues - return complex eigenvalue info
+            const realPart = trace / 2;
+            const imagPart = Math.sqrt(-discriminant) / 2;
+            return [
+                { value: realPart, imaginary: imagPart, isComplex: true },
+                { value: realPart, imaginary: -imagPart, isComplex: true }
+            ];
         }
         
         const sqrtDisc = Math.sqrt(Math.max(0, discriminant));
@@ -4664,7 +4687,7 @@ class VectoramaApp {
             eigendata = this.computeEigenvalues3D(matrix);
         }
         
-        // If no eigenvalues (complex eigenvalues in 2D), hide panel
+        // If no eigenvalues, hide panel
         if (!eigendata || eigendata.length === 0) {
             panel.style.display = 'none';
             return;
@@ -4694,8 +4717,6 @@ class VectoramaApp {
         
         // Display all eigenvalues first
         eigendata.forEach((eigen, index) => {
-            const lambda = eigen.value;
-            
             const itemDiv = document.createElement('div');
             itemDiv.className = 'eigenvalue-item';
             
@@ -4705,127 +4726,146 @@ class VectoramaApp {
             
             const valueDiv = document.createElement('div');
             valueDiv.className = 'eigenvalue-value';
-            valueDiv.textContent = formatNum(lambda);
+            
+            // Handle complex eigenvalues
+            if (eigen.isComplex) {
+                const realPart = formatNum(eigen.value);
+                const imagPart = formatNum(Math.abs(eigen.imaginary));
+                const sign = eigen.imaginary >= 0 ? '+' : '−';
+                valueDiv.textContent = `${realPart} ${sign} ${imagPart}i`;
+            } else {
+                valueDiv.textContent = formatNum(eigen.value);
+            }
             
             itemDiv.appendChild(labelDiv);
             itemDiv.appendChild(valueDiv);
             valuesDiv.appendChild(itemDiv);
         });
         
-        // Add separator and eigenvectors header
-        const separator = document.createElement('div');
-        separator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
-        separator.style.margin = '8px 0';
-        valuesDiv.appendChild(separator);
+        // Only show eigenvectors section if we have real eigenvectors
+        const hasRealEigenvectors = eigendata.some(e => !e.isComplex && e.vector);
         
-        // Add eigenvectors section title
-        const eigenvectorsHeader = document.createElement('div');
-        eigenvectorsHeader.className = 'eigenvalue-row eigenvalue-header';
-        eigenvectorsHeader.innerHTML = '<span>Eigenvectors (normalised)</span>';
-        eigenvectorsHeader.style.marginTop = '0';
-        eigenvectorsHeader.style.paddingTop = '0';
-        eigenvectorsHeader.style.borderBottom = 'none';
-        eigenvectorsHeader.style.paddingBottom = '4px';
-        valuesDiv.appendChild(eigenvectorsHeader);
-        
-        // Display all eigenvectors
-        eigendata.forEach((eigen, index) => {
-            const vector = eigen.vector;
+        if (hasRealEigenvectors) {
+            // Add separator and eigenvectors header
+            const separator = document.createElement('div');
+            separator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+            separator.style.margin = '8px 0';
+            valuesDiv.appendChild(separator);
             
-            const vecDiv = document.createElement('div');
-            vecDiv.className = 'eigenvalue-item';
+            // Add eigenvectors section title
+            const eigenvectorsHeader = document.createElement('div');
+            eigenvectorsHeader.className = 'eigenvalue-row eigenvalue-header';
+            eigenvectorsHeader.innerHTML = '<span>Eigenvectors (normalised)</span>';
+            eigenvectorsHeader.style.marginTop = '0';
+            eigenvectorsHeader.style.paddingTop = '0';
+            eigenvectorsHeader.style.borderBottom = 'none';
+            eigenvectorsHeader.style.paddingBottom = '4px';
+            valuesDiv.appendChild(eigenvectorsHeader);
             
-            const vecLabelDiv = document.createElement('div');
-            vecLabelDiv.className = 'eigenvalue-label';
-            vecLabelDiv.innerHTML = `v<sub>${index + 1}</sub>:`;
+            // Display all eigenvectors (only for real eigenvalues)
+            eigendata.forEach((eigen, index) => {
+                if (eigen.isComplex || !eigen.vector) return;
+                
+                const vector = eigen.vector;
+                
+                const vecDiv = document.createElement('div');
+                vecDiv.className = 'eigenvalue-item';
+                
+                const vecLabelDiv = document.createElement('div');
+                vecLabelDiv.className = 'eigenvalue-label';
+                vecLabelDiv.innerHTML = `v<sub>${index + 1}</sub>:`;
+                
+                const vecValueDiv = document.createElement('div');
+                vecValueDiv.className = 'eigenvalue-value eigenvector';
+                
+                if (this.dimension === '2d') {
+                    vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)})`;
+                } else {
+                    vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)}, ${formatNum(vector.z)})`;
+                }
+                
+                vecDiv.appendChild(vecLabelDiv);
+                vecDiv.appendChild(vecValueDiv);
+                valuesDiv.appendChild(vecDiv);
+            });
+        }
+        
+        // Only show invariant spaces controls if we have real eigenvectors
+        if (hasRealEigenvectors) {
+            // Add separator and invariant spaces controls
+            const invariantSeparator = document.createElement('div');
+            invariantSeparator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+            invariantSeparator.style.margin = '12px 0 8px 0';
+            valuesDiv.appendChild(invariantSeparator);
             
-            const vecValueDiv = document.createElement('div');
-            vecValueDiv.className = 'eigenvalue-value eigenvector';
+            // Invariant spaces header
+            const invariantHeader = document.createElement('div');
+            invariantHeader.className = 'eigenvalue-row eigenvalue-header';
+            invariantHeader.innerHTML = '<span>Show invariant spaces</span>';
+            invariantHeader.style.marginTop = '0';
+            invariantHeader.style.paddingTop = '0';
+            invariantHeader.style.borderBottom = 'none';
+            invariantHeader.style.paddingBottom = '6px';
+            valuesDiv.appendChild(invariantHeader);
             
-            if (this.dimension === '2d') {
-                vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)})`;
-            } else {
-                vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)}, ${formatNum(vector.z)})`;
-            }
+            // Invariant display mode radio buttons
+            const invariantControls = document.createElement('div');
+            invariantControls.style.display = 'flex';
+            invariantControls.style.gap = '8px';
+            invariantControls.style.justifyContent = 'center';
+            invariantControls.style.padding = '4px 0';
             
-            vecDiv.appendChild(vecLabelDiv);
-            vecDiv.appendChild(vecValueDiv);
-            valuesDiv.appendChild(vecDiv);
-        });
-        
-        // Add separator and invariant spaces controls
-        const invariantSeparator = document.createElement('div');
-        invariantSeparator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
-        invariantSeparator.style.margin = '12px 0 8px 0';
-        valuesDiv.appendChild(invariantSeparator);
-        
-        // Invariant spaces header
-        const invariantHeader = document.createElement('div');
-        invariantHeader.className = 'eigenvalue-row eigenvalue-header';
-        invariantHeader.innerHTML = '<span>Show invariant spaces</span>';
-        invariantHeader.style.marginTop = '0';
-        invariantHeader.style.paddingTop = '0';
-        invariantHeader.style.borderBottom = 'none';
-        invariantHeader.style.paddingBottom = '6px';
-        valuesDiv.appendChild(invariantHeader);
-        
-        // Invariant display mode radio buttons
-        const invariantControls = document.createElement('div');
-        invariantControls.style.display = 'flex';
-        invariantControls.style.gap = '8px';
-        invariantControls.style.justifyContent = 'center';
-        invariantControls.style.padding = '4px 0';
-        
-        const modes = [
-            { value: 'off', label: 'Off' },
-            { value: 'pulse', label: 'Pulse' },
-            { value: 'solid', label: 'Solid' }
-        ];
-        
-        modes.forEach(mode => {
-            const btn = document.createElement('button');
-            btn.className = 'invariant-mode-btn';
-            btn.textContent = mode.label;
-            btn.style.padding = '4px 12px';
-            btn.style.fontSize = '11px';
-            btn.style.cursor = 'pointer';
-            btn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-            btn.style.borderRadius = '4px';
-            btn.style.background = this.invariantDisplayMode === mode.value ? 'rgba(100, 181, 246, 0.3)' : 'rgba(255, 255, 255, 0.05)';
-            btn.style.color = this.invariantDisplayMode === mode.value ? '#64B5F6' : 'rgba(255, 255, 255, 0.7)';
-            btn.style.transition = 'all 0.2s ease';
+            const modes = [
+                { value: 'off', label: 'Off' },
+                { value: 'pulse', label: 'Pulse' },
+                { value: 'solid', label: 'Solid' }
+            ];
             
-            btn.addEventListener('click', () => {
-                this.invariantDisplayMode = mode.value;
-                this.visualizeInvariantSpaces(targetId);
-                // Update button styles
-                invariantControls.querySelectorAll('.invariant-mode-btn').forEach((b, i) => {
-                    if (modes[i].value === mode.value) {
-                        b.style.background = 'rgba(100, 181, 246, 0.3)';
-                        b.style.color = '#64B5F6';
-                    } else {
-                        b.style.background = 'rgba(255, 255, 255, 0.05)';
-                        b.style.color = 'rgba(255, 255, 255, 0.7)';
+            modes.forEach(mode => {
+                const btn = document.createElement('button');
+                btn.className = 'invariant-mode-btn';
+                btn.textContent = mode.label;
+                btn.style.padding = '4px 12px';
+                btn.style.fontSize = '11px';
+                btn.style.cursor = 'pointer';
+                btn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                btn.style.borderRadius = '4px';
+                btn.style.background = this.invariantDisplayMode === mode.value ? 'rgba(100, 181, 246, 0.3)' : 'rgba(255, 255, 255, 0.05)';
+                btn.style.color = this.invariantDisplayMode === mode.value ? '#64B5F6' : 'rgba(255, 255, 255, 0.7)';
+                btn.style.transition = 'all 0.2s ease';
+                
+                btn.addEventListener('click', () => {
+                    this.invariantDisplayMode = mode.value;
+                    this.visualizeInvariantSpaces(targetId);
+                    // Update button styles
+                    invariantControls.querySelectorAll('.invariant-mode-btn').forEach((b, i) => {
+                        if (modes[i].value === mode.value) {
+                            b.style.background = 'rgba(100, 181, 246, 0.3)';
+                            b.style.color = '#64B5F6';
+                        } else {
+                            b.style.background = 'rgba(255, 255, 255, 0.05)';
+                            b.style.color = 'rgba(255, 255, 255, 0.7)';
+                        }
+                    });
+                });
+                
+                btn.addEventListener('mouseenter', () => {
+                    if (this.invariantDisplayMode !== mode.value) {
+                        btn.style.background = 'rgba(255, 255, 255, 0.1)';
                     }
                 });
+                
+                btn.addEventListener('mouseleave', () => {
+                    if (this.invariantDisplayMode !== mode.value) {
+                        btn.style.background = 'rgba(255, 255, 255, 0.05)';
+                    }
+                });
+                
+                invariantControls.appendChild(btn);
             });
             
-            btn.addEventListener('mouseenter', () => {
-                if (this.invariantDisplayMode !== mode.value) {
-                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
-                }
-            });
-            
-            btn.addEventListener('mouseleave', () => {
-                if (this.invariantDisplayMode !== mode.value) {
-                    btn.style.background = 'rgba(255, 255, 255, 0.05)';
-                }
-            });
-            
-            invariantControls.appendChild(btn);
-        });
-        
-        valuesDiv.appendChild(invariantControls);
+            valuesDiv.appendChild(invariantControls);
+        }
     }
 
     animate() {

@@ -401,13 +401,9 @@ body {
     color: #666;
 }
 
-.split-button-container {
+.add-button {
     position: relative;
-    display: flex;
-}
-
-.split-button-main {
-    padding: 8px;
+    padding: 8px 12px;
     font-size: 14px;
     height: 40px;
     display: flex;
@@ -415,38 +411,13 @@ body {
     justify-content: center;
     background: #2A3F5A;
     border: 1px solid #555;
-    flex: 1;
-    min-width: 0;
-    border-radius: 4px 0 0 4px;
-    border-right: none;
+    border-radius: 4px;
     color: #e0e0e0;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-.split-button-main:hover {
-    background: #354d6b;
-}
-
-.split-button-dropdown {
-    padding: 0;
-    font-size: 14px;
-    height: 40px;
-    background: #2A3F5A;
-    border: 1px solid #555;
-    width: 24px;
-    flex-shrink: 0;
-    border-radius: 0 4px 4px 0;
-    border-left: 1px solid #555;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #e0e0e0;
-    transition: background 0.2s;
-}
-
-.split-button-dropdown:hover {
+.add-button:hover {
     background: #354d6b;
 }
 
