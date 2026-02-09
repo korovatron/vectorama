@@ -3400,19 +3400,29 @@ class VectoramaApp {
         this.clearInvariantSpaces();
         
         // Only show invariant spaces in transform mode and when not off
-        if (this.appMode !== 'transform' || this.invariantDisplayMode === 'off') return;
+        if (this.appMode !== 'transform' || this.invariantDisplayMode === 'off') {
+            // Also update eigenvalue panel (it handles hiding itself if needed)
+            this.updateEigenvaluePanel();
+            return;
+        }
         
         const matrix = this.getTransformationMatrix();
         
         // Check if matrix is a scalar multiple of identity (entire space is invariant)
         // In this case, don't show any specific invariant lines/planes
-        if (this.isIdentityLike(matrix)) return;
+        if (this.isIdentityLike(matrix)) {
+            this.updateEigenvaluePanel();
+            return;
+        }
         
         if (this.dimension === '2d') {
             this.visualizeInvariantSpaces2D(matrix);
         } else {
             this.visualizeInvariantSpaces3D(matrix);
         }
+        
+        // Update eigenvalue info panel
+        this.updateEigenvaluePanel();
     }
     
     isIdentityLike(matrix) {
@@ -3689,6 +3699,127 @@ class VectoramaApp {
                 const pulseOpacity = 0.1 * Math.sin(this.rainbowTime * 4);
                 planeObj.mesh.material.opacity = baseOpacity + pulseOpacity;
             }
+        });
+    }
+
+    updateEigenvaluePanel() {
+        const panel = document.getElementById('eigenvalue-panel');
+        const valuesDiv = document.getElementById('eigenvalue-values');
+        const headerSpan = panel.querySelector('.eigenvalue-header span');
+        
+        // Only show panel in transform mode when not showing as off
+        if (this.appMode !== 'transform') {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Hide panel if no matrix is selected
+        if (!this.selectedMatrixId) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Get the selected matrix object to extract its name
+        const selectedMatrix = this.matrices.find(m => m.id === this.selectedMatrixId);
+        const matrixName = selectedMatrix ? selectedMatrix.name : '';
+        
+        const matrix = this.getTransformationMatrix();
+        
+        // Compute eigenvalues based on dimension
+        let eigendata;
+        if (this.dimension === '2d') {
+            eigendata = this.computeEigenvalues2D(matrix);
+        } else {
+            eigendata = this.computeEigenvalues3D(matrix);
+        }
+        
+        // If no eigenvalues (complex eigenvalues in 2D), hide panel
+        if (!eigendata || eigendata.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Update header with matrix name
+        if (matrixName) {
+            headerSpan.textContent = `${matrixName}: Eigenvalues`;
+        } else {
+            headerSpan.textContent = 'Eigenvalues';
+        }
+        
+        // Show panel and populate with eigenvalue/eigenvector data
+        panel.style.display = 'block';
+        valuesDiv.innerHTML = '';
+        
+        // Format number: smart formatting like matrices
+        const formatNum = (val) => {
+            if (Math.abs(val) < 0.001) return '0';
+            // Check if close to an integer (handles floating-point precision issues)
+            const nearestInt = Math.round(val);
+            if (Math.abs(val - nearestInt) < 0.0001) {
+                return nearestInt.toString();
+            }
+            return val.toFixed(3);
+        };
+        
+        // Display all eigenvalues first
+        eigendata.forEach((eigen, index) => {
+            const lambda = eigen.value;
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'eigenvalue-item';
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'eigenvalue-label';
+            labelDiv.innerHTML = `λ<sub>${index + 1}</sub>:`;
+            
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'eigenvalue-value';
+            valueDiv.textContent = formatNum(lambda);
+            
+            itemDiv.appendChild(labelDiv);
+            itemDiv.appendChild(valueDiv);
+            valuesDiv.appendChild(itemDiv);
+        });
+        
+        // Add separator and eigenvectors header
+        const separator = document.createElement('div');
+        separator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        separator.style.margin = '8px 0';
+        valuesDiv.appendChild(separator);
+        
+        // Add eigenvectors section title
+        const eigenvectorsHeader = document.createElement('div');
+        eigenvectorsHeader.className = 'eigenvalue-row eigenvalue-header';
+        eigenvectorsHeader.innerHTML = '<span>Eigenvectors (normalised)</span>';
+        eigenvectorsHeader.style.marginTop = '0';
+        eigenvectorsHeader.style.paddingTop = '0';
+        eigenvectorsHeader.style.borderBottom = 'none';
+        eigenvectorsHeader.style.paddingBottom = '4px';
+        valuesDiv.appendChild(eigenvectorsHeader);
+        
+        // Display all eigenvectors
+        eigendata.forEach((eigen, index) => {
+            const vector = eigen.vector;
+            
+            const vecDiv = document.createElement('div');
+            vecDiv.className = 'eigenvalue-item';
+            
+            const vecLabelDiv = document.createElement('div');
+            vecLabelDiv.className = 'eigenvalue-label';
+            vecLabelDiv.innerHTML = `v<sub>${index + 1}</sub>:`;
+            
+            const vecValueDiv = document.createElement('div');
+            vecValueDiv.className = 'eigenvalue-value eigenvector';
+            
+            if (this.dimension === '2d') {
+                vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)})`;
+            } else {
+                vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)}, ${formatNum(vector.z)})`;
+            }
+            
+            vecDiv.appendChild(vecLabelDiv);
+            vecDiv.appendChild(vecValueDiv);
+            valuesDiv.appendChild(vecDiv);
         });
     }
 

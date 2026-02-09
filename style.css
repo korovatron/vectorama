@@ -1123,6 +1123,79 @@ body {
     user-select: none;
 }
 
+/* Eigenvalue Info Panel (bottom-right) */
+.eigenvalue-panel {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(58, 79, 106, 0.95);
+    border: 1px solid #555555;
+    border-radius: 4px;
+    border-left: 8px solid #904AE2;
+    padding: 12px 16px;
+    min-width: 260px;
+    max-width: 350px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    font-size: 14px;
+    color: var(--text-primary);
+    z-index: 100;
+    pointer-events: none;
+    user-select: none;
+}
+
+.eigenvalue-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.eigenvalue-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    line-height: 1.4;
+}
+
+.eigenvalue-header {
+    font-weight: bold;
+    font-size: 15px;
+    color: #FFFFFF;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 6px;
+}
+
+.eigenvalue-values {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.eigenvalue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.eigenvalue-label {
+    font-weight: bold;
+    color: #FFFFFF;
+    white-space: nowrap;
+}
+
+.eigenvalue-value {
+    text-align: right;
+    color: #E8F4FD;
+    flex: 1;
+    word-break: break-all;
+}
+
+.eigenvector {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+}
+
 /* Scrollbar Styling - Hidden */
 .control-panel {
     scrollbar-width: none; /* Firefox */
