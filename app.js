@@ -679,8 +679,16 @@ class VectoramaApp {
         // Create arrow with higher quality geometry to prevent gaps and flickering
         const group = new THREE.Group();
         
-        const shaftLength = length - headLength;
-        const shaftRadius = headWidth * 0.3;
+        // Cap head dimensions to be proportional to vector length to prevent oversized heads on short vectors
+        const maxHeadLength = length * 0.25;
+        const cappedHeadLength = Math.min(headLength, maxHeadLength);
+        
+        // Cap head width (cone radius) to be proportional to vector length as well
+        const maxHeadWidth = length * 0.125; // 12.5% of vector length
+        const cappedHeadWidth = Math.min(headWidth, maxHeadWidth);
+        
+        const shaftLength = length - cappedHeadLength;
+        const shaftRadius = cappedHeadWidth * 0.3;
         
         // In 2D mode, use triangular geometry; in 3D mode, use circular
         const radialSegments = this.dimension === '2d' ? 3 : 16;
@@ -712,14 +720,14 @@ class VectoramaApp {
         
         // Head - cone with segments based on mode (triangle in 2D, circle in 3D)
         const headGeometry = new THREE.ConeGeometry(
-            headWidth, 
-            headLength, 
+            cappedHeadWidth, 
+            cappedHeadLength, 
             radialSegments,
             1,
             false
         );
         const head = new THREE.Mesh(headGeometry, material);
-        head.position.copy(direction.clone().multiplyScalar(shaftLength + headLength / 2));
+        head.position.copy(direction.clone().multiplyScalar(shaftLength + cappedHeadLength / 2));
         head.quaternion.copy(quaternion);
         
         group.add(shaft, head);
@@ -3774,11 +3782,16 @@ class VectoramaApp {
     updatePointSphereScales() {
         // Update all point sphere scales to maintain consistent screen size
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.08; // Larger for better visibility
+        const baseScale = distanceToTarget * 0.08; // Larger for better visibility
         
         this.vectors.forEach(vec => {
             if (vec.pointSphere) {
-                vec.pointSphere.scale.set(scale, scale, scale);
+                // Cap sphere radius to be proportional to vector length (10% max)
+                const vectorLength = vec.currentEnd.length();
+                const maxScale = (vectorLength * 0.1) / 0.15; // 0.15 is the base sphere radius
+                const cappedScale = Math.min(baseScale, maxScale);
+                
+                vec.pointSphere.scale.set(cappedScale, cappedScale, cappedScale);
             }
         });
     }
