@@ -1843,11 +1843,29 @@ class VectoramaApp {
             return val.toFixed(2);
         };
         
-        // Header: L1  r = a + tb
+        // Header: L1       r = a + tb
         const headerRow = document.createElement('div');
+        headerRow.style.display = 'flex';
+        headerRow.style.gap = '4px';
         headerRow.style.fontSize = '0.85em';
         headerRow.style.marginBottom = '2px';
-        headerRow.innerHTML = `<b>${line.name}</b>  r = a + tb`;
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.style.fontWeight = 'bold';
+        nameSpan.textContent = line.name;
+        headerRow.appendChild(nameSpan);
+        
+        // Spacer to align r with first input box
+        const spacer = document.createElement('span');
+        spacer.textContent = 'a =';
+        spacer.style.visibility = 'hidden';
+        spacer.style.fontSize = '0.85em';
+        headerRow.appendChild(spacer);
+        
+        const equationSpan = document.createElement('span');
+        equationSpan.textContent = 'r = a + tb';
+        headerRow.appendChild(equationSpan);
+        
         lineInfo.appendChild(headerRow);
         
         // Row 2: a = (x, y, z)
