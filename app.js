@@ -1833,15 +1833,22 @@ class VectoramaApp {
         const lineInfo = document.createElement('div');
         lineInfo.className = 'vector-coordinates';
         lineInfo.style.display = 'flex';
-        lineInfo.style.flexWrap = 'wrap';
-        lineInfo.style.gap = '6px';
-        lineInfo.style.alignItems = 'center';
+        lineInfo.style.flexDirection = 'column';
+        lineInfo.style.gap = '4px';
         
         const nameSpan = document.createElement('span');
         nameSpan.style.fontWeight = 'bold';
-        nameSpan.style.marginRight = '4px';
-        nameSpan.textContent = line.name + ':';
+        nameSpan.style.fontSize = '0.85em';
+        nameSpan.style.marginBottom = '2px';
+        nameSpan.textContent = line.name;
         lineInfo.appendChild(nameSpan);
+        
+        // Create grid for inputs
+        const inputGrid = document.createElement('div');
+        inputGrid.style.display = 'grid';
+        inputGrid.style.gridTemplateColumns = this.dimension === '2d' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
+        inputGrid.style.gap = '4px';
+        inputGrid.style.alignItems = 'center';
         
         // Point inputs: (x₀, y₀, z₀)
         const formatNum = (val) => {
@@ -1851,10 +1858,12 @@ class VectoramaApp {
             return val.toFixed(2);
         };
         
-        const pointLabel = document.createElement('span');
-        pointLabel.textContent = '(';
-        pointLabel.style.fontSize = '0.9em';
-        lineInfo.appendChild(pointLabel);
+        const formatNum = (val) => {
+            if (Math.abs(val) < 0.001) return '0';
+            const nearestInt = Math.round(val);
+            if (Math.abs(val - nearestInt) < 0.0001) return nearestInt.toString();
+            return val.toFixed(2);
+        };
         
         // Point x
         const pxInput = document.createElement('input');
@@ -1866,12 +1875,7 @@ class VectoramaApp {
             line.point.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
         });
-        lineInfo.appendChild(pxInput);
-        
-        const comma1 = document.createElement('span');
-        comma1.textContent = ',';
-        comma1.style.fontSize = '0.9em';
-        lineInfo.appendChild(comma1);
+        inputGrid.appendChild(pxInput);
         
         // Point y
         const pyInput = document.createElement('input');
@@ -1883,13 +1887,9 @@ class VectoramaApp {
             line.point.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
         });
-        lineInfo.appendChild(pyInput);
+        inputGrid.appendChild(pyInput);
         
         if (this.dimension === '3d') {
-            const comma2 = document.createElement('span');
-            comma2.textContent = ',';
-            comma2.style.fontSize = '0.9em';
-            lineInfo.appendChild(comma2);
             
             // Point z
             const pzInput = document.createElement('input');
@@ -1901,13 +1901,8 @@ class VectoramaApp {
                 line.point.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
             });
-            lineInfo.appendChild(pzInput);
+            inputGrid.appendChild(pzInput);
         }
-        
-        const closeParen = document.createElement('span');
-        closeParen.textContent = ') + t(';
-        closeParen.style.fontSize = '0.9em';
-        lineInfo.appendChild(closeParen);
         
         // Direction x
         const dxInput = document.createElement('input');
@@ -1919,12 +1914,7 @@ class VectoramaApp {
             line.direction.x = parseFloat(e.target.value) || 0;
             this.renderLine(line);
         });
-        lineInfo.appendChild(dxInput);
-        
-        const comma3 = document.createElement('span');
-        comma3.textContent = ',';
-        comma3.style.fontSize = '0.9em';
-        lineInfo.appendChild(comma3);
+        inputGrid.appendChild(dxInput);
         
         // Direction y
         const dyInput = document.createElement('input');
@@ -1936,13 +1926,9 @@ class VectoramaApp {
             line.direction.y = parseFloat(e.target.value) || 0;
             this.renderLine(line);
         });
-        lineInfo.appendChild(dyInput);
+        inputGrid.appendChild(dyInput);
         
         if (this.dimension === '3d') {
-            const comma4 = document.createElement('span');
-            comma4.textContent = ',';
-            comma4.style.fontSize = '0.9em';
-            lineInfo.appendChild(comma4);
             
             // Direction z
             const dzInput = document.createElement('input');
@@ -1954,14 +1940,10 @@ class VectoramaApp {
                 line.direction.z = parseFloat(e.target.value) || 0;
                 this.renderLine(line);
             });
-            lineInfo.appendChild(dzInput);
+            inputGrid.appendChild(dzInput);
         }
         
-        const finalParen = document.createElement('span');
-        finalParen.textContent = ')';
-        finalParen.style.fontSize = '0.9em';
-        lineInfo.appendChild(finalParen);
-        
+        lineInfo.appendChild(inputGrid);
         mainRow.appendChild(lineInfo);
 
         // Controls
@@ -2001,15 +1983,21 @@ class VectoramaApp {
         const planeInfo = document.createElement('div');
         planeInfo.className = 'vector-coordinates';
         planeInfo.style.display = 'flex';
-        planeInfo.style.flexWrap = 'wrap';
-        planeInfo.style.gap = '6px';
-        planeInfo.style.alignItems = 'center';
+        planeInfo.style.flexDirection = 'column';
+        planeInfo.style.gap = '4px';
         
         const nameSpan = document.createElement('span');
         nameSpan.style.fontWeight = 'bold';
-        nameSpan.style.marginRight = '4px';
-        nameSpan.textContent = plane.name + ':';
+        nameSpan.style.fontSize = '0.85em';
+        nameSpan.style.marginBottom = '2px';
+        nameSpan.textContent = plane.name;
         planeInfo.appendChild(nameSpan);
+        
+        // Create grid for inputs (2x2)
+        const inputGrid = document.createElement('div');
+        inputGrid.style.display = 'grid';
+        inputGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        inputGrid.style.gap = '4px';
         
         const formatNum = (val) => {
             if (Math.abs(val) < 0.001) return '0';
@@ -2028,12 +2016,7 @@ class VectoramaApp {
             plane.a = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        planeInfo.appendChild(aInput);
-        
-        const xLabel = document.createElement('span');
-        xLabel.textContent = 'x +';
-        xLabel.style.fontSize = '0.9em';
-        planeInfo.appendChild(xLabel);
+        inputGrid.appendChild(aInput);
         
         // Coefficient b (for y)
         const bInput = document.createElement('input');
@@ -2045,12 +2028,7 @@ class VectoramaApp {
             plane.b = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        planeInfo.appendChild(bInput);
-        
-        const yLabel = document.createElement('span');
-        yLabel.textContent = 'y +';
-        yLabel.style.fontSize = '0.9em';
-        planeInfo.appendChild(yLabel);
+        inputGrid.appendChild(bInput);
         
         // Coefficient c (for z)
         const cInput = document.createElement('input');
@@ -2062,12 +2040,7 @@ class VectoramaApp {
             plane.c = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        planeInfo.appendChild(cInput);
-        
-        const zLabel = document.createElement('span');
-        zLabel.textContent = 'z =';
-        zLabel.style.fontSize = '0.9em';
-        planeInfo.appendChild(zLabel);
+        inputGrid.appendChild(cInput);
         
         // Constant d
         const dInput = document.createElement('input');
@@ -2079,8 +2052,9 @@ class VectoramaApp {
             plane.d = parseFloat(e.target.value) || 0;
             this.renderPlane(plane);
         });
-        planeInfo.appendChild(dInput);
+        inputGrid.appendChild(dInput);
         
+        planeInfo.appendChild(inputGrid);
         mainRow.appendChild(planeInfo);
 
         // Controls
