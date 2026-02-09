@@ -2842,6 +2842,9 @@ class VectoramaApp {
                 });
             }
 
+            // Update intersections in real-time during animation
+            this.updateIntersections();
+
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
@@ -3263,11 +3266,17 @@ class VectoramaApp {
         // Line: r = point + t * direction
         // Plane: a*x + b*y + c*z = d
         
-        const { a, b, c, d } = plane;
-        const { point, direction } = line;
+        // Use current animated values if available, otherwise use main values
+        const a = plane.currentA !== undefined ? plane.currentA : plane.a;
+        const b = plane.currentB !== undefined ? plane.currentB : plane.b;
+        const c = plane.currentC !== undefined ? plane.currentC : plane.c;
+        const d = plane.currentD !== undefined ? plane.currentD : plane.d;
+        
+        const currentPoint = line.currentPoint || line.point;
+        const currentDirection = line.currentDirection || line.direction;
         
         // Calculate dot product: n · direction
-        const denominator = a * direction.x + b * direction.y + c * direction.z;
+        const denominator = a * currentDirection.x + b * currentDirection.y + c * currentDirection.z;
         
         // If denominator is 0, line is parallel to plane (no intersection or infinite intersections)
         if (Math.abs(denominator) < 0.0001) {
@@ -3275,14 +3284,14 @@ class VectoramaApp {
         }
         
         // Calculate t: t = (d - n · point) / (n · direction)
-        const numerator = d - (a * point.x + b * point.y + c * point.z);
+        const numerator = d - (a * currentPoint.x + b * currentPoint.y + c * currentPoint.z);
         const t = numerator / denominator;
         
         // Calculate intersection point
         const intersection = new THREE.Vector3(
-            point.x + t * direction.x,
-            point.y + t * direction.y,
-            point.z + t * direction.z
+            currentPoint.x + t * currentDirection.x,
+            currentPoint.y + t * currentDirection.y,
+            currentPoint.z + t * currentDirection.z
         );
         
         return intersection;
@@ -3292,8 +3301,19 @@ class VectoramaApp {
         // Two planes: a1*x + b1*y + c1*z = d1 and a2*x + b2*y + c2*z = d2
         // Intersection is a line (if planes are not parallel)
         
-        const n1 = new THREE.Vector3(plane1.a, plane1.b, plane1.c);
-        const n2 = new THREE.Vector3(plane2.a, plane2.b, plane2.c);
+        // Use current animated values if available, otherwise use main values
+        const a1 = plane1.currentA !== undefined ? plane1.currentA : plane1.a;
+        const b1 = plane1.currentB !== undefined ? plane1.currentB : plane1.b;
+        const c1 = plane1.currentC !== undefined ? plane1.currentC : plane1.c;
+        const d1 = plane1.currentD !== undefined ? plane1.currentD : plane1.d;
+        
+        const a2 = plane2.currentA !== undefined ? plane2.currentA : plane2.a;
+        const b2 = plane2.currentB !== undefined ? plane2.currentB : plane2.b;
+        const c2 = plane2.currentC !== undefined ? plane2.currentC : plane2.c;
+        const d2 = plane2.currentD !== undefined ? plane2.currentD : plane2.d;
+        
+        const n1 = new THREE.Vector3(a1, b1, c1);
+        const n2 = new THREE.Vector3(a2, b2, c2);
         
         // Direction of intersection line is cross product of normals
         const direction = new THREE.Vector3().crossVectors(n1, n2);
@@ -3315,25 +3335,25 @@ class VectoramaApp {
         // Choose which coordinate to set to 0 based on direction
         if (absDir.z >= absDir.x && absDir.z >= absDir.y) {
             // Set z = 0, solve for x and y
-            const det = plane1.a * plane2.b - plane2.a * plane1.b;
+            const det = a1 * b2 - a2 * b1;
             if (Math.abs(det) < 0.0001) return null;
-            point.x = (plane1.d * plane2.b - plane2.d * plane1.b) / det;
-            point.y = (plane1.a * plane2.d - plane2.a * plane1.d) / det;
+            point.x = (d1 * b2 - d2 * b1) / det;
+            point.y = (a1 * d2 - a2 * d1) / det;
             point.z = 0;
         } else if (absDir.y >= absDir.x && absDir.y >= absDir.z) {
             // Set y = 0, solve for x and z
-            const det = plane1.a * plane2.c - plane2.a * plane1.c;
+            const det = a1 * c2 - a2 * c1;
             if (Math.abs(det) < 0.0001) return null;
-            point.x = (plane1.d * plane2.c - plane2.d * plane1.c) / det;
+            point.x = (d1 * c2 - d2 * c1) / det;
             point.y = 0;
-            point.z = (plane1.a * plane2.d - plane2.a * plane1.d) / det;
+            point.z = (a1 * d2 - a2 * d1) / det;
         } else {
             // Set x = 0, solve for y and z
-            const det = plane1.b * plane2.c - plane2.b * plane1.c;
+            const det = b1 * c2 - b2 * c1;
             if (Math.abs(det) < 0.0001) return null;
             point.x = 0;
-            point.y = (plane1.d * plane2.c - plane2.d * plane1.c) / det;
-            point.z = (plane1.b * plane2.d - plane2.b * plane1.d) / det;
+            point.y = (d1 * c2 - d2 * c1) / det;
+            point.z = (b1 * d2 - b2 * d1) / det;
         }
         
         return { point, direction };
@@ -3343,10 +3363,16 @@ class VectoramaApp {
         // Two lines: r1 = p1 + s*d1 and r2 = p2 + t*d2
         // They intersect if we can find s and t such that p1 + s*d1 = p2 + t*d2
         
-        const p1 = new THREE.Vector3(line1.point.x, line1.point.y, line1.point.z);
-        const d1 = new THREE.Vector3(line1.direction.x, line1.direction.y, line1.direction.z).normalize();
-        const p2 = new THREE.Vector3(line2.point.x, line2.point.y, line2.point.z);
-        const d2 = new THREE.Vector3(line2.direction.x, line2.direction.y, line2.direction.z).normalize();
+        // Use current animated values if available, otherwise use main values
+        const currentPoint1 = line1.currentPoint || line1.point;
+        const currentDirection1 = line1.currentDirection || line1.direction;
+        const currentPoint2 = line2.currentPoint || line2.point;
+        const currentDirection2 = line2.currentDirection || line2.direction;
+        
+        const p1 = new THREE.Vector3(currentPoint1.x, currentPoint1.y, currentPoint1.z);
+        const d1 = new THREE.Vector3(currentDirection1.x, currentDirection1.y, currentDirection1.z).normalize();
+        const p2 = new THREE.Vector3(currentPoint2.x, currentPoint2.y, currentPoint2.z);
+        const d2 = new THREE.Vector3(currentDirection2.x, currentDirection2.y, currentDirection2.z).normalize();
         
         // Calculate cross product of directions
         const crossD1D2 = new THREE.Vector3().crossVectors(d1, d2);
@@ -3595,19 +3621,43 @@ class VectoramaApp {
                 label.position.copy(midpoint);
                 
                 // Orient label so text runs along the line
-                // Calculate perpendicular offset direction
+                // Calculate perpendicular offset direction (towards camera)
                 const cameraDir = new THREE.Vector3().subVectors(this.camera.position, midpoint).normalize();
-                const perpendicular = new THREE.Vector3().crossVectors(dir, cameraDir).normalize();
-                const outward = new THREE.Vector3().crossVectors(perpendicular, dir).normalize();
                 
-                // Offset the label perpendicular to the line
+                // Ensure direction is normalized
+                const normalizedDir = dir.clone().normalize();
+                
+                // Calculate perpendicular vector (cross with camera direction)
+                const perpendicular = new THREE.Vector3().crossVectors(normalizedDir, cameraDir);
+                
+                // If perpendicular is too small, use a different approach
+                if (perpendicular.length() < 0.1) {
+                    // Use world up as fallback
+                    const worldUp = new THREE.Vector3(0, 1, 0);
+                    perpendicular.crossVectors(normalizedDir, worldUp);
+                    if (perpendicular.length() < 0.1) {
+                        perpendicular.set(1, 0, 0); // Ultimate fallback
+                    }
+                }
+                perpendicular.normalize();
+                
+                // Calculate outward direction (normal to text plane)
+                const outward = new THREE.Vector3().crossVectors(perpendicular, normalizedDir).normalize();
+                
+                // Offset the label perpendicular to the line (towards camera)
                 const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
                 label.position.add(outward.multiplyScalar(labelOffset));
                 
-                // Create rotation matrix to align plane with line
-                // X axis (width) = line direction, Y axis (height) = perpendicular, Z axis (normal) = outward
+                // Orient the label: text should run along the line direction
+                // For PlaneGeometry, we need to rotate so the text aligns with the line
+                // The text plane's local X-axis should align with the line direction
+                const rightVector = normalizedDir.clone();  // Text runs along line
+                const upVector = perpendicular.clone();     // Text height direction
+                const forwardVector = outward.clone();      // Normal to text plane
+                
+                // Create rotation matrix with proper basis vectors
                 const rotMatrix = new THREE.Matrix4();
-                rotMatrix.makeBasis(dir, perpendicular, outward);
+                rotMatrix.makeBasis(rightVector, upVector, forwardVector);
                 label.quaternion.setFromRotationMatrix(rotMatrix);
                 
                 // Store line and label
