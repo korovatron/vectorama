@@ -1680,7 +1680,7 @@ class VectoramaApp {
         // Apply transformation button (play icon)
         const applyBtn = document.createElement('button');
         applyBtn.className = 'matrix-apply-btn';
-        applyBtn.title = 'Apply transformation to all vectors';
+        applyBtn.title = 'Apply transformation to all objects';
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
         applyBtn.addEventListener('click', () => this.applyMatrix(matrix.id));
         controls.appendChild(applyBtn);
