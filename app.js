@@ -4674,6 +4674,65 @@ class VectoramaApp {
         });
     }
 
+    // Simplify eigenvector to integer form for display
+    simplifyEigenvector(vector) {
+        const epsilon = 1e-5;
+        const components = [vector.x, vector.y, vector.z || 0];
+        
+        // Find the smallest non-zero component (in absolute value)
+        let minAbs = Infinity;
+        let minVal = 0;
+        for (const val of components) {
+            const absVal = Math.abs(val);
+            if (absVal > epsilon && absVal < minAbs) {
+                minAbs = absVal;
+                minVal = val;
+            }
+        }
+        
+        // If all components are zero, return as is
+        if (minAbs === Infinity) {
+            return { x: 0, y: 0, z: 0 };
+        }
+        
+        // Normalize by the smallest component to get ratios
+        const ratios = components.map(c => c / minVal);
+        
+        // Try to find a multiplier that makes all ratios close to integers
+        for (let mult = 1; mult <= 50; mult++) {
+            const scaled = ratios.map(r => r * mult);
+            const rounded = scaled.map(s => Math.round(s));
+            
+            // Check if all are close to their rounded values
+            const allClose = scaled.every((s, i) => Math.abs(s - rounded[i]) < epsilon);
+            
+            if (allClose) {
+                // Found integer representation, now simplify by GCD
+                const gcd = (a, b) => b === 0 ? Math.abs(a) : gcd(b, a % b);
+                let divisor = gcd(gcd(Math.abs(rounded[0]), Math.abs(rounded[1])), Math.abs(rounded[2]));
+                if (divisor === 0) divisor = 1;
+                
+                return {
+                    x: rounded[0] / divisor,
+                    y: rounded[1] / divisor,
+                    z: rounded[2] / divisor
+                };
+            }
+        }
+        
+        // Fallback: just use the ratios rounded to nearest integer
+        const rounded = ratios.map(r => Math.round(r));
+        const gcd = (a, b) => b === 0 ? Math.abs(a) : gcd(b, a % b);
+        let divisor = gcd(gcd(Math.abs(rounded[0]), Math.abs(rounded[1])), Math.abs(rounded[2]));
+        if (divisor === 0) divisor = 1;
+        
+        return {
+            x: rounded[0] / divisor,
+            y: rounded[1] / divisor,
+            z: rounded[2] / divisor
+        };
+    }
+
     updateEigenvaluePanel(matrixId = null) {
         const panel = document.getElementById('eigenvalue-panel');
         const valuesDiv = document.getElementById('eigenvalue-values');
@@ -4770,7 +4829,7 @@ class VectoramaApp {
             // Add eigenvectors section title
             const eigenvectorsHeader = document.createElement('div');
             eigenvectorsHeader.className = 'eigenvalue-row eigenvalue-header';
-            eigenvectorsHeader.innerHTML = '<span>Eigenvectors (normalised)</span>';
+            eigenvectorsHeader.innerHTML = '<span>Eigenvectors</span>';
             eigenvectorsHeader.style.marginTop = '0';
             eigenvectorsHeader.style.paddingTop = '0';
             eigenvectorsHeader.style.borderBottom = 'none';
@@ -4782,6 +4841,7 @@ class VectoramaApp {
                 if (eigen.isComplex || !eigen.vector) return;
                 
                 const vector = eigen.vector;
+                const simplified = this.simplifyEigenvector(vector);
                 
                 const vecDiv = document.createElement('div');
                 vecDiv.className = 'eigenvalue-item';
@@ -4794,9 +4854,9 @@ class VectoramaApp {
                 vecValueDiv.className = 'eigenvalue-value eigenvector';
                 
                 if (this.dimension === '2d') {
-                    vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)})`;
+                    vecValueDiv.textContent = `(${formatNum(simplified.x)}, ${formatNum(simplified.y)})`;
                 } else {
-                    vecValueDiv.textContent = `(${formatNum(vector.x)}, ${formatNum(vector.y)}, ${formatNum(vector.z)})`;
+                    vecValueDiv.textContent = `(${formatNum(simplified.x)}, ${formatNum(simplified.y)}, ${formatNum(simplified.z)})`;
                 }
                 
                 vecDiv.appendChild(vecLabelDiv);
