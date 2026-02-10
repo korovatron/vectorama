@@ -1656,7 +1656,7 @@ class VectoramaApp {
         // Arrow indicator
         const arrow = document.createElement('span');
         arrow.className = 'group-arrow';
-        arrow.textContent = isCollapsed ? '▶' : '▼';
+        arrow.textContent = isCollapsed ? '▶\uFE0E' : '▼\uFE0E'; // \uFE0E forces text rendering on iOS
         
         // Group label with count
         const label = document.createElement('span');
