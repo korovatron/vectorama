@@ -254,7 +254,7 @@ body {
     padding-top: max(20px, calc(env(safe-area-inset-top) + 10px));
     padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
     overflow-y: auto;
-    overscroll-behavior: none;
+    overscroll-behavior: contain; /* Contain rubber banding within panel, don't affect parent */
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y; /* Allow vertical scrolling */
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
