@@ -842,8 +842,13 @@ class VectoramaApp {
             }, { passive: true });
             
             controlPanel.addEventListener('touchmove', (e) => {
+                // If panel is not scrollable (no overflow), prevent default to stop rubber banding
+                const isScrollable = controlPanel.scrollHeight > controlPanel.clientHeight;
+                if (!isScrollable) {
+                    e.preventDefault();
+                }
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
-            }, { passive: true });
+            }, { passive: false }); // Non-passive to allow preventDefault
             
             controlPanel.addEventListener('touchend', (e) => {
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
