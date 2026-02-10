@@ -1022,6 +1022,11 @@ class VectoramaApp {
         document.querySelectorAll('.preset-3d').forEach(el => {
             el.style.display = dimension === '3d' ? 'block' : 'none';
         });
+        
+        // Show/hide 3D-only actions (like Add Plane)
+        document.querySelectorAll('.action-3d').forEach(el => {
+            el.style.display = dimension === '3d' ? 'block' : 'none';
+        });
 
         // Update camera and controls
         if (dimension === '2d') {
