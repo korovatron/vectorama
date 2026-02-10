@@ -969,6 +969,9 @@ class VectoramaApp {
 
         // Matrix input changes
         this.addMatrixInputListeners();
+        
+        // Initialize dropdown visibility based on starting dimension
+        this.updateDropdownVisibility();
     }
     
     trackEngagement() {
@@ -995,6 +998,19 @@ class VectoramaApp {
         });
     }
 
+    updateDropdownVisibility() {
+        // Show/hide dropdown items based on current dimension
+        document.querySelectorAll('.preset-2d').forEach(el => {
+            el.style.display = this.dimension === '2d' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.preset-3d').forEach(el => {
+            el.style.display = this.dimension === '3d' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.action-3d').forEach(el => {
+            el.style.display = this.dimension === '3d' ? 'block' : 'none';
+        });
+    }
+
     switchDimension(dimension) {
         // Save old dimension before changing
         const oldDimension = this.dimension;
@@ -1015,18 +1031,8 @@ class VectoramaApp {
             }
         }
         
-        // Show/hide appropriate vector presets
-        document.querySelectorAll('.preset-2d').forEach(el => {
-            el.style.display = dimension === '2d' ? 'block' : 'none';
-        });
-        document.querySelectorAll('.preset-3d').forEach(el => {
-            el.style.display = dimension === '3d' ? 'block' : 'none';
-        });
-        
-        // Show/hide 3D-only actions (like Add Plane)
-        document.querySelectorAll('.action-3d').forEach(el => {
-            el.style.display = dimension === '3d' ? 'block' : 'none';
-        });
+        // Update dropdown visibility for dimension-specific items
+        this.updateDropdownVisibility();
 
         // Update camera and controls
         if (dimension === '2d') {
