@@ -836,7 +836,19 @@ class VectoramaApp {
             };
             
             controlPanel.addEventListener('click', () => trackPanelInteraction(), { passive: true });
-            controlPanel.addEventListener('touchstart', () => trackPanelInteraction(), { passive: true });
+            controlPanel.addEventListener('touchstart', (e) => {
+                trackPanelInteraction();
+                e.stopPropagation(); // Prevent bubbling to prevent iOS rubber banding in PWA mode
+            }, { passive: true });
+            
+            // Prevent touch events from bubbling to prevent iOS rubber banding in PWA mode
+            controlPanel.addEventListener('touchmove', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+            
+            controlPanel.addEventListener('touchend', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
         }
         
         panelToggleBtn.addEventListener('click', () => {
