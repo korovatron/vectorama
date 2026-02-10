@@ -252,8 +252,8 @@ body {
     padding: 20px;
     padding-top: max(20px, calc(env(safe-area-inset-top) + 10px));
     padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
-    overflow-y: auto;
-    overscroll-behavior: none; /* Prevent iOS rubber band scrolling */
+    overflow-y: scroll; /* Always scroll to prevent iOS PWA touch fall-through */
+    overscroll-behavior: contain; /* Prevent rubber banding from affecting parent */
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     touch-action: pan-y; /* Allow vertical scroll only */
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
