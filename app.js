@@ -2314,6 +2314,7 @@ class VectoramaApp {
         const r0Label = document.createElement('span');
         r0Label.textContent = 'r₀ = (';
         r0Label.style.fontSize = '0.85em';
+        r0Label.style.minWidth = '36px';
         row1.appendChild(r0Label);
         
         const r0xInput = document.createElement('input');
@@ -2363,6 +2364,7 @@ class VectoramaApp {
         const uLabel = document.createElement('span');
         uLabel.textContent = 'u = (';
         uLabel.style.fontSize = '0.85em';
+        uLabel.style.minWidth = '36px';
         row2.appendChild(uLabel);
         
         const uxInput = document.createElement('input');
@@ -2412,6 +2414,7 @@ class VectoramaApp {
         const vLabel = document.createElement('span');
         vLabel.textContent = 'v = (';
         vLabel.style.fontSize = '0.85em';
+        vLabel.style.minWidth = '36px';
         row3.appendChild(vLabel);
         
         const vxInput = document.createElement('input');
