@@ -341,6 +341,7 @@ body {
 .dim-option {
     color: #666;
     transition: color 0.2s;
+    font-size: 14px;
 }
 
 .dim-option.dim-active {
@@ -350,6 +351,7 @@ body {
 .dim-separator {
     margin: 0 6px;
     color: #666;
+    font-size: 14px;
 }
 
 .inv-option {
