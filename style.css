@@ -1188,6 +1188,31 @@ body {
     background: #E74C3C;
 }
 
+.vector-item .form-toggle-btn {
+    width: 20px;
+    height: 20px;
+    background: #2A3F5A;
+    border: 1px solid #555;
+    color: var(--text-primary);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.vector-item .form-toggle-btn:hover {
+    background: #3498DB;
+    border-color: #2980B9;
+    color: #FFF;
+}
+
 .vector-coordinates {
     display: flex;
     gap: 8px;

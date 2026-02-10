@@ -2168,101 +2168,29 @@ class VectoramaApp {
         nameSpan.textContent = plane.name;
         planeInfo.appendChild(nameSpan);
         
-        // Row 1: [a]x + [b]y +
-        const row1 = document.createElement('div');
-        row1.style.display = 'flex';
-        row1.style.gap = '4px';
-        row1.style.alignItems = 'center';
+        // Render based on form preference
+        if (plane.formPreference === 'cartesian') {
+            this.renderCartesianForm(planeInfo, plane, formatNum);
+        } else {
+            this.renderVectorForm(planeInfo, plane, formatNum);
+        }
         
-        // Coefficient a
-        const aInput = document.createElement('input');
-        aInput.type = 'number';
-        aInput.step = '0.1';
-        aInput.value = formatNum(plane.a);
-        aInput.className = 'equation-input';
-        aInput.addEventListener('input', (e) => {
-            plane.a = parseFloat(e.target.value) || 0;
-            plane.currentA = plane.a; // Keep current values in sync
-            plane.originalA = plane.a; // Keep original values in sync
-            this.renderPlane(plane);
-            this.updateIntersections();
-        });
-        row1.appendChild(aInput);
-        
-        const xLabel = document.createElement('span');
-        xLabel.textContent = 'x +';
-        xLabel.style.fontSize = '0.85em';
-        row1.appendChild(xLabel);
-        
-        // Coefficient b
-        const bInput = document.createElement('input');
-        bInput.type = 'number';
-        bInput.step = '0.1';
-        bInput.value = formatNum(plane.b);
-        bInput.className = 'equation-input';
-        bInput.addEventListener('input', (e) => {
-            plane.b = parseFloat(e.target.value) || 0;
-            plane.currentB = plane.b; // Keep current values in sync
-            plane.originalB = plane.b; // Keep original values in sync
-            this.renderPlane(plane);
-            this.updateIntersections();
-        });
-        row1.appendChild(bInput);
-        
-        const yLabel = document.createElement('span');
-        yLabel.textContent = 'y +';
-        yLabel.style.fontSize = '0.85em';
-        row1.appendChild(yLabel);
-        
-        planeInfo.appendChild(row1);
-        
-        // Row 2: [c]z = [d]
-        const row2 = document.createElement('div');
-        row2.style.display = 'flex';
-        row2.style.gap = '4px';
-        row2.style.alignItems = 'center';
-        
-        // Coefficient c
-        const cInput = document.createElement('input');
-        cInput.type = 'number';
-        cInput.step = '0.1';
-        cInput.value = formatNum(plane.c);
-        cInput.className = 'equation-input';
-        cInput.addEventListener('input', (e) => {
-            plane.c = parseFloat(e.target.value) || 0;
-            plane.currentC = plane.c; // Keep current values in sync
-            plane.originalC = plane.c; // Keep original values in sync
-            this.renderPlane(plane);
-            this.updateIntersections();
-        });
-        row2.appendChild(cInput);
-        
-        const zLabel = document.createElement('span');
-        zLabel.textContent = 'z =';
-        zLabel.style.fontSize = '0.85em';
-        row2.appendChild(zLabel);
-        
-        // Constant d
-        const dInput = document.createElement('input');
-        dInput.type = 'number';
-        dInput.step = '0.1';
-        dInput.value = formatNum(plane.d);
-        dInput.className = 'equation-input';
-        dInput.addEventListener('input', (e) => {
-            plane.d = parseFloat(e.target.value) || 0;
-            plane.currentD = plane.d; // Keep current values in sync
-            plane.originalD = plane.d; // Keep original values in sync
-            this.renderPlane(plane);
-            this.updateIntersections();
-        });
-        row2.appendChild(dInput);
-        
-        planeInfo.appendChild(row2);
         mainRow.appendChild(planeInfo);
 
         // Controls
         const controls = document.createElement('div');
         controls.className = 'vector-controls';
+
+        // Form toggle button (C|V)
+        const formToggleBtn = document.createElement('button');
+        formToggleBtn.className = 'form-toggle-btn';
+        formToggleBtn.textContent = plane.formPreference === 'cartesian' ? 'C' : 'V';
+        formToggleBtn.title = `Toggle to ${plane.formPreference === 'cartesian' ? 'Vector' : 'Cartesian'} form`;
+        formToggleBtn.addEventListener('click', () => {
+            plane.formPreference = plane.formPreference === 'cartesian' ? 'vector' : 'cartesian';
+            this.updateObjectsList(); // Just refresh UI
+        });
+        controls.appendChild(formToggleBtn);
 
         const colorIndicator = document.createElement('div');
         colorIndicator.className = 'color-indicator';
@@ -2282,6 +2210,286 @@ class VectoramaApp {
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
         container.appendChild(item);
+    }
+
+    renderCartesianForm(planeInfo, plane, formatNum) {
+        // Row 1: [a]x + [b]y +
+        const row1 = document.createElement('div');
+        row1.style.display = 'flex';
+        row1.style.gap = '4px';
+        row1.style.alignItems = 'center';
+        
+        const aInput = document.createElement('input');
+        aInput.type = 'number';
+        aInput.step = '0.1';
+        aInput.value = formatNum(plane.a);
+        aInput.className = 'equation-input';
+        aInput.addEventListener('input', (e) => {
+            plane.a = parseFloat(e.target.value) || 0;
+            plane.currentA = plane.a;
+            plane.originalA = plane.a;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        });
+        row1.appendChild(aInput);
+        
+        const xLabel = document.createElement('span');
+        xLabel.textContent = 'x +';
+        xLabel.style.fontSize = '0.85em';
+        row1.appendChild(xLabel);
+        
+        const bInput = document.createElement('input');
+        bInput.type = 'number';
+        bInput.step = '0.1';
+        bInput.value = formatNum(plane.b);
+        bInput.className = 'equation-input';
+        bInput.addEventListener('input', (e) => {
+            plane.b = parseFloat(e.target.value) || 0;
+            plane.currentB = plane.b;
+            plane.originalB = plane.b;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        });
+        row1.appendChild(bInput);
+        
+        const yLabel = document.createElement('span');
+        yLabel.textContent = 'y +';
+        yLabel.style.fontSize = '0.85em';
+        row1.appendChild(yLabel);
+        
+        planeInfo.appendChild(row1);
+        
+        // Row 2: [c]z = [d]
+        const row2 = document.createElement('div');
+        row2.style.display = 'flex';
+        row2.style.gap = '4px';
+        row2.style.alignItems = 'center';
+        
+        const cInput = document.createElement('input');
+        cInput.type = 'number';
+        cInput.step = '0.1';
+        cInput.value = formatNum(plane.c);
+        cInput.className = 'equation-input';
+        cInput.addEventListener('input', (e) => {
+            plane.c = parseFloat(e.target.value) || 0;
+            plane.currentC = plane.c;
+            plane.originalC = plane.c;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        });
+        row2.appendChild(cInput);
+        
+        const zLabel = document.createElement('span');
+        zLabel.textContent = 'z =';
+        zLabel.style.fontSize = '0.85em';
+        row2.appendChild(zLabel);
+        
+        const dInput = document.createElement('input');
+        dInput.type = 'number';
+        dInput.step = '0.1';
+        dInput.value = formatNum(plane.d);
+        dInput.className = 'equation-input';
+        dInput.addEventListener('input', (e) => {
+            plane.d = parseFloat(e.target.value) || 0;
+            plane.currentD = plane.d;
+            plane.originalD = plane.d;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        });
+        row2.appendChild(dInput);
+        
+        planeInfo.appendChild(row2);
+    }
+
+    renderVectorForm(planeInfo, plane, formatNum) {
+        // Convert current Cartesian to Vector form for display
+        const vectorForm = this.cartesianToVector(plane.a, plane.b, plane.c, plane.d);
+        
+        // Row 1: r₀ = ([x], [y], [z])
+        const row1 = document.createElement('div');
+        row1.style.display = 'flex';
+        row1.style.gap = '4px';
+        row1.style.alignItems = 'center';
+        
+        const r0Label = document.createElement('span');
+        r0Label.textContent = 'r₀ = (';
+        r0Label.style.fontSize = '0.85em';
+        row1.appendChild(r0Label);
+        
+        const r0xInput = document.createElement('input');
+        r0xInput.type = 'number';
+        r0xInput.step = '0.1';
+        r0xInput.value = formatNum(vectorForm.r0.x);
+        r0xInput.className = 'equation-input';
+        row1.appendChild(r0xInput);
+        
+        const comma1 = document.createElement('span');
+        comma1.textContent = ',';
+        comma1.style.fontSize = '0.85em';
+        row1.appendChild(comma1);
+        
+        const r0yInput = document.createElement('input');
+        r0yInput.type = 'number';
+        r0yInput.step = '0.1';
+        r0yInput.value = formatNum(vectorForm.r0.y);
+        r0yInput.className = 'equation-input';
+        row1.appendChild(r0yInput);
+        
+        const comma2 = document.createElement('span');
+        comma2.textContent = ',';
+        comma2.style.fontSize = '0.85em';
+        row1.appendChild(comma2);
+        
+        const r0zInput = document.createElement('input');
+        r0zInput.type = 'number';
+        r0zInput.step = '0.1';
+        r0zInput.value = formatNum(vectorForm.r0.z);
+        r0zInput.className = 'equation-input';
+        row1.appendChild(r0zInput);
+        
+        const closeParen1 = document.createElement('span');
+        closeParen1.textContent = ')';
+        closeParen1.style.fontSize = '0.85em';
+        row1.appendChild(closeParen1);
+        
+        planeInfo.appendChild(row1);
+        
+        // Row 2: u = ([x], [y], [z])
+        const row2 = document.createElement('div');
+        row2.style.display = 'flex';
+        row2.style.gap = '4px';
+        row2.style.alignItems = 'center';
+        
+        const uLabel = document.createElement('span');
+        uLabel.textContent = 'u = (';
+        uLabel.style.fontSize = '0.85em';
+        row2.appendChild(uLabel);
+        
+        const uxInput = document.createElement('input');
+        uxInput.type = 'number';
+        uxInput.step = '0.1';
+        uxInput.value = formatNum(vectorForm.u.x);
+        uxInput.className = 'equation-input';
+        row2.appendChild(uxInput);
+        
+        const comma3 = document.createElement('span');
+        comma3.textContent = ',';
+        comma3.style.fontSize = '0.85em';
+        row2.appendChild(comma3);
+        
+        const uyInput = document.createElement('input');
+        uyInput.type = 'number';
+        uyInput.step = '0.1';
+        uyInput.value = formatNum(vectorForm.u.y);
+        uyInput.className = 'equation-input';
+        row2.appendChild(uyInput);
+        
+        const comma4 = document.createElement('span');
+        comma4.textContent = ',';
+        comma4.style.fontSize = '0.85em';
+        row2.appendChild(comma4);
+        
+        const uzInput = document.createElement('input');
+        uzInput.type = 'number';
+        uzInput.step = '0.1';
+        uzInput.value = formatNum(vectorForm.u.z);
+        uzInput.className = 'equation-input';
+        row2.appendChild(uzInput);
+        
+        const closeParen2 = document.createElement('span');
+        closeParen2.textContent = ')';
+        closeParen2.style.fontSize = '0.85em';
+        row2.appendChild(closeParen2);
+        
+        planeInfo.appendChild(row2);
+        
+        // Row 3: v = ([x], [y], [z])
+        const row3 = document.createElement('div');
+        row3.style.display = 'flex';
+        row3.style.gap = '4px';
+        row3.style.alignItems = 'center';
+        
+        const vLabel = document.createElement('span');
+        vLabel.textContent = 'v = (';
+        vLabel.style.fontSize = '0.85em';
+        row3.appendChild(vLabel);
+        
+        const vxInput = document.createElement('input');
+        vxInput.type = 'number';
+        vxInput.step = '0.1';
+        vxInput.value = formatNum(vectorForm.v.x);
+        vxInput.className = 'equation-input';
+        row3.appendChild(vxInput);
+        
+        const comma5 = document.createElement('span');
+        comma5.textContent = ',';
+        comma5.style.fontSize = '0.85em';
+        row3.appendChild(comma5);
+        
+        const vyInput = document.createElement('input');
+        vyInput.type = 'number';
+        vyInput.step = '0.1';
+        vyInput.value = formatNum(vectorForm.v.y);
+        vyInput.className = 'equation-input';
+        row3.appendChild(vyInput);
+        
+        const comma6 = document.createElement('span');
+        comma6.textContent = ',';
+        comma6.style.fontSize = '0.85em';
+        row3.appendChild(comma6);
+        
+        const vzInput = document.createElement('input');
+        vzInput.type = 'number';
+        vzInput.step = '0.1';
+        vzInput.value = formatNum(vectorForm.v.z);
+        vzInput.className = 'equation-input';
+        row3.appendChild(vzInput);
+        
+        const closeParen3 = document.createElement('span');
+        closeParen3.textContent = ')';
+        closeParen3.style.fontSize = '0.85em';
+        row3.appendChild(closeParen3);
+        
+        planeInfo.appendChild(row3);
+        
+        // Add input listeners to convert back to Cartesian when edited
+        const updateFromVector = () => {
+            const r0 = {
+                x: parseFloat(r0xInput.value) || 0,
+                y: parseFloat(r0yInput.value) || 0,
+                z: parseFloat(r0zInput.value) || 0
+            };
+            const u = {
+                x: parseFloat(uxInput.value) || 0,
+                y: parseFloat(uyInput.value) || 0,
+                z: parseFloat(uzInput.value) || 0
+            };
+            const v = {
+                x: parseFloat(vxInput.value) || 0,
+                y: parseFloat(vyInput.value) || 0,
+                z: parseFloat(vzInput.value) || 0
+            };
+            
+            const cartesian = this.vectorToCartesian(r0, u, v);
+            plane.a = cartesian.a;
+            plane.b = cartesian.b;
+            plane.c = cartesian.c;
+            plane.d = cartesian.d;
+            plane.currentA = plane.a;
+            plane.currentB = plane.b;
+            plane.currentC = plane.c;
+            plane.currentD = plane.d;
+            plane.originalA = plane.a;
+            plane.originalB = plane.b;
+            plane.originalC = plane.c;
+            plane.originalD = plane.d;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        };
+        
+        [r0xInput, r0yInput, r0zInput, uxInput, uyInput, uzInput, vxInput, vyInput, vzInput].forEach(input => {
+            input.addEventListener('input', updateFromVector);
+        });
     }
 
     updateVectorArrow(vec) {
@@ -2393,6 +2601,67 @@ class VectoramaApp {
             this.updateObjectsList();
             this.updateIntersections();
         }
+    }
+
+    // Convert Cartesian form (ax+by+cz=d) to Vector form (r=r₀+su+tv)
+    cartesianToVector(a, b, c, d) {
+        const epsilon = 1e-10;
+        
+        // Find a point r₀ on the plane
+        let r0;
+        if (Math.abs(a) > epsilon) {
+            r0 = { x: d/a, y: 0, z: 0 };
+        } else if (Math.abs(b) > epsilon) {
+            r0 = { x: 0, y: d/b, z: 0 };
+        } else if (Math.abs(c) > epsilon) {
+            r0 = { x: 0, y: 0, z: d/c };
+        } else {
+            r0 = { x: 0, y: 0, z: 0 }; // Degenerate case
+        }
+        
+        // Find two direction vectors perpendicular to normal n=(a,b,c)
+        const n = new THREE.Vector3(a, b, c);
+        
+        // First direction vector u: perpendicular to n
+        let u;
+        if (Math.abs(a) > epsilon || Math.abs(b) > epsilon) {
+            u = new THREE.Vector3(-b, a, 0).normalize();
+        } else {
+            u = new THREE.Vector3(1, 0, 0);
+        }
+        
+        // Second direction vector v: perpendicular to both n and u
+        const v = new THREE.Vector3().crossVectors(n, u).normalize();
+        
+        return {
+            r0: r0,
+            u: { x: u.x, y: u.y, z: u.z },
+            v: { x: v.x, y: v.y, z: v.z }
+        };
+    }
+
+    // Convert Vector form (r=r₀+su+tv) to Cartesian form (ax+by+cz=d)
+    vectorToCartesian(r0, u, v) {
+        // Normal vector is u × v
+        const uVec = new THREE.Vector3(u.x, u.y, u.z);
+        const vVec = new THREE.Vector3(v.x, v.y, v.z);
+        const normal = new THREE.Vector3().crossVectors(uVec, vVec);
+        
+        // Normalize for cleaner values
+        const len = normal.length();
+        if (len < 1e-10) {
+            // Degenerate case: u and v are parallel
+            return { a: 0, b: 0, c: 1, d: 0 };
+        }
+        
+        const a = normal.x / len;
+        const b = normal.y / len;
+        const c = normal.z / len;
+        
+        // d = n · r₀
+        const d = a * r0.x + b * r0.y + c * r0.z;
+        
+        return { a, b, c, d };
     }
 
     applyMatrix(id) {
@@ -3091,7 +3360,8 @@ class VectoramaApp {
             currentA: a, currentB: b, currentC: c, currentD: d,
             color: colorHex,
             visible: true,
-            mesh: null
+            mesh: null,
+            formPreference: 'cartesian' // 'cartesian' or 'vector'
         };
         
         this.planes.push(plane);
