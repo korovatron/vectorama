@@ -892,13 +892,13 @@ body {
 .group-add-btn {
     width: 20px;
     height: 20px;
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.7);
+    background: #2A3F5A;
+    border: 1px solid #555;
+    color: var(--text-primary);
     font-size: 16px;
     font-weight: normal;
     line-height: 1;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -906,11 +906,12 @@ body {
     padding: 0;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .group-add-btn:hover {
-    color: rgba(255, 255, 255, 1);
-    background: rgba(255, 255, 255, 0.1);
+    filter: brightness(1.15);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .group-add-btn:active {
