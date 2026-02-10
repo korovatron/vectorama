@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vectorama-version-0.1.17';
+const CACHE_NAME = 'vectorama-version-0.1.18';
 const urlsToCache = [
   '/',
   '/index.html',

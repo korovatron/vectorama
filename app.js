@@ -161,6 +161,14 @@ class VectoramaApp {
         this.intersectionMarkers = []; // Store line-plane intersection markers
         this.planeIntersectionLines = []; // Store plane-plane intersection lines
         
+        // Collapsible group state (all collapsed by default)
+        this.groupCollapsed = {
+            matrices: true,
+            planes: true,
+            lines: true,
+            vectors: true
+        };
+        
         // Unique ID counters
         this.nextVectorId = 1;
         this.nextMatrixId = 1;
@@ -1513,6 +1521,9 @@ class VectoramaApp {
 
         this.vectors.push(vector);
         
+        // Expand vectors group so user can see it was added
+        this.groupCollapsed.vectors = false;
+        
         // Add appropriate visualization based on current mode
         this.updateVectorDisplay();
         this.updateObjectsList();
@@ -1617,27 +1628,65 @@ class VectoramaApp {
         const container = document.getElementById('objects-container');
         container.innerHTML = '';
 
-        // Render matrices first
-        this.matrices.forEach(matrix => {
-            this.renderMatrixItem(container, matrix);
-        });
+        // Always render Matrices group
+        this.renderCollapsibleGroup(container, 'matrices', 'Matrices', this.matrices, this.renderMatrixItem);
 
-        // Render planes second (3D only)
+        // Always render Planes group in 3D mode
         if (this.dimension === '3d') {
-            this.planes.forEach(plane => {
-                this.renderPlaneItem(container, plane);
-            });
+            this.renderCollapsibleGroup(container, 'planes', 'Planes', this.planes, this.renderPlaneItem);
         }
 
-        // Render lines third
-        this.lines.forEach(line => {
-            this.renderLineItem(container, line);
-        });
+        // Always render Lines group
+        this.renderCollapsibleGroup(container, 'lines', 'Lines', this.lines, this.renderLineItem);
 
-        // Then render vectors last
-        this.vectors.forEach(vec => {
-            this.renderVectorItem(container, vec);
+        // Always render Vectors group
+        this.renderCollapsibleGroup(container, 'vectors', 'Vectors', this.vectors, this.renderVectorItem);
+    }
+    
+    renderCollapsibleGroup(container, groupKey, groupName, items, renderFunction) {
+        // Create group container
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'object-group';
+        
+        // Create group header
+        const header = document.createElement('div');
+        header.className = 'object-group-header';
+        const isCollapsed = this.groupCollapsed[groupKey];
+        
+        // Arrow indicator
+        const arrow = document.createElement('span');
+        arrow.className = 'group-arrow';
+        arrow.textContent = isCollapsed ? '▶' : '▼';
+        
+        // Group label with count
+        const label = document.createElement('span');
+        label.className = 'group-label';
+        label.textContent = `${groupName} (${items.length})`;
+        
+        header.appendChild(arrow);
+        header.appendChild(label);
+        
+        // Click handler to toggle collapse
+        header.addEventListener('click', () => {
+            this.groupCollapsed[groupKey] = !this.groupCollapsed[groupKey];
+            this.updateObjectsList();
         });
+        
+        groupContainer.appendChild(header);
+        
+        // Create items container
+        if (!isCollapsed) {
+            const itemsContainer = document.createElement('div');
+            itemsContainer.className = 'object-group-items';
+            
+            items.forEach(item => {
+                renderFunction.call(this, itemsContainer, item);
+            });
+            
+            groupContainer.appendChild(itemsContainer);
+        }
+        
+        container.appendChild(groupContainer);
     }
     
     renderMatrixItem(container, matrix) {
@@ -2440,6 +2489,9 @@ class VectoramaApp {
             this.selectedMatrixId3D = this.selectedMatrixId;
         }
         
+        // Expand matrices group so user can see it was added
+        this.groupCollapsed.matrices = false;
+        
         this.visualizeInvariantSpaces();
         this.updateObjectsList();
     }
@@ -2547,6 +2599,9 @@ class VectoramaApp {
         } else {
             this.selectedMatrixId3D = this.selectedMatrixId;
         }
+        
+        // Expand matrices group so user can see it was added
+        this.groupCollapsed.matrices = false;
         
         this.visualizeInvariantSpaces();
         this.updateObjectsList();
@@ -2974,6 +3029,10 @@ class VectoramaApp {
         };
         
         this.lines.push(line);
+        
+        // Expand lines group so user can see it was added
+        this.groupCollapsed.lines = false;
+        
         this.renderLine(line);
         this.updateObjectsList();
         this.updateIntersections();
@@ -2998,6 +3057,10 @@ class VectoramaApp {
         };
         
         this.planes.push(plane);
+        
+        // Expand planes group so user can see it was added
+        this.groupCollapsed.planes = false;
+        
         this.renderPlane(plane);
         this.updateObjectsList();
         this.updateIntersections();
