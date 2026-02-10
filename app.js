@@ -2309,6 +2309,16 @@ class VectoramaApp {
     }
 
     applyMatrix(id) {
+        // Check if eigenvalue panel is currently displayed
+        const panel = document.getElementById('eigenvalue-panel');
+        const isPanelVisible = panel.style.display !== 'none';
+        
+        // If panel is visible, update it to show this matrix's info
+        if (isPanelVisible) {
+            this.eigenvaluePanelMatrixId = id;
+            this.updateEigenvaluePanel(id);
+        }
+        
         // Apply this matrix transformation to all vectors
         this.animateTransformation(id);
     }
@@ -4836,6 +4846,77 @@ class VectoramaApp {
             itemDiv.appendChild(valueDiv);
             valuesDiv.appendChild(itemDiv);
         });
+        
+        // Calculate and display determinant
+        let determinant;
+        if (this.dimension === '2d') {
+            // det(A) = ad - bc for [[a,b],[c,d]]
+            const a = selectedMatrix.values[0][0];
+            const b = selectedMatrix.values[0][1];
+            const c = selectedMatrix.values[1][0];
+            const d = selectedMatrix.values[1][1];
+            determinant = a * d - b * c;
+        } else {
+            // det(A) = a(ei - fh) - b(di - fg) + c(dh - eg) for 3x3
+            const a = selectedMatrix.values[0][0];
+            const b = selectedMatrix.values[0][1];
+            const c = selectedMatrix.values[0][2];
+            const d = selectedMatrix.values[1][0];
+            const e = selectedMatrix.values[1][1];
+            const f = selectedMatrix.values[1][2];
+            const g = selectedMatrix.values[2][0];
+            const h = selectedMatrix.values[2][1];
+            const i = selectedMatrix.values[2][2];
+            determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+        }
+        
+        // Add separator before determinant
+        const detSeparator = document.createElement('div');
+        detSeparator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        detSeparator.style.margin = '8px 0';
+        valuesDiv.appendChild(detSeparator);
+        
+        // Display determinant
+        const detDiv = document.createElement('div');
+        detDiv.className = 'eigenvalue-item';
+        
+        const detLabelDiv = document.createElement('div');
+        detLabelDiv.className = 'eigenvalue-label';
+        detLabelDiv.textContent = matrixName ? `det ${matrixName}:` : 'det:';
+        
+        const detValueDiv = document.createElement('div');
+        detValueDiv.className = 'eigenvalue-value';
+        detValueDiv.textContent = formatNum(determinant);
+        
+        detDiv.appendChild(detLabelDiv);
+        detDiv.appendChild(detValueDiv);
+        valuesDiv.appendChild(detDiv);
+        
+        // Calculate and display trace
+        let trace;
+        if (this.dimension === '2d') {
+            // tr(A) = a + d for [[a,b],[c,d]]
+            trace = selectedMatrix.values[0][0] + selectedMatrix.values[1][1];
+        } else {
+            // tr(A) = a + e + i for 3x3
+            trace = selectedMatrix.values[0][0] + selectedMatrix.values[1][1] + selectedMatrix.values[2][2];
+        }
+        
+        // Display trace
+        const trDiv = document.createElement('div');
+        trDiv.className = 'eigenvalue-item';
+        
+        const trLabelDiv = document.createElement('div');
+        trLabelDiv.className = 'eigenvalue-label';
+        trLabelDiv.textContent = matrixName ? `tr ${matrixName}:` : 'tr:';
+        
+        const trValueDiv = document.createElement('div');
+        trValueDiv.className = 'eigenvalue-value';
+        trValueDiv.textContent = formatNum(trace);
+        
+        trDiv.appendChild(trLabelDiv);
+        trDiv.appendChild(trValueDiv);
+        valuesDiv.appendChild(trDiv);
         
         // Only show eigenvectors section if we have real eigenvectors
         const hasRealEigenvectors = eigendata.some(e => !e.isComplex && e.vector);
