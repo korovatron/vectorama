@@ -1378,8 +1378,8 @@ class VectoramaApp {
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
                 // Snap to grid for preview
-                const x = Math.round(intersectPoint.x);
-                const y = Math.round(intersectPoint.y);
+                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
+                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
                 this.updateTempVector(x, y, 0);
             }
         } else {
@@ -1388,9 +1388,9 @@ class VectoramaApp {
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
                 // Snap to grid for preview
-                const x = Math.round(intersectPoint.x);
-                const y = Math.round(intersectPoint.y);
-                const z = Math.round(intersectPoint.z);
+                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
+                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
+                const z = Math.round(intersectPoint.z / this.currentGridSpacing) * this.currentGridSpacing;
                 this.updateTempVector(x, y, z);
             }
         }
@@ -1415,9 +1415,9 @@ class VectoramaApp {
             plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
-                // Snap to grid (1 unit spacing)
-                const x = Math.round(intersectPoint.x);
-                const y = Math.round(intersectPoint.y);
+                // Snap to grid intersection
+                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
+                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
                 
                 // Only add if vector has some length
                 if (x !== 0 || y !== 0) {
@@ -1429,10 +1429,10 @@ class VectoramaApp {
             plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
-                // Snap to grid (1 unit spacing)
-                const x = Math.round(intersectPoint.x);
-                const y = Math.round(intersectPoint.y);
-                const z = Math.round(intersectPoint.z);
+                // Snap to grid intersection
+                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
+                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
+                const z = Math.round(intersectPoint.z / this.currentGridSpacing) * this.currentGridSpacing;
                 
                 // Only add if vector has some length
                 if (x !== 0 || y !== 0 || z !== 0) {
