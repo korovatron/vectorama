@@ -838,13 +838,31 @@ class VectoramaApp {
             controlPanel.addEventListener('click', () => trackPanelInteraction(), { passive: true });
             controlPanel.addEventListener('touchstart', (e) => {
                 trackPanelInteraction();
-                e.stopPropagation(); // Prevent bubbling to prevent iOS rubber banding in PWA mode
-            }, { passive: true });
-            
-            // Prevent touch events from bubbling to prevent iOS rubber banding in PWA mode
-            controlPanel.addEventListener('touchmove', (e) => {
                 e.stopPropagation();
             }, { passive: true });
+            
+            // Prevent rubber banding by blocking scroll at boundaries
+            let startY = 0;
+            controlPanel.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].pageY;
+            }, { passive: true });
+            
+            controlPanel.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].pageY;
+                const scrollTop = controlPanel.scrollTop;
+                const scrollHeight = controlPanel.scrollHeight;
+                const clientHeight = controlPanel.clientHeight;
+                const isAtTop = scrollTop <= 0;
+                const isAtBottom = scrollTop + clientHeight >= scrollHeight;
+                const scrollingUp = currentY > startY;
+                const scrollingDown = currentY < startY;
+                
+                // Prevent rubber banding at scroll boundaries
+                if ((isAtTop && scrollingUp) || (isAtBottom && scrollingDown)) {
+                    e.preventDefault();
+                }
+                e.stopPropagation();
+            }, { passive: false }); // Non-passive to allow preventDefault
             
             controlPanel.addEventListener('touchend', (e) => {
                 e.stopPropagation();
