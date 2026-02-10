@@ -1666,25 +1666,37 @@ class VectoramaApp {
         header.appendChild(arrow);
         header.appendChild(label);
         
+        // Create items container (always render for animation)
+        const itemsContainer = document.createElement('div');
+        itemsContainer.className = 'object-group-items';
+        if (isCollapsed) {
+            itemsContainer.classList.add('collapsed');
+        }
+        
+        items.forEach(item => {
+            renderFunction.call(this, itemsContainer, item);
+        });
+        
         // Click handler to toggle collapse
         header.addEventListener('click', () => {
             this.groupCollapsed[groupKey] = !this.groupCollapsed[groupKey];
-            this.updateObjectsList();
+            const nowCollapsed = this.groupCollapsed[groupKey];
+            
+            // Toggle collapsed class for animation
+            if (nowCollapsed) {
+                itemsContainer.classList.add('collapsed');
+                arrow.textContent = '▶\uFE0E';
+            } else {
+                itemsContainer.classList.remove('collapsed');
+                arrow.textContent = '▼\uFE0E';
+            }
+            
+            // Update count in label (in case items changed)
+            label.textContent = `${groupName} (${items.length})`;
         });
         
         groupContainer.appendChild(header);
-        
-        // Create items container
-        if (!isCollapsed) {
-            const itemsContainer = document.createElement('div');
-            itemsContainer.className = 'object-group-items';
-            
-            items.forEach(item => {
-                renderFunction.call(this, itemsContainer, item);
-            });
-            
-            groupContainer.appendChild(itemsContainer);
-        }
+        groupContainer.appendChild(itemsContainer);
         
         container.appendChild(groupContainer);
     }
