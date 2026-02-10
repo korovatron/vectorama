@@ -2181,6 +2181,14 @@ class VectoramaApp {
         const controls = document.createElement('div');
         controls.className = 'vector-controls';
 
+        const colorIndicator = document.createElement('div');
+        colorIndicator.className = 'color-indicator';
+        colorIndicator.style.backgroundColor = plane.visible ? plane.color : 'transparent';
+        colorIndicator.title = `Click to ${plane.visible ? 'hide' : 'show'} plane`;
+        colorIndicator.style.cursor = 'pointer';
+        colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
+        controls.appendChild(colorIndicator);
+
         // Form toggle button (C|V)
         const formToggleBtn = document.createElement('button');
         formToggleBtn.className = 'form-toggle-btn';
@@ -2191,14 +2199,6 @@ class VectoramaApp {
             this.updateObjectsList(); // Just refresh UI
         });
         controls.appendChild(formToggleBtn);
-
-        const colorIndicator = document.createElement('div');
-        colorIndicator.className = 'color-indicator';
-        colorIndicator.style.backgroundColor = plane.visible ? plane.color : 'transparent';
-        colorIndicator.title = `Click to ${plane.visible ? 'hide' : 'show'} plane`;
-        colorIndicator.style.cursor = 'pointer';
-        colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
-        controls.appendChild(colorIndicator);
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
