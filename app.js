@@ -867,6 +867,11 @@ class VectoramaApp {
         
         // Auto-close panel on canvas tap for narrow touch devices (phones in portrait)
         this.canvas.addEventListener('touchstart', (e) => {
+            // Exclude touches that start on control panel to prevent rubber banding
+            if (e.target.closest('.control-panel')) {
+                return;
+            }
+            
             // Only on narrow screens (phones) and when panel is open
             if (window.innerWidth < 768 && this.panelOpen) {
                 this.panelOpen = false;

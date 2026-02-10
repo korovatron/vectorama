@@ -178,6 +178,7 @@ body {
     height: 100vh;
     height: var(--actual-vh, 100vh); /* Mobile: JS-calculated height for iOS PWA fix */
     width: 100vw;
+    overscroll-behavior: none;
 }
 
 /* Hamburger Menu Button */
@@ -252,10 +253,10 @@ body {
     padding: 20px;
     padding-top: max(20px, calc(env(safe-area-inset-top) + 10px));
     padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
-    overflow-y: scroll; /* Always scroll to prevent iOS PWA touch fall-through */
-    overscroll-behavior: contain; /* Prevent rubber banding from affecting parent */
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    touch-action: pan-y; /* Allow vertical scroll only */
+    overflow-y: auto;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: none; /* Prevent default touch behaviors that cause rubber banding */
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     transition: transform 0.3s ease;
     z-index: 1000;
@@ -1162,6 +1163,7 @@ body {
     height: 100vh;
     position: relative;
     background: var(--canvas-bg);
+    overscroll-behavior: none;
 }
 
 #three-canvas {
