@@ -1663,8 +1663,34 @@ class VectoramaApp {
         label.className = 'group-label';
         label.textContent = `${groupName} (${items.length})`;
         
+        // Add button for quick item creation
+        const addBtn = document.createElement('button');
+        addBtn.className = 'group-add-btn';
+        addBtn.textContent = '+\uFE0E'; // \uFE0E forces text rendering on iOS
+        addBtn.title = `Add ${groupName.slice(0, -1)}`; // Remove 's' from plural
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent header click (collapse/expand)
+            
+            // Call appropriate add function based on group key
+            switch(groupKey) {
+                case 'matrices':
+                    this.addMatrix();
+                    break;
+                case 'vectors':
+                    this.addVector(1, 0, 0); // Default vector
+                    break;
+                case 'lines':
+                    this.addLine();
+                    break;
+                case 'planes':
+                    this.addPlane();
+                    break;
+            }
+        });
+        
         header.appendChild(arrow);
         header.appendChild(label);
+        header.appendChild(addBtn);
         
         // Create items container (always render for animation)
         const itemsContainer = document.createElement('div');
