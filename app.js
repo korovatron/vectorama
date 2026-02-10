@@ -4028,7 +4028,9 @@ class VectoramaApp {
             } else {
                 const sqrt3 = Math.sqrt(3);
                 const sqrtNegP3 = Math.sqrt(-p / 3);
-                const theta = Math.acos(-q / (2 * sqrtNegP3 * sqrtNegP3 * sqrtNegP3)) / 3;
+                // Clamp the argument to acos to avoid NaN from floating-point errors
+                const acosArg = Math.max(-1, Math.min(1, -q / (2 * sqrtNegP3 * sqrtNegP3 * sqrtNegP3)));
+                const theta = Math.acos(acosArg) / 3;
                 
                 for (let k = 0; k < 3; k++) {
                     const root = 2 * sqrtNegP3 * Math.cos(theta - 2 * Math.PI * k / 3) - b / 3;
