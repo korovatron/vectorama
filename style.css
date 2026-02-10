@@ -1208,9 +1208,8 @@ body {
 }
 
 .vector-item .form-toggle-btn:hover {
-    background: #3498DB;
-    border-color: #2980B9;
-    color: #FFF;
+    filter: brightness(1.15);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .vector-coordinates {
