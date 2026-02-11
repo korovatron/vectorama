@@ -128,6 +128,8 @@ class VectoramaApp {
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.colorIndex = this.colorIndex2D;
         this.eigenvaluePanelMatrixId = null; // Track which matrix's info is showing in eigenvalue panel
+        this.lineInfoPanelId = null; // Track which line's info is showing
+        this.planeInfoPanelId = null; // Track which plane's info is showing
         
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -1818,6 +1820,9 @@ class VectoramaApp {
 
         // Always render Vectors group
         this.renderCollapsibleGroup(container, 'vectors', 'Vectors', this.vectors, this.renderVectorItem);
+        
+        // Update plane info panel if it's open
+        this.updatePlanePanel();
     }
     
     renderCollapsibleGroup(container, groupKey, groupName, items, renderFunction) {
@@ -2301,6 +2306,14 @@ class VectoramaApp {
         colorIndicator.style.cursor = 'pointer';
         colorIndicator.addEventListener('click', () => this.toggleLineVisibility(line.id));
         controls.appendChild(colorIndicator);
+        
+        // Info button (i icon)
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'matrix-info-btn';
+        infoBtn.title = 'Show line information';
+        infoBtn.textContent = 'i';
+        infoBtn.addEventListener('click', () => this.showLineInfo(line.id));
+        controls.appendChild(infoBtn);
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -2376,6 +2389,14 @@ class VectoramaApp {
             this.updateObjectsList(); // Just refresh UI
         });
         controls.appendChild(formToggleBtn);
+        
+        // Info button (i icon)
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'matrix-info-btn';
+        infoBtn.title = 'Show plane information';
+        infoBtn.textContent = 'i';
+        infoBtn.addEventListener('click', () => this.showPlaneInfo(plane.id));
+        controls.appendChild(infoBtn);
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -2765,6 +2786,13 @@ class VectoramaApp {
                 this.scene.remove(line.mesh);
             }
             this.lines.splice(index, 1);
+            
+            // Hide line info panel if showing this line
+            if (this.lineInfoPanelId === id) {
+                this.lineInfoPanelId = null;
+                document.getElementById('line-info-panel').style.display = 'none';
+            }
+            
             this.updateObjectsList();
             this.updateIntersections();
         }
@@ -2778,6 +2806,13 @@ class VectoramaApp {
                 this.scene.remove(plane.mesh);
             }
             this.planes.splice(index, 1);
+            
+            // Hide plane info panel if showing this plane
+            if (this.planeInfoPanelId === id) {
+                this.planeInfoPanelId = null;
+                document.getElementById('plane-info-panel').style.display = 'none';
+            }
+            
             this.updateObjectsList();
             this.updateIntersections();
         }
@@ -2860,6 +2895,12 @@ class VectoramaApp {
     }
 
     showMatrixInfo(id) {
+        // Hide other info panels
+        document.getElementById('line-info-panel').style.display = 'none';
+        document.getElementById('plane-info-panel').style.display = 'none';
+        this.lineInfoPanelId = null;
+        this.planeInfoPanelId = null;
+        
         // Toggle eigenvalue panel for this matrix
         if (this.eigenvaluePanelMatrixId === id) {
             // Already showing this matrix, hide panel
@@ -2877,6 +2918,54 @@ class VectoramaApp {
         
         // Update the eigenvalue panel
         this.updateEigenvaluePanel();
+    }
+
+    showLineInfo(id) {
+        // Hide other info panels
+        document.getElementById('eigenvalue-panel').style.display = 'none';
+        document.getElementById('plane-info-panel').style.display = 'none';
+        this.eigenvaluePanelMatrixId = null;
+        this.planeInfoPanelId = null;
+        
+        // Clear invariant spaces when switching away from matrix panel
+        this.invariantDisplayMode = 'off';
+        this.clearInvariantSpaces();
+        
+        // Toggle line info panel for this line
+        if (this.lineInfoPanelId === id) {
+            // Already showing this line, hide panel
+            this.lineInfoPanelId = null;
+        } else {
+            // Show panel for this line
+            this.lineInfoPanelId = id;
+        }
+        
+        // Update the line info panel
+        this.updateLinePanel();
+    }
+
+    showPlaneInfo(id) {
+        // Hide other info panels
+        document.getElementById('eigenvalue-panel').style.display = 'none';
+        document.getElementById('line-info-panel').style.display = 'none';
+        this.eigenvaluePanelMatrixId = null;
+        this.lineInfoPanelId = null;
+        
+        // Clear invariant spaces when switching away from matrix panel
+        this.invariantDisplayMode = 'off';
+        this.clearInvariantSpaces();
+        
+        // Toggle plane info panel for this plane
+        if (this.planeInfoPanelId === id) {
+            // Already showing this plane, hide panel
+            this.planeInfoPanelId = null;
+        } else {
+            // Show panel for this plane
+            this.planeInfoPanelId = id;
+        }
+        
+        // Update the plane info panel
+        this.updatePlanePanel();
     }
 
 
@@ -4334,6 +4423,9 @@ class VectoramaApp {
                 this.scene.add(label);
             }
         }
+        
+        // Update plane info panel if it's open
+        this.updatePlanePanel();
     }
 
     clearIntersections() {
@@ -5815,6 +5907,244 @@ class VectoramaApp {
             
             valuesDiv.appendChild(invariantControls);
         }
+    }
+
+    updateLinePanel() {
+        const panel = document.getElementById('line-info-panel');
+        const contentDiv = document.getElementById('line-info-content');
+        const headerSpan = document.getElementById('line-info-header');
+        
+        // Hide panel if no line is specified
+        if (!this.lineInfoPanelId) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Get the line object
+        const line = this.lines.find(l => l.id === this.lineInfoPanelId);
+        
+        // If line doesn't exist (was deleted), hide panel
+        if (!line) {
+            panel.style.display = 'none';
+            this.lineInfoPanelId = null;
+            return;
+        }
+        
+        // Update header with line name
+        headerSpan.textContent = `${line.name}: Information`;
+        
+        // Show panel with placeholder content
+        panel.style.display = 'block';
+        contentDiv.innerHTML = '<div style="padding: 8px; font-style: italic; opacity: 0.7;">Content coming soon...</div>';
+    }
+
+    updatePlanePanel() {
+        const panel = document.getElementById('plane-info-panel');
+        const contentDiv = document.getElementById('plane-info-content');
+        const headerSpan = document.getElementById('plane-info-header');
+        
+        // Hide panel if no plane is specified
+        if (!this.planeInfoPanelId) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        // Get the plane object
+        const plane = this.planes.find(p => p.id === this.planeInfoPanelId);
+        
+        // If plane doesn't exist (was deleted), hide panel
+        if (!plane) {
+            panel.style.display = 'none';
+            this.planeInfoPanelId = null;
+            return;
+        }
+        
+        // Update header with plane name
+        headerSpan.textContent = `${plane.name}: Information`;
+        
+        // Show panel and build content
+        panel.style.display = 'block';
+        contentDiv.innerHTML = '';
+        
+        // Helper function to format angles
+        const formatAngle = (radians) => {
+            const degrees = radians * (180 / Math.PI);
+            return degrees.toFixed(1) + '°';
+        };
+        
+        // Get other planes (excluding current one)
+        const otherPlanes = this.planes.filter(p => p.id !== plane.id && p.visible);
+        
+        // Get all visible lines
+        const visibleLines = this.lines.filter(l => l.visible);
+        
+        // Angle with other planes section
+        if (otherPlanes.length > 0) {
+            const planeSection = document.createElement('div');
+            planeSection.style.padding = '8px';
+            planeSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+            
+            const planeLabel = document.createElement('div');
+            planeLabel.textContent = 'Angle with plane:';
+            planeLabel.style.fontSize = '11px';
+            planeLabel.style.marginBottom = '6px';
+            planeLabel.style.opacity = '0.8';
+            planeSection.appendChild(planeLabel);
+            
+            const planeSelect = document.createElement('select');
+            planeSelect.style.width = '100%';
+            planeSelect.style.padding = '4px';
+            planeSelect.style.fontSize = '11px';
+            planeSelect.style.background = '#2A3F5A';
+            planeSelect.style.color = 'white';
+            planeSelect.style.border = '1px solid #555';
+            planeSelect.style.borderRadius = '3px';
+            planeSelect.style.cursor = 'pointer';
+            
+            // Default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select plane --';
+            planeSelect.appendChild(defaultOption);
+            
+            // Add options for each plane
+            otherPlanes.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                planeSelect.appendChild(option);
+            });
+            
+            planeSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const otherPlane = this.planes.find(p => p.id === parseInt(e.target.value));
+                    if (otherPlane) {
+                        const angle = this.calculatePlanePlaneAngle(plane, otherPlane);
+                        planeResult.textContent = formatAngle(angle);
+                        planeResult.style.display = 'block';
+                    }
+                } else {
+                    planeResult.style.display = 'none';
+                }
+            });
+            
+            planeSection.appendChild(planeSelect);
+            
+            const planeResult = document.createElement('div');
+            planeResult.style.marginTop = '6px';
+            planeResult.style.fontSize = '13px';
+            planeResult.style.fontWeight = 'bold';
+            planeResult.style.color = '#64B5F6';
+            planeResult.style.display = 'none';
+            planeSection.appendChild(planeResult);
+            
+            contentDiv.appendChild(planeSection);
+        }
+        
+        // Angle with lines section
+        if (visibleLines.length > 0) {
+            const lineSection = document.createElement('div');
+            lineSection.style.padding = '8px';
+            
+            const lineLabel = document.createElement('div');
+            lineLabel.textContent = 'Angle with line:';
+            lineLabel.style.fontSize = '11px';
+            lineLabel.style.marginBottom = '6px';
+            lineLabel.style.opacity = '0.8';
+            lineSection.appendChild(lineLabel);
+            
+            const lineSelect = document.createElement('select');
+            lineSelect.style.width = '100%';
+            lineSelect.style.padding = '4px';
+            lineSelect.style.fontSize = '11px';
+            lineSelect.style.background = '#2A3F5A';
+            lineSelect.style.color = 'white';
+            lineSelect.style.border = '1px solid #555';
+            lineSelect.style.borderRadius = '3px';
+            lineSelect.style.cursor = 'pointer';
+            
+            // Default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select line --';
+            lineSelect.appendChild(defaultOption);
+            
+            // Add options for each line
+            visibleLines.forEach(l => {
+                const option = document.createElement('option');
+                option.value = l.id;
+                option.textContent = l.name;
+                lineSelect.appendChild(option);
+            });
+            
+            lineSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const selectedLine = this.lines.find(l => l.id === parseInt(e.target.value));
+                    if (selectedLine) {
+                        const angle = this.calculatePlaneLineAngle(plane, selectedLine);
+                        lineResult.textContent = formatAngle(angle);
+                        lineResult.style.display = 'block';
+                    }
+                } else {
+                    lineResult.style.display = 'none';
+                }
+            });
+            
+            lineSection.appendChild(lineSelect);
+            
+            const lineResult = document.createElement('div');
+            lineResult.style.marginTop = '6px';
+            lineResult.style.fontSize = '13px';
+            lineResult.style.fontWeight = 'bold';
+            lineResult.style.color = '#64B5F6';
+            lineResult.style.display = 'none';
+            lineSection.appendChild(lineResult);
+            
+            contentDiv.appendChild(lineSection);
+        }
+        
+        // No objects message
+        if (otherPlanes.length === 0 && visibleLines.length === 0) {
+            const noObjectsMsg = document.createElement('div');
+            noObjectsMsg.style.padding = '8px';
+            noObjectsMsg.style.fontStyle = 'italic';
+            noObjectsMsg.style.opacity = '0.7';
+            noObjectsMsg.textContent = 'Add other planes or lines to calculate angles';
+            contentDiv.appendChild(noObjectsMsg);
+        }
+    }
+
+    calculatePlanePlaneAngle(plane1, plane2) {
+        // Normal vectors
+        const n1 = new THREE.Vector3(plane1.a, plane1.b, plane1.c);
+        const n2 = new THREE.Vector3(plane2.a, plane2.b, plane2.c);
+        
+        // Normalize
+        n1.normalize();
+        n2.normalize();
+        
+        // Angle between normal vectors (use absolute value of dot product to get acute angle)
+        const dot = Math.abs(n1.dot(n2));
+        const angle = Math.acos(Math.min(1, dot)); // Clamp to avoid numerical errors
+        
+        return angle;
+    }
+
+    calculatePlaneLineAngle(plane, line) {
+        // Normal vector of plane
+        const normal = new THREE.Vector3(plane.a, plane.b, plane.c);
+        normal.normalize();
+        
+        // Direction vector of line
+        const direction = new THREE.Vector3(line.direction.x, line.direction.y, line.direction.z);
+        direction.normalize();
+        
+        // Angle between line and plane is complement of angle between normal and direction
+        // sin(angle_line_plane) = |cos(angle_normal_direction)| = |n · d|
+        const dot = Math.abs(normal.dot(direction));
+        const angle = Math.asin(Math.min(1, dot)); // Clamp to avoid numerical errors
+        
+        return angle;
     }
 
     updateDebugPanel() {

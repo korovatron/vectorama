@@ -996,7 +996,8 @@ body {
 }
 
 .matrix-item .matrix-apply-btn,
-.matrix-item .matrix-info-btn {
+.matrix-item .matrix-info-btn,
+.vector-item .matrix-info-btn {
     width: 20px;
     height: 20px;
     background: #2A3F5A;
@@ -1013,7 +1014,8 @@ body {
 }
 
 .matrix-item .matrix-apply-btn:hover,
-.matrix-item .matrix-info-btn:hover {
+.matrix-item .matrix-info-btn:hover,
+.vector-item .matrix-info-btn:hover {
     filter: brightness(1.15);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
@@ -1027,14 +1029,16 @@ body {
     color: white;
 }
 
-.matrix-item .matrix-info-btn {
+.matrix-item .matrix-info-btn,
+.vector-item .matrix-info-btn {
     font-size: 11px;
     font-weight: bold;
     font-style: italic;
     color: #64B5F6;
 }
 
-.matrix-item .matrix-info-btn:active {
+.matrix-item .matrix-info-btn:active,
+.vector-item .matrix-info-btn:active {
     background: #64B5F6;
     color: white;
 }
