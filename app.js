@@ -158,6 +158,12 @@ class VectoramaApp {
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
         this.vectorDisplayMode = 'points'; // 'vectors', 'points', 'path'
         this.pathLines = []; // Store path visualization lines
+        
+        // Debug performance tracking
+        this.debugEnabled = true; // Set to false to disable debug panel
+        this.frameCount = 0;
+        this.lastFrameTime = performance.now();
+        this.fps = 0;
         this.intersectionMarkers = []; // Store line-plane intersection markers
         this.planeIntersectionLines = []; // Store plane-plane intersection lines
         
@@ -183,6 +189,7 @@ class VectoramaApp {
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
         this.initEventListeners();
+        this.initDebugPanel();
         this.createGrid();
         this.createAxes();
         this.animate();
@@ -223,10 +230,20 @@ class VectoramaApp {
         // Tablets (like iPad Pro) can handle higher pixel ratios, so only limit phones
         const isMobilePhone = /iPhone|Android/.test(navigator.userAgent) && 
                              !/iPad|tablet/i.test(navigator.userAgent);
+        const isTablet = /iPad|tablet/i.test(navigator.userAgent);
         const pixelRatio = isMobilePhone 
             ? Math.min(window.devicePixelRatio, 2.0)
             : window.devicePixelRatio;
         this.renderer.setPixelRatio(pixelRatio);
+        
+        // Store device info for debug panel
+        this.deviceInfo = {
+            isMobilePhone: isMobilePhone,
+            isTablet: isTablet,
+            devicePixelRatio: window.devicePixelRatio,
+            clampedPixelRatio: pixelRatio,
+            deviceType: isMobilePhone ? 'Mobile Phone' : (isTablet ? 'Tablet' : 'Desktop')
+        };
 
         // Controls
         this.controls = new OrbitControls(this.camera, this.canvas);
@@ -848,6 +865,35 @@ class VectoramaApp {
         
         // Update the display for 2D mode
         this.updateObjectsList();
+    }
+
+    initDebugPanel() {
+        if (!this.debugEnabled) return;
+        
+        const debugPanel = document.getElementById('debug-panel');
+        if (!debugPanel) return;
+        
+        // Show the debug panel
+        debugPanel.style.display = 'block';
+        
+        // Update device info
+        const deviceElement = document.getElementById('debug-device');
+        if (deviceElement) {
+            deviceElement.textContent = `Device: ${this.deviceInfo.deviceType}`;
+        }
+        
+        // Update pixel ratio info
+        const pixelRatioElement = document.getElementById('debug-pixelratio');
+        if (pixelRatioElement) {
+            const actual = this.deviceInfo.devicePixelRatio.toFixed(1);
+            const clamped = this.deviceInfo.clampedPixelRatio.toFixed(1);
+            if (actual === clamped) {
+                pixelRatioElement.textContent = `Pixel Ratio: ${actual}`;
+            } else {
+                pixelRatioElement.textContent = `Pixel Ratio: ${actual} → ${clamped}`;
+                pixelRatioElement.style.color = '#F39C12'; // Highlight when clamped
+            }
+        }
     }
 
     initEventListeners() {
@@ -5676,6 +5722,30 @@ class VectoramaApp {
         }
     }
 
+    updateDebugPanel() {
+        if (!this.debugEnabled) return;
+        
+        const now = performance.now();
+        this.frameCount++;
+        
+        // Update FPS every second
+        if (now >= this.lastFrameTime + 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / (now - this.lastFrameTime));
+            this.frameCount = 0;
+            this.lastFrameTime = now;
+            
+            // Update debug display
+            const fpsElement = document.getElementById('debug-fps');
+            if (fpsElement) {
+                fpsElement.textContent = `FPS: ${this.fps}`;
+                // Color code FPS: green > 50, yellow 30-50, red < 30
+                if (this.fps > 50) fpsElement.style.color = '#27AE60';
+                else if (this.fps > 30) fpsElement.style.color = '#F39C12';
+                else fpsElement.style.color = '#E74C3C';
+            }
+        }
+    }
+
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
@@ -5685,6 +5755,7 @@ class VectoramaApp {
         this.updatePointSphereScales();
         this.updateVectorThickness();
         this.updateInvariantSpaceColors();
+        this.updateDebugPanel();
         this.renderer.render(this.scene, this.camera);
     }
 }
