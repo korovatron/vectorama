@@ -4369,8 +4369,9 @@ class VectoramaApp {
         const eigenvalues = this.solveCubic(1, -c2, -c1, -c0);
         
         const result = [];
-        const eigenvalueMap = new Map(); // Map eigenvalue -> array of vectors
+        const processedEigenvalues = new Map(); // Map eigenvalue -> {vectors: [], count: number}
         
+        // Group eigenvalues by value and count multiplicities
         for (const lambda of eigenvalues) {
             const realValue = lambda.real;
             
@@ -4379,37 +4380,54 @@ class VectoramaApp {
                 continue;
             }
             
-            // Check if we already have vectors for this eigenvalue
-            let existingVectors = [];
-            for (const [key, vectors] of eigenvalueMap) {
+            // Check if we already have this eigenvalue
+            let found = false;
+            for (const [key, data] of processedEigenvalues) {
                 if (Math.abs(realValue - key) < 1e-6) {
-                    existingVectors = vectors;
+                    data.count++;
+                    found = true;
                     break;
                 }
             }
             
-            // Pass all existing vectors for this eigenvalue to avoid them
-            const v = this.computeEigenvector3D(m, realValue, existingVectors);
+            if (!found) {
+                processedEigenvalues.set(realValue, { vectors: [], count: 1 });
+            }
+        }
+        
+        // For each unique eigenvalue, find eigenvectors
+        for (const [eigenvalue, data] of processedEigenvalues) {
+            const existingVectors = data.vectors;
+            
+            // Try to find up to 'count' linearly independent eigenvectors
+            for (let i = 0; i < data.count; i++) {
+                const v = this.computeEigenvector3D(m, eigenvalue, existingVectors);
                 
-            if (v) {
-                // Check if this is actually a new direction (not too similar to existing)
-                let isDuplicate = false;
-                for (const existing of existingVectors) {
-                    if (Math.abs(v.dot(existing)) > 0.99) {
-                        isDuplicate = true;
-                        break;
+                if (v) {
+                    // Check if this is actually a new direction (not too similar to existing)
+                    let isDuplicate = false;
+                    for (const existing of existingVectors) {
+                        if (Math.abs(v.dot(existing)) > 0.99) {
+                            isDuplicate = true;
+                            break;
+                        }
                     }
-                }
-                
-                if (!isDuplicate) {
-                    result.push({ value: realValue, vector: v });
                     
-                    // Store this vector
-                    if (existingVectors.length === 0) {
-                        eigenvalueMap.set(realValue, [v]);
-                    } else {
+                    if (!isDuplicate) {
                         existingVectors.push(v);
+                        result.push({ value: eigenvalue, vector: v });
+                    } else {
+                        // Repeated eigenvalue but can't find independent eigenvector
+                        // Still report the eigenvalue with the same eigenvector
+                        result.push({ value: eigenvalue, vector: existingVectors[0] || v });
                     }
+                } else {
+                    // Couldn't find a vector - still need to report the eigenvalue!
+                    if (existingVectors.length > 0) {
+                        // Reuse existing eigenvector
+                        result.push({ value: eigenvalue, vector: existingVectors[0] });
+                    }
+                    // If no vector found at all, skip this eigenvalue occurrence
                 }
             }
         }
@@ -4513,81 +4531,114 @@ class VectoramaApp {
             }
         }
         
-        // Check if all rows are proportional (degenerate case - 2D eigenspace)
-        const isDegenerate = (mag1 > epsilon && mag2 > epsilon && mag3 > epsilon && 
-             Math.abs(row1.clone().normalize().dot(row2.clone().normalize())) > 0.99);
+        // Check if we have a degenerate case (2D or higher eigenspace)
+        // This happens when rows are proportional or some rows are zero
+        let isDegenerate = false;
+        let normalRow = null;
         
-        if (isDegenerate) {
-            // All rows are the same or proportional - 2D eigenspace (plane)
-            // All rows are the same or zero - 2D or 3D eigenspace
-            // Find any vector perpendicular to the row
-            let normalRow = row1;
-            if (mag1 < epsilon) normalRow = row2;
-            if (mag1 < epsilon && mag2 < epsilon) normalRow = row3;
+        // Check if at least two non-zero rows are proportional
+        if (mag1 > epsilon && mag2 > epsilon && 
+            Math.abs(row1.clone().normalize().dot(row2.clone().normalize())) > 0.99) {
+            isDegenerate = true;
+            normalRow = row1;
+        } else if (mag1 > epsilon && mag3 > epsilon && 
+            Math.abs(row1.clone().normalize().dot(row3.clone().normalize())) > 0.99) {
+            isDegenerate = true;
+            normalRow = row1;
+        } else if (mag2 > epsilon && mag3 > epsilon && 
+            Math.abs(row2.clone().normalize().dot(row3.clone().normalize())) > 0.99) {
+            isDegenerate = true;
+            normalRow = row2;
+        } else if (mag1 < epsilon && mag2 > epsilon) {
+            // Row 1 is zero, use row 2
+            isDegenerate = true;
+            normalRow = row2;
+        } else if (mag1 < epsilon && mag3 > epsilon) {
+            // Row 1 is zero, use row 3
+            isDegenerate = true;
+            normalRow = row3;
+        } else if (mag2 < epsilon && mag1 > epsilon) {
+            // Row 2 is zero, use row 1
+            isDegenerate = true;
+            normalRow = row1;
+        } else if (mag2 < epsilon && mag3 > epsilon) {
+            // Row 2 is zero, use row 3
+            isDegenerate = true;
+            normalRow = row3;
+        } else if (mag3 < epsilon && mag1 > epsilon) {
+            // Row 3 is zero, use row 1
+            isDegenerate = true;
+            normalRow = row1;
+        } else if (mag3 < epsilon && mag2 > epsilon) {
+            // Row 3 is zero, use row 2
+            isDegenerate = true;
+            normalRow = row2;
+        }
+        
+        if (isDegenerate && normalRow) {
+            // All rows are the same or proportional or some are zero - 2D or 3D eigenspace
+            // Find any vector perpendicular to the non-zero row
+            normalRow = normalRow.clone().normalize();
             
-            if (normalRow.lengthSq() > epsilon) {
-                normalRow.normalize();
-                
-                // Try to find a vector perpendicular to both normal and all avoidDirections
-                let v1;
-                
-                if (avoidDirections.length === 0) {
-                    // First eigenvector - just perpendicular to normal
+            // Try to find a vector perpendicular to both normal and all avoidDirections
+            let v1;
+            
+            if (avoidDirections.length === 0) {
+                // First eigenvector - just perpendicular to normal
+                if (Math.abs(normalRow.x) < 0.9) {
+                    v1 = new THREE.Vector3(1, 0, 0).cross(normalRow).normalize();
+                } else {
+                    v1 = new THREE.Vector3(0, 1, 0).cross(normalRow).normalize();
+                }
+            } else if (avoidDirections.length === 1) {
+                // Second eigenvector - perpendicular to both normal and first eigenvector
+                v1 = new THREE.Vector3().crossVectors(normalRow, avoidDirections[0]);
+                if (v1.lengthSq() < epsilon) {
+                    // They're parallel, use different approach
                     if (Math.abs(normalRow.x) < 0.9) {
                         v1 = new THREE.Vector3(1, 0, 0).cross(normalRow).normalize();
                     } else {
                         v1 = new THREE.Vector3(0, 1, 0).cross(normalRow).normalize();
                     }
-                } else if (avoidDirections.length === 1) {
-                    // Second eigenvector - perpendicular to both normal and first eigenvector
-                    v1 = new THREE.Vector3().crossVectors(normalRow, avoidDirections[0]);
-                    if (v1.lengthSq() < epsilon) {
-                        // They're parallel, use different approach
-                        if (Math.abs(normalRow.x) < 0.9) {
-                            v1 = new THREE.Vector3(1, 0, 0).cross(normalRow).normalize();
-                        } else {
-                            v1 = new THREE.Vector3(0, 1, 0).cross(normalRow).normalize();
-                        }
-                    } else {
-                        v1.normalize();
-                    }
                 } else {
-                    // Third eigenvector - perpendicular to first two eigenvectors
-                    v1 = new THREE.Vector3().crossVectors(avoidDirections[0], avoidDirections[1]);
-                    if (v1.lengthSq() < epsilon) {
-                        // Try standard basis vectors
-                        for (const testVec of [
-                            new THREE.Vector3(1, 0, 0),
-                            new THREE.Vector3(0, 1, 0),
-                            new THREE.Vector3(0, 0, 1)
-                        ]) {
-                            let isIndependent = true;
-                            for (const avoid of avoidDirections) {
-                                if (Math.abs(testVec.dot(avoid)) > 0.99) {
-                                    isIndependent = false;
-                                    break;
-                                }
-                            }
-                            if (isIndependent) {
-                                v1 = testVec;
+                    v1.normalize();
+                }
+            } else {
+                // Third eigenvector - perpendicular to first two eigenvectors
+                v1 = new THREE.Vector3().crossVectors(avoidDirections[0], avoidDirections[1]);
+                if (v1.lengthSq() < epsilon) {
+                    // Try standard basis vectors
+                    for (const testVec of [
+                        new THREE.Vector3(1, 0, 0),
+                        new THREE.Vector3(0, 1, 0),
+                        new THREE.Vector3(0, 0, 1)
+                    ]) {
+                        let isIndependent = true;
+                        for (const avoid of avoidDirections) {
+                            if (Math.abs(testVec.dot(avoid)) > 0.99) {
+                                isIndependent = false;
                                 break;
                             }
                         }
-                    } else {
-                        v1.normalize();
+                        if (isIndependent) {
+                            v1 = testVec;
+                            break;
+                        }
                     }
+                } else {
+                    v1.normalize();
                 }
-                
-                // Verify v1 is in the nullspace
-                const test1 = new THREE.Vector3(
-                    a11 * v1.x + a12 * v1.y + a13 * v1.z,
-                    a21 * v1.x + a22 * v1.y + a23 * v1.z,
-                    a31 * v1.x + a32 * v1.y + a33 * v1.z
-                );
-                
-                if (test1.length() < 0.01) {
-                    return v1;
-                }
+            }
+            
+            // Verify v1 is in the nullspace
+            const test1 = new THREE.Vector3(
+                a11 * v1.x + a12 * v1.y + a13 * v1.z,
+                a21 * v1.x + a22 * v1.y + a23 * v1.z,
+                a31 * v1.x + a32 * v1.y + a33 * v1.z
+            );
+            
+            if (test1.length() < 0.01) {
+                return v1;
             }
         }
         
