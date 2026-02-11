@@ -219,19 +219,21 @@ class VectoramaApp {
         this.camera.position.set(0, 0, 5); // Start zoomed in for 2D mode
         this.camera.lookAt(0, 0, 0);
 
-        // Renderer
+        // Detect device type before creating renderer
+        const isMobilePhone = /iPhone|Android/.test(navigator.userAgent) && 
+                             !/iPad|tablet/i.test(navigator.userAgent);
+        const isTablet = /iPad|tablet/i.test(navigator.userAgent);
+        
+        // Renderer - disable expensive features on mobile phones
         this.renderer = new THREE.WebGLRenderer({ 
             canvas: this.canvas,
-            antialias: true,
-            logarithmicDepthBuffer: true
+            antialias: !isMobilePhone, // Disable AA on phones to reduce GPU load
+            logarithmicDepthBuffer: !isMobilePhone // Disable expensive depth buffer on phones
         });
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
         
         // Clamp pixel ratio on mobile phones to prevent GPU overload
         // Tablets (like iPad Pro) can handle higher pixel ratios, so only limit phones
-        const isMobilePhone = /iPhone|Android/.test(navigator.userAgent) && 
-                             !/iPad|tablet/i.test(navigator.userAgent);
-        const isTablet = /iPad|tablet/i.test(navigator.userAgent);
         const pixelRatio = isMobilePhone 
             ? Math.min(window.devicePixelRatio, 2.0)
             : window.devicePixelRatio;
@@ -252,8 +254,8 @@ class VectoramaApp {
         this.controls.dampingFactor = 0.15;
         this.controls.enableRotate = false; // Start in 2D mode with rotation disabled
         
-        // Set zoom limits to prevent extreme zoom levels
-        this.controls.minDistance = 1;   // Prevent zooming too close
+        // Set zoom limits - prevent extreme zoom on mobile phones to reduce GPU stress
+        this.controls.minDistance = isMobilePhone ? 2 : 1;   // Mobile phones can't zoom as close
         this.controls.maxDistance = 100; // Prevent zooming beyond axis endpoints
         
         // Set mouse button mappings for 2D mode (left click = pan, right for vectors)
