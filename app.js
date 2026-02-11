@@ -2813,7 +2813,14 @@ class VectoramaApp {
         // Expand matrices group so user can see it was added
         this.groupCollapsed.matrices = false;
         
-        this.visualizeInvariantSpaces();
+        // Only visualize invariant spaces if display mode is active and panel was showing
+        // Otherwise, adding a new matrix shouldn't show eigenspaces automatically
+        if (this.invariantDisplayMode !== 'off' && this.eigenvaluePanelMatrixId) {
+            // Update the panel to show the new matrix
+            this.eigenvaluePanelMatrixId = matrix.id;
+            this.visualizeInvariantSpaces();
+        }
+        
         this.updateObjectsList();
     }
 
@@ -2924,7 +2931,14 @@ class VectoramaApp {
         // Expand matrices group so user can see it was added
         this.groupCollapsed.matrices = false;
         
-        this.visualizeInvariantSpaces();
+        // Only visualize invariant spaces if display mode is active and panel was showing
+        // Otherwise, adding a new matrix shouldn't show eigenspaces automatically
+        if (this.invariantDisplayMode !== 'off' && this.eigenvaluePanelMatrixId) {
+            // Update the panel to show the new matrix
+            this.eigenvaluePanelMatrixId = matrix.id;
+            this.visualizeInvariantSpaces();
+        }
+        
         this.updateObjectsList();
     }
 
@@ -3057,6 +3071,7 @@ class VectoramaApp {
 
     removeMatrix(id) {
         const index = this.matrices.findIndex(m => m.id === id);
+        
         if (index !== -1) {
             const matrix = this.matrices[index];
             this.usedMatrixLetters.delete(matrix.name);
@@ -3072,6 +3087,15 @@ class VectoramaApp {
                 } else {
                     this.selectedMatrixId3D = this.selectedMatrixId;
                 }
+                
+                // Reset invariant display mode and clear spaces
+                this.invariantDisplayMode = 'off';
+                this.clearInvariantSpaces();
+                
+                // Hide eigenvalue panel
+                const panel = document.getElementById('eigenvalue-panel');
+                if (panel) panel.style.display = 'none';
+                this.eigenvaluePanelMatrixId = null;
             }
             
             this.updateObjectsList();
@@ -4848,8 +4872,10 @@ class VectoramaApp {
         const matrix = this.getTransformationMatrix(matrixId);
         
         // Check if matrix is a scalar multiple of identity (entire space is invariant)
-        // In this case, don't show any specific invariant lines/planes
         if (this.isIdentityLike(matrix)) {
+            // For identity-like matrices, show the standard basis vectors as eigenvectors
+            // This indicates that the entire space is an eigenspace
+            this.visualizeIdentityLikeEigenspace(matrix);
             this.updateEigenvaluePanel(matrixId);
             return;
         }
@@ -4862,6 +4888,104 @@ class VectoramaApp {
         
         // Update eigenvalue info panel
         this.updateEigenvaluePanel(matrixId);
+    }
+    
+    visualizeIdentityLikeEigenspace(matrix) {
+        // For scalar multiples of identity, show standard basis vectors as invariant lines
+        const thickness = this.getArrowThickness();
+        const lineRadius = thickness.headWidth * 0.15 * 2.5;
+        const lineLength = 200;
+        
+        if (this.dimension === '2d') {
+            // Show x and y axes as invariant lines
+            const directions = [
+                new THREE.Vector3(1, 0, 0), // x-axis
+                new THREE.Vector3(0, 1, 0)  // y-axis
+            ];
+            
+            directions.forEach((direction, index) => {
+                const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
+                
+                let material;
+                if (this.invariantDisplayMode === 'solid') {
+                    const texture = this.createDashedTexture();
+                    material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: false
+                    });
+                } else {
+                    material = new THREE.MeshBasicMaterial({
+                        color: 0xff00ff,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: false
+                    });
+                }
+                
+                const cylinder = new THREE.Mesh(geometry, material);
+                
+                const quaternion = new THREE.Quaternion();
+                const yAxis = new THREE.Vector3(0, 1, 0);
+                quaternion.setFromUnitVectors(yAxis, direction);
+                cylinder.quaternion.copy(quaternion);
+                cylinder.renderOrder = 1;
+                
+                this.scene.add(cylinder);
+                this.invariantLines.push({
+                    mesh: cylinder,
+                    direction: direction.clone(),
+                    index: index
+                });
+            });
+        } else {
+            // Show x, y, and z axes as invariant lines
+            const directions = [
+                new THREE.Vector3(1, 0, 0), // x-axis
+                new THREE.Vector3(0, 1, 0), // y-axis
+                new THREE.Vector3(0, 0, 1)  // z-axis
+            ];
+            
+            directions.forEach((direction, index) => {
+                const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
+                
+                let material;
+                if (this.invariantDisplayMode === 'solid') {
+                    const texture = this.createDashedTexture();
+                    material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: true,
+                        depthWrite: false
+                    });
+                } else {
+                    material = new THREE.MeshBasicMaterial({
+                        color: 0xff00ff,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: true,
+                        depthWrite: false
+                    });
+                }
+                
+                const cylinder = new THREE.Mesh(geometry, material);
+                
+                const quaternion = new THREE.Quaternion();
+                const yAxis = new THREE.Vector3(0, 1, 0);
+                quaternion.setFromUnitVectors(yAxis, direction);
+                cylinder.quaternion.copy(quaternion);
+                cylinder.renderOrder = 1;
+                
+                this.scene.add(cylinder);
+                this.invariantLines.push({
+                    mesh: cylinder,
+                    direction: direction.clone(),
+                    index: index
+                });
+            });
+        }
     }
     
     isIdentityLike(matrix) {
@@ -4911,6 +5035,9 @@ class VectoramaApp {
         const lineRadius = thickness.headWidth * 0.15 * 1.8; // 1.8x thicker than axes
         
         eigendata.forEach((eigen, index) => {
+            // Skip if no vector (e.g., complex eigenvalues)
+            if (!eigen.vector) return;
+            
             const direction = new THREE.Vector3(eigen.vector.x, eigen.vector.y, 0).normalize();
             
             // Create line using cylinder geometry, thicker than axes
@@ -4969,6 +5096,9 @@ class VectoramaApp {
         const lineRadius = thickness.headWidth * 0.15 * 2.5; // 2.5x thicker than axes
         
         eigendata.forEach((eigen, index) => {
+            // Skip if no vector (shouldn't happen in 3D but be safe)
+            if (!eigen.vector) return;
+            
             const direction = eigen.vector.clone().normalize();
             
             // Create line using cylinder geometry, thicker than axes
@@ -5026,10 +5156,23 @@ class VectoramaApp {
         // Group eigenvectors by eigenvalue
         const eigenvalueGroups = new Map();
         for (const eigen of eigendata) {
+            // Skip if no vector
+            if (!eigen.vector) continue;
+            
             let found = false;
             for (const [key, group] of eigenvalueGroups) {
                 if (Math.abs(eigen.value - key) < epsilon) {
-                    group.push(eigen.vector);
+                    // Check if this vector is already in the group (avoid duplicates)
+                    let isDuplicate = false;
+                    for (const existingVec of group) {
+                        if (Math.abs(eigen.vector.dot(existingVec)) > 0.99) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    if (!isDuplicate) {
+                        group.push(eigen.vector);
+                    }
                     found = true;
                     break;
                 }
@@ -5216,8 +5359,15 @@ class VectoramaApp {
         
         // Get the matrix object to extract its name
         const selectedMatrix = this.matrices.find(m => m.id === targetId);
-        const matrixName = selectedMatrix ? selectedMatrix.name : '';
         
+        // If matrix doesn't exist (was deleted), hide panel and clear eigenvaluePanelMatrixId
+        if (!selectedMatrix) {
+            panel.style.display = 'none';
+            this.eigenvaluePanelMatrixId = null;
+            return;
+        }
+        
+        const matrixName = selectedMatrix.name;
         const matrix = this.getTransformationMatrix(targetId);
         
         // Compute eigenvalues based on dimension
@@ -5414,7 +5564,7 @@ class VectoramaApp {
             // Invariant spaces header
             const invariantHeader = document.createElement('div');
             invariantHeader.className = 'eigenvalue-row eigenvalue-header';
-            invariantHeader.innerHTML = '<span>Show invariant spaces</span>';
+            invariantHeader.innerHTML = '<span>Show eigenspaces</span>';
             invariantHeader.style.marginTop = '0';
             invariantHeader.style.paddingTop = '0';
             invariantHeader.style.borderBottom = 'none';
