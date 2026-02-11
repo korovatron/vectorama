@@ -1048,6 +1048,25 @@ class VectoramaApp {
         this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
         this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e));
         
+        // Keyboard zoom controls (+ and - keys)
+        document.addEventListener('keydown', (e) => {
+            // Only handle if app is initialized and not typing in an input field
+            if (!window.vectoramaApp || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // Check for zoom in keys: + (Equal key) or NumpadAdd
+            if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+                e.preventDefault();
+                this.zoomCamera(0.9); // Zoom in (reduce distance by 10%)
+            }
+            // Check for zoom out keys: - (Minus key) or NumpadSubtract  
+            else if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+                e.preventDefault();
+                this.zoomCamera(1.1); // Zoom out (increase distance by 10%)
+            }
+        });
+        
         // Prevent context menu on right click
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -1310,6 +1329,26 @@ class VectoramaApp {
             this.camera.lookAt(0, 0, 0);
         }
         this.controls.target.set(0, 0, 0);
+        this.controls.update();
+    }
+
+    zoomCamera(factor) {
+        // Zoom camera by adjusting distance to target
+        // factor < 1 zooms in (closer), factor > 1 zooms out (farther)
+        
+        const direction = new THREE.Vector3();
+        direction.subVectors(this.camera.position, this.controls.target);
+        
+        const currentDistance = direction.length();
+        const newDistance = currentDistance * factor;
+        
+        // Clamp to min/max distance limits
+        const clampedDistance = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, newDistance));
+        
+        // Move camera to new distance
+        direction.normalize();
+        this.camera.position.copy(this.controls.target).add(direction.multiplyScalar(clampedDistance));
+        
         this.controls.update();
     }
 
