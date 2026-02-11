@@ -218,7 +218,15 @@ class VectoramaApp {
             logarithmicDepthBuffer: true
         });
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // Clamp pixel ratio on mobile phones to prevent GPU overload
+        // Tablets (like iPad Pro) can handle higher pixel ratios, so only limit phones
+        const isMobilePhone = /iPhone|Android/.test(navigator.userAgent) && 
+                             !/iPad|tablet/i.test(navigator.userAgent);
+        const pixelRatio = isMobilePhone 
+            ? Math.min(window.devicePixelRatio, 2.0)
+            : window.devicePixelRatio;
+        this.renderer.setPixelRatio(pixelRatio);
 
         // Controls
         this.controls = new OrbitControls(this.camera, this.canvas);
