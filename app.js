@@ -224,11 +224,12 @@ class VectoramaApp {
                              !/iPad|tablet/i.test(navigator.userAgent);
         const isTablet = /iPad|tablet/i.test(navigator.userAgent);
         
-        // Renderer - disable expensive features on mobile phones
+        // Renderer - keep antialiasing and depth buffer for stability
         this.renderer = new THREE.WebGLRenderer({ 
             canvas: this.canvas,
-            antialias: !isMobilePhone, // Disable AA on phones to reduce GPU load
-            logarithmicDepthBuffer: !isMobilePhone // Disable expensive depth buffer on phones
+            antialias: true,
+            logarithmicDepthBuffer: true,
+            powerPreference: 'high-performance' // Request high-performance GPU
         });
         this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
         
