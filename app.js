@@ -5738,6 +5738,18 @@ class VectoramaApp {
         const now = performance.now();
         this.frameCount++;
         
+        // Update interaction status indicator
+        const interactionElement = document.getElementById('debug-interaction');
+        if (interactionElement) {
+            if (this.isInteracting) {
+                interactionElement.textContent = 'Updates: PAUSED';
+                interactionElement.style.color = '#E74C3C'; // Red when paused
+            } else {
+                interactionElement.textContent = 'Updates: Normal';
+                interactionElement.style.color = '#27AE60'; // Green when normal
+            }
+        }
+        
         // Update FPS every second
         if (now >= this.lastFrameTime + 1000) {
             this.fps = Math.round((this.frameCount * 1000) / (now - this.lastFrameTime));
