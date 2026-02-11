@@ -1821,7 +1821,8 @@ class VectoramaApp {
         // Always render Vectors group
         this.renderCollapsibleGroup(container, 'vectors', 'Vectors', this.vectors, this.renderVectorItem);
         
-        // Update plane info panel if it's open
+        // Update info panels if they're open
+        this.updateLinePanel();
         this.updatePlanePanel();
     }
     
@@ -4424,7 +4425,8 @@ class VectoramaApp {
             }
         }
         
-        // Update plane info panel if it's open
+        // Update info panels if they're open
+        this.updateLinePanel();
         this.updatePlanePanel();
     }
 
@@ -5933,9 +5935,158 @@ class VectoramaApp {
         // Update header with line name
         headerSpan.textContent = `${line.name}: Information`;
         
-        // Show panel with placeholder content
+        // Show panel and build content
         panel.style.display = 'block';
-        contentDiv.innerHTML = '<div style="padding: 8px; font-style: italic; opacity: 0.7;">Content coming soon...</div>';
+        contentDiv.innerHTML = '';
+        
+        // Helper function to format angles
+        const formatAngle = (radians) => {
+            const degrees = radians * (180 / Math.PI);
+            return degrees.toFixed(1) + '°';
+        };
+        
+        // Get other lines (excluding current one)
+        const otherLines = this.lines.filter(l => l.id !== line.id && l.visible);
+        
+        // Get all visible planes
+        const visiblePlanes = this.planes.filter(p => p.visible);
+        
+        // Angle with other lines section
+        if (otherLines.length > 0) {
+            const lineSection = document.createElement('div');
+            lineSection.style.padding = '8px';
+            lineSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+            
+            const lineLabel = document.createElement('div');
+            lineLabel.textContent = 'Angle with line:';
+            lineLabel.style.fontSize = '11px';
+            lineLabel.style.marginBottom = '6px';
+            lineLabel.style.opacity = '0.8';
+            lineSection.appendChild(lineLabel);
+            
+            const lineSelect = document.createElement('select');
+            lineSelect.style.width = '100%';
+            lineSelect.style.padding = '4px';
+            lineSelect.style.fontSize = '11px';
+            lineSelect.style.background = '#2A3F5A';
+            lineSelect.style.color = 'white';
+            lineSelect.style.border = '1px solid #555';
+            lineSelect.style.borderRadius = '3px';
+            lineSelect.style.cursor = 'pointer';
+            
+            // Default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select line --';
+            lineSelect.appendChild(defaultOption);
+            
+            // Add options for each line
+            otherLines.forEach(l => {
+                const option = document.createElement('option');
+                option.value = l.id;
+                option.textContent = l.name;
+                lineSelect.appendChild(option);
+            });
+            
+            lineSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const otherLine = this.lines.find(l => l.id === parseInt(e.target.value));
+                    if (otherLine) {
+                        const angle = this.calculateLineLineAngle(line, otherLine);
+                        lineResult.textContent = formatAngle(angle);
+                        lineResult.style.display = 'block';
+                    }
+                } else {
+                    lineResult.style.display = 'none';
+                }
+            });
+            
+            lineSection.appendChild(lineSelect);
+            
+            const lineResult = document.createElement('div');
+            lineResult.style.marginTop = '6px';
+            lineResult.style.fontSize = '13px';
+            lineResult.style.fontWeight = 'bold';
+            lineResult.style.color = '#64B5F6';
+            lineResult.style.display = 'none';
+            lineSection.appendChild(lineResult);
+            
+            contentDiv.appendChild(lineSection);
+        }
+        
+        // Angle with planes section (only in 3D)
+        if (this.dimension === '3d' && visiblePlanes.length > 0) {
+            const planeSection = document.createElement('div');
+            planeSection.style.padding = '8px';
+            
+            const planeLabel = document.createElement('div');
+            planeLabel.textContent = 'Angle with plane:';
+            planeLabel.style.fontSize = '11px';
+            planeLabel.style.marginBottom = '6px';
+            planeLabel.style.opacity = '0.8';
+            planeSection.appendChild(planeLabel);
+            
+            const planeSelect = document.createElement('select');
+            planeSelect.style.width = '100%';
+            planeSelect.style.padding = '4px';
+            planeSelect.style.fontSize = '11px';
+            planeSelect.style.background = '#2A3F5A';
+            planeSelect.style.color = 'white';
+            planeSelect.style.border = '1px solid #555';
+            planeSelect.style.borderRadius = '3px';
+            planeSelect.style.cursor = 'pointer';
+            
+            // Default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select plane --';
+            planeSelect.appendChild(defaultOption);
+            
+            // Add options for each plane
+            visiblePlanes.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                planeSelect.appendChild(option);
+            });
+            
+            planeSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const selectedPlane = this.planes.find(p => p.id === parseInt(e.target.value));
+                    if (selectedPlane) {
+                        const angle = this.calculatePlaneLineAngle(selectedPlane, line);
+                        planeResult.textContent = formatAngle(angle);
+                        planeResult.style.display = 'block';
+                    }
+                } else {
+                    planeResult.style.display = 'none';
+                }
+            });
+            
+            planeSection.appendChild(planeSelect);
+            
+            const planeResult = document.createElement('div');
+            planeResult.style.marginTop = '6px';
+            planeResult.style.fontSize = '13px';
+            planeResult.style.fontWeight = 'bold';
+            planeResult.style.color = '#64B5F6';
+            planeResult.style.display = 'none';
+            planeSection.appendChild(planeResult);
+            
+            contentDiv.appendChild(planeSection);
+        }
+        
+        // No objects message
+        if (otherLines.length === 0 && (this.dimension === '2d' || visiblePlanes.length === 0)) {
+            const noObjectsMsg = document.createElement('div');
+            noObjectsMsg.style.padding = '8px';
+            noObjectsMsg.style.fontStyle = 'italic';
+            noObjectsMsg.style.opacity = '0.7';
+            noObjectsMsg.textContent = this.dimension === '3d' ? 
+                'Add other lines or planes to calculate angles' : 
+                'Add other lines to calculate angles';
+            contentDiv.appendChild(noObjectsMsg);
+        }
     }
 
     updatePlanePanel() {
@@ -6143,6 +6294,22 @@ class VectoramaApp {
         // sin(angle_line_plane) = |cos(angle_normal_direction)| = |n · d|
         const dot = Math.abs(normal.dot(direction));
         const angle = Math.asin(Math.min(1, dot)); // Clamp to avoid numerical errors
+        
+        return angle;
+    }
+
+    calculateLineLineAngle(line1, line2) {
+        // Direction vectors
+        const d1 = new THREE.Vector3(line1.direction.x, line1.direction.y, line1.direction.z);
+        const d2 = new THREE.Vector3(line2.direction.x, line2.direction.y, line2.direction.z);
+        
+        // Normalize
+        d1.normalize();
+        d2.normalize();
+        
+        // Angle between direction vectors (use absolute value of dot product to get acute angle)
+        const dot = Math.abs(d1.dot(d2));
+        const angle = Math.acos(Math.min(1, dot)); // Clamp to avoid numerical errors
         
         return angle;
     }
