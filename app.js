@@ -636,13 +636,30 @@ class VectoramaApp {
     }
 
     getArrowThickness() {
-        // Calculate thickness based on camera distance to target (zoom level), not origin
-        // This prevents thickness changes when panning
+        // Calculate thickness based on camera distance to target
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const thicknessScale = distanceToTarget * 0.06; // Increased for better visibility
+        
+        if (this.dimension === '2d') {
+            // In 2D, scale with distance to maintain constant screen size
+            // Using a fixed ratio to camera distance ensures consistent appearance
+            const screenConstantScale = distanceToTarget * 0.055;
+            return {
+                headLength: 0.5 * screenConstantScale,
+                headWidth: 0.25 * screenConstantScale
+            };
+        }
+        
+        // 3D mode: Calculate thickness based on camera distance to target
+        const thicknessScale = distanceToTarget * 0.06;
+        
+        // Set minimum and maximum thickness to ensure visibility at all zoom levels
+        const minThickness = 0.15;
+        const maxThickness = 5.0;
+        const clampedScale = Math.max(minThickness, Math.min(maxThickness, thicknessScale));
+        
         return {
-            headLength: 0.5 * thicknessScale,
-            headWidth: 0.25 * thicknessScale
+            headLength: 0.5 * clampedScale,
+            headWidth: 0.25 * clampedScale
         };
     }
 
@@ -4220,18 +4237,38 @@ class VectoramaApp {
     }
 
     updatePointSphereScales() {
-        // Update all point sphere scales to maintain consistent screen size
+        // Calculate scale based on camera distance to target
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const baseScale = distanceToTarget * 0.08; // Larger for better visibility
+        
+        if (this.dimension === '2d') {
+            // In 2D, scale with distance to maintain constant screen size
+            const screenConstantScale = distanceToTarget * 0.085;
+            
+            this.vectors.forEach(vec => {
+                if (vec.pointSphere) {
+                    vec.pointSphere.scale.set(screenConstantScale, screenConstantScale, screenConstantScale);
+                }
+            });
+            return;
+        }
+        
+        // 3D mode: Update sphere scales based on camera distance
+        const baseScale = distanceToTarget * 0.08;
+        
+        // Set minimum scale to ensure visibility at all zoom levels
+        const minScale = 0.2;
+        const maxScaleLimit = 8.0;
         
         this.vectors.forEach(vec => {
             if (vec.pointSphere) {
                 // Cap sphere radius to be proportional to vector length (10% max)
                 const vectorLength = vec.currentEnd.length();
                 const maxScale = (vectorLength * 0.1) / 0.15; // 0.15 is the base sphere radius
-                const cappedScale = Math.min(baseScale, maxScale);
                 
-                vec.pointSphere.scale.set(cappedScale, cappedScale, cappedScale);
+                // Apply both minimum and maximum constraints
+                const clampedScale = Math.max(minScale, Math.min(Math.min(baseScale, maxScale), maxScaleLimit));
+                
+                vec.pointSphere.scale.set(clampedScale, clampedScale, clampedScale);
             }
         });
     }
