@@ -1048,7 +1048,7 @@ class VectoramaApp {
         this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
         this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e));
         
-        // Keyboard zoom controls (+ and - keys)
+        // Keyboard zoom and pan controls
         document.addEventListener('keydown', (e) => {
             // Only handle if app is initialized and not typing in an input field
             if (!window.vectoramaApp || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -1064,6 +1064,24 @@ class VectoramaApp {
             else if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
                 e.preventDefault();
                 this.zoomCamera(1.1); // Zoom out (increase distance by 10%)
+            }
+            // Arrow keys for panning
+            else if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                e.preventDefault();
+                
+                // Pan distance proportional to current zoom level
+                const distance = this.camera.position.distanceTo(this.controls.target);
+                const panAmount = distance * 0.1; // 10% of current distance
+                
+                if (e.code === 'ArrowUp') {
+                    this.panCamera(0, panAmount, 0);
+                } else if (e.code === 'ArrowDown') {
+                    this.panCamera(0, -panAmount, 0);
+                } else if (e.code === 'ArrowLeft') {
+                    this.panCamera(-panAmount, 0, 0);
+                } else if (e.code === 'ArrowRight') {
+                    this.panCamera(panAmount, 0, 0);
+                }
             }
         });
         
@@ -1348,6 +1366,31 @@ class VectoramaApp {
         // Move camera to new distance
         direction.normalize();
         this.camera.position.copy(this.controls.target).add(direction.multiplyScalar(clampedDistance));
+        
+        this.controls.update();
+    }
+
+    panCamera(x, y, z) {
+        // Pan camera and target by the given amounts
+        // Uses camera's local coordinate system for natural panning
+        
+        const offset = new THREE.Vector3();
+        
+        // Get camera's right vector (local X axis)
+        const right = new THREE.Vector3();
+        right.setFromMatrixColumn(this.camera.matrix, 0);
+        
+        // Get camera's up vector (local Y axis)
+        const up = new THREE.Vector3();
+        up.setFromMatrixColumn(this.camera.matrix, 1);
+        
+        // Calculate offset in camera space
+        offset.add(right.multiplyScalar(x));
+        offset.add(up.multiplyScalar(y));
+        
+        // Move both camera and target by the same offset
+        this.camera.position.add(offset);
+        this.controls.target.add(offset);
         
         this.controls.update();
     }
