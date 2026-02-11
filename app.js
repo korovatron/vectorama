@@ -164,6 +164,7 @@ class VectoramaApp {
         this.frameCount = 0;
         this.lastFrameTime = performance.now();
         this.fps = 0;
+        this.isInteracting = false; // Track when user is actively panning/rotating/zooming
         this.intersectionMarkers = []; // Store line-plane intersection markers
         this.planeIntersectionLines = []; // Store plane-plane intersection lines
         
@@ -269,6 +270,15 @@ class VectoramaApp {
         
         // Track graph interactions (pan/zoom) for analytics
         this.controls.addEventListener('change', () => this.trackEngagement());
+        
+        // Track interaction start/end for performance optimization
+        this.controls.addEventListener('start', () => {
+            this.isInteracting = true;
+        });
+        
+        this.controls.addEventListener('end', () => {
+            this.isInteracting = false;
+        });
 
         // Raycaster for clicking
         this.raycaster = new THREE.Raycaster();
@@ -5749,11 +5759,17 @@ class VectoramaApp {
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
-        this.updateAxesLength();
-        this.updateGridSpacing();
-        this.updateNumberLabelScales();
-        this.updatePointSphereScales();
-        this.updateVectorThickness();
+        
+        // Skip expensive updates during interaction to improve mobile performance
+        // These will run again once interaction stops
+        if (!this.isInteracting) {
+            this.updateAxesLength();
+            this.updateGridSpacing();
+            this.updateNumberLabelScales();
+            this.updatePointSphereScales();
+            this.updateVectorThickness();
+        }
+        
         this.updateInvariantSpaceColors();
         this.updateDebugPanel();
         this.renderer.render(this.scene, this.camera);
