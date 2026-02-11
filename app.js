@@ -160,7 +160,7 @@ class VectoramaApp {
         this.pathLines = []; // Store path visualization lines
         
         // Debug performance tracking
-        this.debugEnabled = true; // Set to false to disable debug panel
+        this.debugEnabled = false; // Set to true to enable debug panel
         this.frameCount = 0;
         this.lastFrameTime = performance.now();
         this.fps = 0;
