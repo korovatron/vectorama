@@ -145,6 +145,7 @@ class VectoramaApp {
         this.resizeTimeout = null; // For debouncing
         this.updateTimeout = null; // For debouncing grid/axes updates during zoom
         this.lastUpdateTime = 0; // Track last update time for throttling
+        this.viewResetAnimation = null; // Active camera reset animation state
         
         // Vector color palette matching graphiti
         this.vectorColors = [
@@ -1340,16 +1341,26 @@ class VectoramaApp {
     }
 
     resetView() {
-        // Reset camera to default position for current dimension
-        if (this.dimension === '2d') {
-            this.camera.position.set(0, 0, 10);
-            this.camera.lookAt(0, 0, 0);
-        } else {
-            this.camera.position.set(3, 3, 3);
-            this.camera.lookAt(0, 0, 0);
-        }
-        this.controls.target.set(0, 0, 0);
-        this.controls.update();
+        const targetPosition = this.dimension === '2d'
+            ? new THREE.Vector3(0, 0, 10)
+            : new THREE.Vector3(3, 3, 3);
+        const targetLookAt = new THREE.Vector3(0, 0, 0);
+
+        const lookAtObject = new THREE.Object3D();
+        lookAtObject.position.copy(targetPosition);
+        lookAtObject.up.copy(this.camera.up);
+        lookAtObject.lookAt(targetLookAt);
+
+        this.viewResetAnimation = {
+            startTime: performance.now(),
+            durationMs: 600,
+            startPosition: this.camera.position.clone(),
+            endPosition: targetPosition,
+            startTarget: this.controls.target.clone(),
+            endTarget: targetLookAt,
+            startQuaternion: this.camera.quaternion.clone(),
+            endQuaternion: lookAtObject.quaternion.clone()
+        };
     }
 
     zoomCamera(factor) {
@@ -6352,6 +6363,39 @@ class VectoramaApp {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+
+        if (this.viewResetAnimation) {
+            const now = performance.now();
+            const elapsed = now - this.viewResetAnimation.startTime;
+            const progress = Math.min(elapsed / this.viewResetAnimation.durationMs, 1);
+            const eased = this.easeInOutCubic(progress);
+
+            this.camera.position.lerpVectors(
+                this.viewResetAnimation.startPosition,
+                this.viewResetAnimation.endPosition,
+                eased
+            );
+
+            this.controls.target.lerpVectors(
+                this.viewResetAnimation.startTarget,
+                this.viewResetAnimation.endTarget,
+                eased
+            );
+
+            this.camera.quaternion.slerpQuaternions(
+                this.viewResetAnimation.startQuaternion,
+                this.viewResetAnimation.endQuaternion,
+                eased
+            );
+
+            if (progress >= 1) {
+                this.camera.position.copy(this.viewResetAnimation.endPosition);
+                this.controls.target.copy(this.viewResetAnimation.endTarget);
+                this.camera.quaternion.copy(this.viewResetAnimation.endQuaternion);
+                this.viewResetAnimation = null;
+            }
+        }
+
         this.controls.update();
         
         // Skip expensive updates during interaction to improve mobile performance
