@@ -170,6 +170,10 @@ class VectoramaApp {
         this.isInteracting = false; // Track when user is actively panning/rotating/zooming
         this.intersectionMarkers = []; // Store line-plane intersection markers
         this.planeIntersectionLines = []; // Store plane-plane intersection lines
+        this.angleVisualization = null; // Store temporary angle visualization overlay
+        this.angleVisualizationState = null; // Track currently selected angle comparison
+        this.angleRainbowSpeed = 0.18; // Hue cycles per second for angle overlay
+        this.intersectionRainbowPhase = 0.37; // Fixed phase offset so intersections are out of sync with angles
         
         // Collapsible group state (all collapsed by default)
         this.groupCollapsed = {
@@ -1338,6 +1342,8 @@ class VectoramaApp {
         this.visualizeInvariantSpaces();
         this.updateEigenvaluePanel();
         this.updateIntersections();
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
     }
 
     resetView() {
@@ -1835,6 +1841,7 @@ class VectoramaApp {
         // Update info panels if they're open
         this.updateLinePanel();
         this.updatePlanePanel();
+        this.updateAngleVisualization();
     }
     
     renderCollapsibleGroup(container, groupKey, groupName, items, renderFunction) {
@@ -2804,6 +2811,11 @@ class VectoramaApp {
                 this.lineInfoPanelId = null;
                 document.getElementById('line-info-panel').style.display = 'none';
             }
+
+            if (this.angleVisualizationState && (this.angleVisualizationState.lineId === id || this.angleVisualizationState.otherLineId === id)) {
+                this.angleVisualizationState = null;
+                this.clearAngleVisualization();
+            }
             
             this.updateObjectsList();
             this.updateIntersections();
@@ -2823,6 +2835,11 @@ class VectoramaApp {
             if (this.planeInfoPanelId === id) {
                 this.planeInfoPanelId = null;
                 document.getElementById('plane-info-panel').style.display = 'none';
+            }
+
+            if (this.angleVisualizationState && (this.angleVisualizationState.planeId === id || this.angleVisualizationState.otherPlaneId === id)) {
+                this.angleVisualizationState = null;
+                this.clearAngleVisualization();
             }
             
             this.updateObjectsList();
@@ -2912,6 +2929,8 @@ class VectoramaApp {
         document.getElementById('plane-info-panel').style.display = 'none';
         this.lineInfoPanelId = null;
         this.planeInfoPanelId = null;
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
         
         // Toggle eigenvalue panel for this matrix
         if (this.eigenvaluePanelMatrixId === id) {
@@ -2942,11 +2961,15 @@ class VectoramaApp {
         // Clear invariant spaces when switching away from matrix panel
         this.invariantDisplayMode = 'off';
         this.clearInvariantSpaces();
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
         
         // Toggle line info panel for this line
         if (this.lineInfoPanelId === id) {
             // Already showing this line, hide panel
             this.lineInfoPanelId = null;
+            this.angleVisualizationState = null;
+            this.clearAngleVisualization();
         } else {
             // Show panel for this line
             this.lineInfoPanelId = id;
@@ -2966,11 +2989,15 @@ class VectoramaApp {
         // Clear invariant spaces when switching away from matrix panel
         this.invariantDisplayMode = 'off';
         this.clearInvariantSpaces();
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
         
         // Toggle plane info panel for this plane
         if (this.planeInfoPanelId === id) {
             // Already showing this plane, hide panel
             this.planeInfoPanelId = null;
+            this.angleVisualizationState = null;
+            this.clearAngleVisualization();
         } else {
             // Show panel for this plane
             this.planeInfoPanelId = id;
@@ -3427,6 +3454,16 @@ class VectoramaApp {
             matrix4 = new THREE.Matrix4().setFromMatrix3(matrix);
         }
 
+        const useRotationInterpolation3D = this.dimension === '3d' && this.isProperRotationMatrix3(matrix);
+        const targetRotationQuaternion = useRotationInterpolation3D
+            ? new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(matrix))
+            : null;
+
+        const useRotationInterpolation2D = this.dimension === '2d' && this.isProperRotationMatrix2(matrix);
+        const targetRotationAngle2D = useRotationInterpolation2D
+            ? Math.atan2(matrix.elements[1], matrix.elements[0])
+            : null;
+
         this.isAnimating = true;
         const duration = this.animationSpeed * 1000;
         const startTime = Date.now();
@@ -3436,19 +3473,20 @@ class VectoramaApp {
             const progress = Math.min(elapsed / duration, 1);
             const eased = this.easeInOutCubic(progress);
 
+            const interpolatedTransform = this.buildInterpolatedTransform(
+                matrix,
+                eased,
+                useRotationInterpolation3D,
+                targetRotationQuaternion,
+                useRotationInterpolation2D,
+                targetRotationAngle2D
+            );
+            const interpolatedMatrix = interpolatedTransform.matrix3;
+            const interpolatedMatrix4 = interpolatedTransform.matrix4;
+
             this.vectors.forEach(vec => {
                 const original = vec.originalEnd.clone();
-                
-                // Use linear interpolation for all transformations
-                const identityMatrix = new THREE.Matrix3().identity();
-                const interpolatedMatrix = new THREE.Matrix3();
-                
-                for (let i = 0; i < 9; i++) {
-                    interpolatedMatrix.elements[i] = 
-                        identityMatrix.elements[i] * (1 - eased) + 
-                        matrix.elements[i] * eased;
-                }
-                
+
                 const current = original.clone().applyMatrix3(interpolatedMatrix);
                 
                 vec.currentEnd.copy(current);
@@ -3486,17 +3524,7 @@ class VectoramaApp {
                 // Transform point and direction
                 const originalPoint = new THREE.Vector3(line.originalPoint.x, line.originalPoint.y, line.originalPoint.z);
                 const originalDirection = new THREE.Vector3(line.originalDirection.x, line.originalDirection.y, line.originalDirection.z);
-                
-                // Use linear interpolation for transformations
-                const identityMatrix = new THREE.Matrix3().identity();
-                const interpolatedMatrix = new THREE.Matrix3();
-                
-                for (let i = 0; i < 9; i++) {
-                    interpolatedMatrix.elements[i] = 
-                        identityMatrix.elements[i] * (1 - eased) + 
-                        matrix.elements[i] * eased;
-                }
-                
+
                 // Transform point and direction
                 const transformedPoint = originalPoint.clone().applyMatrix3(interpolatedMatrix);
                 const transformedDirection = originalDirection.clone().applyMatrix3(interpolatedMatrix);
@@ -3519,16 +3547,6 @@ class VectoramaApp {
                     // For plane transformations, we need the inverse transpose of the transformation matrix
                     const originalNormal = new THREE.Vector3(plane.originalA, plane.originalB, plane.originalC);
                     const originalD = plane.originalD;
-                    
-                    // Use linear interpolation for transformations
-                    const identityMatrix4 = new THREE.Matrix4().identity();
-                    const interpolatedMatrix4 = new THREE.Matrix4();
-                    
-                    for (let i = 0; i < 16; i++) {
-                        interpolatedMatrix4.elements[i] = 
-                            identityMatrix4.elements[i] * (1 - eased) + 
-                            matrix4.elements[i] * eased;
-                    }
                     
                     // Get inverse transpose for normal transformation
                     const inverseTranspose = interpolatedMatrix4.clone().invert().transpose();
@@ -3619,6 +3637,96 @@ class VectoramaApp {
 
     easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    isProperRotationMatrix3(matrix) {
+        const m = matrix.elements;
+
+        const xAxis = new THREE.Vector3(m[0], m[1], m[2]);
+        const yAxis = new THREE.Vector3(m[3], m[4], m[5]);
+        const zAxis = new THREE.Vector3(m[6], m[7], m[8]);
+
+        const epsilon = 1e-3;
+
+        const hasUnitAxes =
+            Math.abs(xAxis.length() - 1) < epsilon &&
+            Math.abs(yAxis.length() - 1) < epsilon &&
+            Math.abs(zAxis.length() - 1) < epsilon;
+
+        const hasOrthogonalAxes =
+            Math.abs(xAxis.dot(yAxis)) < epsilon &&
+            Math.abs(xAxis.dot(zAxis)) < epsilon &&
+            Math.abs(yAxis.dot(zAxis)) < epsilon;
+
+        const determinant = new THREE.Matrix4().setFromMatrix3(matrix).determinant();
+        const hasPositiveUnitDet = Math.abs(determinant - 1) < epsilon;
+
+        return hasUnitAxes && hasOrthogonalAxes && hasPositiveUnitDet;
+    }
+
+    isProperRotationMatrix2(matrix) {
+        const m = matrix.elements;
+        const a = m[0];
+        const c = m[1];
+        const b = m[3];
+        const d = m[4];
+
+        const xAxis = new THREE.Vector2(a, c);
+        const yAxis = new THREE.Vector2(b, d);
+        const epsilon = 1e-3;
+
+        const hasUnitAxes =
+            Math.abs(xAxis.length() - 1) < epsilon &&
+            Math.abs(yAxis.length() - 1) < epsilon;
+
+        const hasOrthogonalAxes = Math.abs(xAxis.dot(yAxis)) < epsilon;
+        const determinant = a * d - b * c;
+        const hasPositiveUnitDet = Math.abs(determinant - 1) < epsilon;
+
+        return hasUnitAxes && hasOrthogonalAxes && hasPositiveUnitDet;
+    }
+
+    buildInterpolatedTransform(matrix, eased, useRotationInterpolation3D, targetRotationQuaternion, useRotationInterpolation2D, targetRotationAngle2D) {
+        if (useRotationInterpolation2D && typeof targetRotationAngle2D === 'number') {
+            const angle = targetRotationAngle2D * eased;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            const matrix3 = new THREE.Matrix3().set(
+                cos, -sin, 0,
+                sin,  cos, 0,
+                0,    0,   1
+            );
+
+            return {
+                matrix3,
+                matrix4: new THREE.Matrix4().setFromMatrix3(matrix3)
+            };
+        }
+
+        if (useRotationInterpolation3D && targetRotationQuaternion) {
+            const identityQuaternion = new THREE.Quaternion();
+            const interpolatedQuaternion = new THREE.Quaternion();
+            interpolatedQuaternion.slerpQuaternions(identityQuaternion, targetRotationQuaternion, eased);
+
+            const matrix4 = new THREE.Matrix4().makeRotationFromQuaternion(interpolatedQuaternion);
+            const matrix3 = new THREE.Matrix3().setFromMatrix4(matrix4);
+            return { matrix3, matrix4 };
+        }
+
+        const identityMatrix = new THREE.Matrix3().identity();
+        const interpolatedMatrix = new THREE.Matrix3();
+
+        for (let i = 0; i < 9; i++) {
+            interpolatedMatrix.elements[i] =
+                identityMatrix.elements[i] * (1 - eased) +
+                matrix.elements[i] * eased;
+        }
+
+        return {
+            matrix3: interpolatedMatrix,
+            matrix4: new THREE.Matrix4().setFromMatrix3(interpolatedMatrix)
+        };
     }
 
     // Line and Plane Functions
@@ -4205,7 +4313,7 @@ class VectoramaApp {
         context.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw text
-        context.fillStyle = '#00FFFF'; // Cyan for plane intersection lines
+        context.fillStyle = '#FFFFFF';
         context.font = 'bold 50px Arial';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
@@ -4231,6 +4339,33 @@ class VectoramaApp {
         mesh.renderOrder = 1001; // Render on top
         
         return mesh;
+    }
+
+    getIntersectionRainbowColor() {
+        const hue = (((performance.now() / 1000) * this.angleRainbowSpeed) + this.intersectionRainbowPhase) % 1;
+        return new THREE.Color().setHSL(hue, 1.0, 0.5);
+    }
+
+    updateIntersectionVisualizationColorCycle() {
+        const rainbow = this.getIntersectionRainbowColor();
+
+        this.intersectionMarkers.forEach(({ marker, label }) => {
+            if (marker?.material?.color) {
+                marker.material.color.copy(rainbow);
+            }
+            if (label?.material?.color) {
+                label.material.color.copy(rainbow);
+            }
+        });
+
+        this.planeIntersectionLines.forEach(({ line, label }) => {
+            if (line?.material?.color) {
+                line.material.color.copy(rainbow);
+            }
+            if (label?.material?.color) {
+                label.material.color.copy(rainbow);
+            }
+        });
     }
 
     updateIntersections() {
@@ -4439,6 +4574,7 @@ class VectoramaApp {
         // Update info panels if they're open
         this.updateLinePanel();
         this.updatePlanePanel();
+        this.updateAngleVisualization();
     }
 
     clearIntersections() {
@@ -5938,8 +6074,15 @@ class VectoramaApp {
         
         // If line doesn't exist (was deleted), hide panel
         if (!line) {
+            const missingLineId = this.lineInfoPanelId;
             panel.style.display = 'none';
             this.lineInfoPanelId = null;
+
+            // Only clear angle state if it depends on this missing line
+            if (this.angleVisualizationState && (this.angleVisualizationState.lineId === missingLineId || this.angleVisualizationState.otherLineId === missingLineId)) {
+                this.angleVisualizationState = null;
+                this.clearAngleVisualization();
+            }
             return;
         }
         
@@ -5998,6 +6141,16 @@ class VectoramaApp {
                 option.textContent = l.name;
                 lineSelect.appendChild(option);
             });
+
+            const savedLineSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'line-line' &&
+                this.angleVisualizationState.lineId === line.id
+                ? this.angleVisualizationState.otherLineId
+                : null;
+
+            if (savedLineSelection && otherLines.some(l => l.id === savedLineSelection)) {
+                lineSelect.value = String(savedLineSelection);
+            }
             
             lineSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -6005,10 +6158,28 @@ class VectoramaApp {
                     if (otherLine) {
                         const angle = this.calculateLineLineAngle(line, otherLine);
                         lineResult.textContent = formatAngle(angle);
+                        lineResult.appendChild(lineSkewBadge);
                         lineResult.style.display = 'block';
+
+                        const intersection = this.calculateLineLineIntersection(line, otherLine);
+                        if (intersection) {
+                            lineSkewBadge.style.display = 'none';
+                        } else {
+                            lineSkewBadge.style.display = 'inline-block';
+                        }
+
+                        this.angleVisualizationState = {
+                            type: 'line-line',
+                            lineId: line.id,
+                            otherLineId: otherLine.id
+                        };
+                        this.updateAngleVisualization();
                     }
                 } else {
                     lineResult.style.display = 'none';
+                    lineSkewBadge.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
                 }
             });
             
@@ -6021,6 +6192,39 @@ class VectoramaApp {
             lineResult.style.color = '#64B5F6';
             lineResult.style.display = 'none';
             lineSection.appendChild(lineResult);
+
+            const lineSkewBadge = document.createElement('span');
+            lineSkewBadge.textContent = 'Skew';
+            lineSkewBadge.style.display = 'none';
+            lineSkewBadge.style.marginLeft = '8px';
+            lineSkewBadge.style.padding = '1px 6px';
+            lineSkewBadge.style.fontSize = '10px';
+            lineSkewBadge.style.fontWeight = 'bold';
+            lineSkewBadge.style.borderRadius = '999px';
+            lineSkewBadge.style.background = 'rgba(243, 156, 18, 0.25)';
+            lineSkewBadge.style.border = '1px solid rgba(243, 156, 18, 0.6)';
+            lineSkewBadge.style.color = '#F39C12';
+            lineResult.appendChild(lineSkewBadge);
+
+            // Restore displayed result if this selection was already active
+            if (lineSelect.value) {
+                const selectedId = parseInt(lineSelect.value);
+                const selectedLine = this.lines.find(l => l.id === selectedId);
+                if (selectedLine) {
+                    const angle = this.calculateLineLineAngle(line, selectedLine);
+                    lineResult.textContent = formatAngle(angle);
+                    lineResult.appendChild(lineSkewBadge);
+
+                    const intersection = this.calculateLineLineIntersection(line, selectedLine);
+                    if (intersection) {
+                        lineSkewBadge.style.display = 'none';
+                    } else {
+                        lineSkewBadge.style.display = 'inline-block';
+                    }
+
+                    lineResult.style.display = 'block';
+                }
+            }
             
             contentDiv.appendChild(lineSection);
         }
@@ -6060,6 +6264,16 @@ class VectoramaApp {
                 option.textContent = p.name;
                 planeSelect.appendChild(option);
             });
+
+            const savedPlaneSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'line-plane' &&
+                this.angleVisualizationState.lineId === line.id
+                ? this.angleVisualizationState.planeId
+                : null;
+
+            if (savedPlaneSelection && visiblePlanes.some(p => p.id === savedPlaneSelection)) {
+                planeSelect.value = String(savedPlaneSelection);
+            }
             
             planeSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -6068,9 +6282,17 @@ class VectoramaApp {
                         const angle = this.calculatePlaneLineAngle(selectedPlane, line);
                         planeResult.textContent = formatAngle(angle);
                         planeResult.style.display = 'block';
+                        this.angleVisualizationState = {
+                            type: 'line-plane',
+                            lineId: line.id,
+                            planeId: selectedPlane.id
+                        };
+                        this.updateAngleVisualization();
                     }
                 } else {
                     planeResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
                 }
             });
             
@@ -6083,6 +6305,17 @@ class VectoramaApp {
             planeResult.style.color = '#64B5F6';
             planeResult.style.display = 'none';
             planeSection.appendChild(planeResult);
+
+            // Restore displayed result if this selection was already active
+            if (planeSelect.value) {
+                const selectedId = parseInt(planeSelect.value);
+                const selectedPlane = this.planes.find(p => p.id === selectedId);
+                if (selectedPlane) {
+                    const angle = this.calculatePlaneLineAngle(selectedPlane, line);
+                    planeResult.textContent = formatAngle(angle);
+                    planeResult.style.display = 'block';
+                }
+            }
             
             contentDiv.appendChild(planeSection);
         }
@@ -6116,8 +6349,15 @@ class VectoramaApp {
         
         // If plane doesn't exist (was deleted), hide panel
         if (!plane) {
+            const missingPlaneId = this.planeInfoPanelId;
             panel.style.display = 'none';
             this.planeInfoPanelId = null;
+
+            // Only clear angle state if it depends on this missing plane
+            if (this.angleVisualizationState && (this.angleVisualizationState.planeId === missingPlaneId || this.angleVisualizationState.otherPlaneId === missingPlaneId)) {
+                this.angleVisualizationState = null;
+                this.clearAngleVisualization();
+            }
             return;
         }
         
@@ -6176,6 +6416,16 @@ class VectoramaApp {
                 option.textContent = p.name;
                 planeSelect.appendChild(option);
             });
+
+            const savedPlaneSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'plane-plane' &&
+                this.angleVisualizationState.planeId === plane.id
+                ? this.angleVisualizationState.otherPlaneId
+                : null;
+
+            if (savedPlaneSelection && otherPlanes.some(p => p.id === savedPlaneSelection)) {
+                planeSelect.value = String(savedPlaneSelection);
+            }
             
             planeSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -6184,9 +6434,17 @@ class VectoramaApp {
                         const angle = this.calculatePlanePlaneAngle(plane, otherPlane);
                         planeResult.textContent = formatAngle(angle);
                         planeResult.style.display = 'block';
+                        this.angleVisualizationState = {
+                            type: 'plane-plane',
+                            planeId: plane.id,
+                            otherPlaneId: otherPlane.id
+                        };
+                        this.updateAngleVisualization();
                     }
                 } else {
                     planeResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
                 }
             });
             
@@ -6199,6 +6457,17 @@ class VectoramaApp {
             planeResult.style.color = '#64B5F6';
             planeResult.style.display = 'none';
             planeSection.appendChild(planeResult);
+
+            // Restore displayed result if this selection was already active
+            if (planeSelect.value) {
+                const selectedId = parseInt(planeSelect.value);
+                const selectedPlane = this.planes.find(p => p.id === selectedId);
+                if (selectedPlane) {
+                    const angle = this.calculatePlanePlaneAngle(plane, selectedPlane);
+                    planeResult.textContent = formatAngle(angle);
+                    planeResult.style.display = 'block';
+                }
+            }
             
             contentDiv.appendChild(planeSection);
         }
@@ -6238,6 +6507,16 @@ class VectoramaApp {
                 option.textContent = l.name;
                 lineSelect.appendChild(option);
             });
+
+            const savedLineSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'line-plane' &&
+                this.angleVisualizationState.planeId === plane.id
+                ? this.angleVisualizationState.lineId
+                : null;
+
+            if (savedLineSelection && visibleLines.some(l => l.id === savedLineSelection)) {
+                lineSelect.value = String(savedLineSelection);
+            }
             
             lineSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -6246,9 +6525,17 @@ class VectoramaApp {
                         const angle = this.calculatePlaneLineAngle(plane, selectedLine);
                         lineResult.textContent = formatAngle(angle);
                         lineResult.style.display = 'block';
+                        this.angleVisualizationState = {
+                            type: 'line-plane',
+                            lineId: selectedLine.id,
+                            planeId: plane.id
+                        };
+                        this.updateAngleVisualization();
                     }
                 } else {
                     lineResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
                 }
             });
             
@@ -6261,6 +6548,17 @@ class VectoramaApp {
             lineResult.style.color = '#64B5F6';
             lineResult.style.display = 'none';
             lineSection.appendChild(lineResult);
+
+            // Restore displayed result if this selection was already active
+            if (lineSelect.value) {
+                const selectedId = parseInt(lineSelect.value);
+                const selectedLine = this.lines.find(l => l.id === selectedId);
+                if (selectedLine) {
+                    const angle = this.calculatePlaneLineAngle(plane, selectedLine);
+                    lineResult.textContent = formatAngle(angle);
+                    lineResult.style.display = 'block';
+                }
+            }
             
             contentDiv.appendChild(lineSection);
         }
@@ -6323,6 +6621,302 @@ class VectoramaApp {
         const angle = Math.acos(Math.min(1, dot)); // Clamp to avoid numerical errors
         
         return angle;
+    }
+
+    getLinePointVector(line) {
+        const currentPoint = line.currentPoint || line.point;
+        return new THREE.Vector3(currentPoint.x, currentPoint.y, currentPoint.z);
+    }
+
+    getLineDirectionVector(line) {
+        const currentDirection = line.currentDirection || line.direction;
+        const direction = new THREE.Vector3(currentDirection.x, currentDirection.y, currentDirection.z);
+        if (direction.lengthSq() < 1e-10) return null;
+        return direction.normalize();
+    }
+
+    getPlaneNormalVector(plane) {
+        const a = plane.currentA !== undefined ? plane.currentA : plane.a;
+        const b = plane.currentB !== undefined ? plane.currentB : plane.b;
+        const c = plane.currentC !== undefined ? plane.currentC : plane.c;
+        const normal = new THREE.Vector3(a, b, c);
+        if (normal.lengthSq() < 1e-10) return null;
+        return normal.normalize();
+    }
+
+    clearAngleVisualization() {
+        if (!this.angleVisualization) return;
+
+        this.angleVisualization.traverse(obj => {
+            if (obj.geometry) {
+                obj.geometry.dispose();
+            }
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(mat => {
+                        if (mat.map) mat.map.dispose();
+                        mat.dispose();
+                    });
+                } else {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+            }
+        });
+
+        this.scene.remove(this.angleVisualization);
+        this.angleVisualization = null;
+    }
+
+    createAngleRay(origin, direction, length, color) {
+        const points = [origin.clone(), origin.clone().add(direction.clone().multiplyScalar(length))];
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: new THREE.Color(color),
+            transparent: true,
+            opacity: 0.95,
+            depthTest: true,
+            depthWrite: false
+        });
+
+        const ray = new THREE.Line(geometry, material);
+        ray.renderOrder = 20;
+        return ray;
+    }
+
+    createAngleArc(origin, startDirection, endDirection, angle, radius, color) {
+        if (angle < 0.01) return null;
+
+        const normal = new THREE.Vector3().crossVectors(startDirection, endDirection);
+        if (normal.lengthSq() < 1e-10) return null;
+        normal.normalize();
+
+        const segmentCount = Math.max(12, Math.floor((angle / Math.PI) * 64));
+        const points = [];
+
+        for (let i = 0; i <= segmentCount; i++) {
+            const t = i / segmentCount;
+            const step = startDirection.clone().applyAxisAngle(normal, angle * t);
+            points.push(origin.clone().add(step.multiplyScalar(radius)));
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: new THREE.Color(color),
+            transparent: true,
+            opacity: 0.95,
+            depthTest: true,
+            depthWrite: false
+        });
+
+        const arc = new THREE.Line(geometry, material);
+        arc.renderOrder = 21;
+        return arc;
+    }
+
+    createAngleTextLabel(text, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 96;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 48px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+        });
+        material.color = new THREE.Color(color);
+
+        const label = new THREE.Sprite(material);
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const scale = distanceToTarget * 0.07;
+        label.scale.set(scale * 1.8, scale * 0.7, 1);
+        label.renderOrder = 1002;
+        return label;
+    }
+
+    getAngleRainbowColor() {
+        const hue = ((performance.now() / 1000) * this.angleRainbowSpeed) % 1;
+        return new THREE.Color().setHSL(hue, 1.0, 0.5);
+    }
+
+    updateAngleVisualizationColorCycle() {
+        if (!this.angleVisualization) return;
+
+        const rainbow = this.getAngleRainbowColor();
+        const cycleMaterials = this.angleVisualization.userData?.cycleMaterials || [];
+
+        cycleMaterials.forEach(mat => {
+            if (mat && mat.color) {
+                mat.color.copy(rainbow);
+            }
+        });
+    }
+
+    updateAngleVisualization() {
+        this.clearAngleVisualization();
+
+        if (!this.angleVisualizationState) return;
+
+        const state = this.angleVisualizationState;
+        const overlayGroup = new THREE.Group();
+        const overlayColor = this.getAngleRainbowColor();
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const radius = Math.max(0.6, distanceToTarget * 0.1);
+        const rayLength = radius * 1.5;
+
+        const cycleMaterials = [];
+
+        let origin = new THREE.Vector3(0, 0, 0);
+        let ray1Direction = null;
+        let ray2Direction = null;
+        let ray1Color = '#64B5F6';
+        let ray2Color = '#64B5F6';
+        let angle = 0;
+
+        if (state.type === 'line-line') {
+            const line1 = this.lines.find(l => l.id === state.lineId && l.visible);
+            const line2 = this.lines.find(l => l.id === state.otherLineId && l.visible);
+            if (!line1 || !line2) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const d1 = this.getLineDirectionVector(line1);
+            const d2Raw = this.getLineDirectionVector(line2);
+            if (!d1 || !d2Raw) return;
+
+            const d2 = d2Raw.clone();
+            if (d1.dot(d2) < 0) d2.multiplyScalar(-1);
+
+            const intersection = this.calculateLineLineIntersection(line1, line2);
+            origin = intersection ? intersection.clone() : this.getLinePointVector(line1);
+            ray1Direction = d1;
+            ray2Direction = d2;
+            ray1Color = line1.color;
+            ray2Color = line2.color;
+            angle = Math.acos(Math.min(1, Math.abs(d1.dot(d2Raw))));
+        } else if (state.type === 'line-plane') {
+            const line = this.lines.find(l => l.id === state.lineId && l.visible);
+            const plane = this.planes.find(p => p.id === state.planeId && p.visible);
+            if (!line || !plane) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const normal = this.getPlaneNormalVector(plane);
+            const lineDirection = this.getLineDirectionVector(line);
+            if (!normal || !lineDirection) return;
+
+            const direction = lineDirection.clone();
+            if (direction.dot(normal) < 0) direction.multiplyScalar(-1);
+
+            const projection = direction.clone().sub(normal.clone().multiplyScalar(direction.dot(normal)));
+            if (projection.lengthSq() < 1e-10) {
+                const fallbackAxis = Math.abs(normal.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+                projection.copy(new THREE.Vector3().crossVectors(normal, fallbackAxis));
+            }
+            projection.normalize();
+
+            const intersection = this.calculateLinePlaneIntersection(line, plane);
+            origin = intersection ? intersection.clone() : this.getLinePointVector(line);
+            ray1Direction = projection;
+            ray2Direction = direction;
+            ray1Color = plane.color;
+            ray2Color = line.color;
+            angle = Math.asin(Math.min(1, Math.abs(normal.dot(direction))));
+        } else if (state.type === 'plane-plane') {
+            const plane1 = this.planes.find(p => p.id === state.planeId && p.visible);
+            const plane2 = this.planes.find(p => p.id === state.otherPlaneId && p.visible);
+            if (!plane1 || !plane2) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const n1 = this.getPlaneNormalVector(plane1);
+            const n2Raw = this.getPlaneNormalVector(plane2);
+            if (!n1 || !n2Raw) return;
+
+            const intersection = this.calculatePlanePlaneIntersection(plane1, plane2);
+            if (intersection && intersection.point) {
+                origin = new THREE.Vector3(intersection.point.x, intersection.point.y, intersection.point.z);
+                const lineDirection = new THREE.Vector3(
+                    intersection.direction.x,
+                    intersection.direction.y,
+                    intersection.direction.z
+                ).normalize();
+
+                // Dihedral section vectors: lie in each plane and are perpendicular to intersection line
+                const section1 = new THREE.Vector3().crossVectors(lineDirection, n1).normalize();
+                const section2Raw = new THREE.Vector3().crossVectors(lineDirection, n2Raw).normalize();
+                if (section1.lengthSq() < 1e-10 || section2Raw.lengthSq() < 1e-10) return;
+
+                const section2 = section2Raw.clone();
+                if (section1.dot(section2) < 0) section2.multiplyScalar(-1);
+
+                ray1Direction = section1;
+                ray2Direction = section2;
+                angle = Math.acos(Math.min(1, Math.abs(section1.dot(section2Raw))));
+            } else if (plane1.mesh) {
+                origin = plane1.mesh.position.clone();
+                const n2 = n2Raw.clone();
+                if (n1.dot(n2) < 0) n2.multiplyScalar(-1);
+                ray1Direction = n1;
+                ray2Direction = n2;
+                angle = Math.acos(Math.min(1, Math.abs(n1.dot(n2Raw))));
+            }
+            ray1Color = plane1.color;
+            ray2Color = plane2.color;
+        }
+
+        if (!ray1Direction || !ray2Direction) return;
+
+        const ray1 = this.createAngleRay(origin, ray1Direction, rayLength, overlayColor);
+        const ray2 = this.createAngleRay(origin, ray2Direction, rayLength, overlayColor);
+        overlayGroup.add(ray1);
+        overlayGroup.add(ray2);
+        cycleMaterials.push(ray1.material, ray2.material);
+
+        const arc = this.createAngleArc(origin, ray1Direction, ray2Direction, angle, radius, overlayColor);
+        if (arc) {
+            overlayGroup.add(arc);
+            cycleMaterials.push(arc.material);
+        }
+
+        const axis = new THREE.Vector3().crossVectors(ray1Direction, ray2Direction);
+        let labelDirection = ray1Direction.clone();
+        if (axis.lengthSq() > 1e-10 && angle > 0.001) {
+            labelDirection = ray1Direction.clone().applyAxisAngle(axis.normalize(), angle * 0.5).normalize();
+        }
+
+        const label = this.createAngleTextLabel(`${(angle * 180 / Math.PI).toFixed(1)}°`, overlayColor);
+        label.position.copy(origin).add(labelDirection.multiplyScalar(radius * 1.3));
+        overlayGroup.add(label);
+        cycleMaterials.push(label.material);
+
+        const thickness = this.getArrowThickness();
+        const markerRadius = thickness.headWidth * 0.45;
+        const marker = new THREE.Mesh(
+            new THREE.SphereGeometry(markerRadius, 12, 12),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: true })
+        );
+        marker.position.copy(origin);
+        marker.renderOrder = 22;
+        overlayGroup.add(marker);
+        cycleMaterials.push(marker.material);
+
+        overlayGroup.userData.cycleMaterials = cycleMaterials;
+
+        this.angleVisualization = overlayGroup;
+        this.scene.add(this.angleVisualization);
     }
 
     updateDebugPanel() {
@@ -6409,6 +7003,8 @@ class VectoramaApp {
         }
         
         this.updateInvariantSpaceColors();
+        this.updateAngleVisualizationColorCycle();
+        this.updateIntersectionVisualizationColorCycle();
         this.updateDebugPanel();
         this.renderer.render(this.scene, this.camera);
     }
