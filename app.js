@@ -164,8 +164,14 @@ class VectoramaApp {
         this.presetEdges3D = []; // Hidden edge pairs for 3D preset groups
         this.presetEdgeMeshes2D = []; // Rendered edge meshes for 2D presets
         this.presetEdgeMeshes3D = []; // Rendered edge meshes for 3D presets
+        this.presetFaces2D = []; // Hidden face triples for 2D preset groups (unused)
+        this.presetFaces3D = []; // Hidden face triples for 3D preset groups
+        this.presetFaceMeshes2D = []; // Rendered face meshes for 2D presets (unused)
+        this.presetFaceMeshes3D = []; // Rendered face meshes for 3D presets
         this.presetEdges = this.presetEdges2D;
         this.presetEdgeMeshes = this.presetEdgeMeshes2D;
+        this.presetFaces = this.presetFaces2D;
+        this.presetFaceMeshes = this.presetFaceMeshes2D;
         
         // Debug performance tracking
         this.debugEnabled = false; // Set to true to enable debug panel
@@ -897,6 +903,20 @@ class VectoramaApp {
             startId: cubeVectors[startIndex].id,
             endId: cubeVectors[endIndex].id
         }));
+
+        const cubeFaceIndexTriples = [
+            [0, 1, 2], [0, 2, 3],
+            [4, 5, 6], [4, 6, 7],
+            [0, 1, 5], [0, 5, 4],
+            [1, 2, 6], [1, 6, 5],
+            [2, 3, 7], [2, 7, 6],
+            [3, 0, 4], [3, 4, 7]
+        ];
+        this.presetFaces3D = cubeFaceIndexTriples.map(([aIndex, bIndex, cIndex]) => ({
+            aId: cubeVectors[aIndex].id,
+            bId: cubeVectors[bIndex].id,
+            cId: cubeVectors[cIndex].id
+        }));
         
         // Update the display for 2D mode
         this.updateObjectsList();
@@ -1260,6 +1280,8 @@ class VectoramaApp {
             this.lines2D = this.lines;
             this.presetEdges2D = this.presetEdges;
             this.presetEdgeMeshes2D = this.presetEdgeMeshes;
+            this.presetFaces2D = this.presetFaces;
+            this.presetFaceMeshes2D = this.presetFaceMeshes;
             this.usedMatrixLetters2D = this.usedMatrixLetters;
             this.selectedMatrixId2D = this.selectedMatrixId;
             this.colorIndex2D = this.colorIndex;
@@ -1270,6 +1292,8 @@ class VectoramaApp {
             this.planes3D = this.planes;
             this.presetEdges3D = this.presetEdges;
             this.presetEdgeMeshes3D = this.presetEdgeMeshes;
+            this.presetFaces3D = this.presetFaces;
+            this.presetFaceMeshes3D = this.presetFaceMeshes;
             this.usedMatrixLetters3D = this.usedMatrixLetters;
             this.selectedMatrixId3D = this.selectedMatrixId;
             this.colorIndex3D = this.colorIndex;
@@ -1286,6 +1310,8 @@ class VectoramaApp {
         this.planes.forEach(plane => {
             if (plane.mesh) this.scene.remove(plane.mesh);
         });
+        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.length = 0;
         this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
         this.presetEdgeMeshes.length = 0;
         
@@ -1297,6 +1323,8 @@ class VectoramaApp {
             this.planes = []; // No planes in 2D
             this.presetEdges = this.presetEdges2D;
             this.presetEdgeMeshes = this.presetEdgeMeshes2D;
+            this.presetFaces = this.presetFaces2D;
+            this.presetFaceMeshes = this.presetFaceMeshes2D;
             this.usedMatrixLetters = this.usedMatrixLetters2D;
             this.selectedMatrixId = this.selectedMatrixId2D;
             this.colorIndex = this.colorIndex2D;
@@ -1307,6 +1335,8 @@ class VectoramaApp {
             this.planes = this.planes3D;
             this.presetEdges = this.presetEdges3D;
             this.presetEdgeMeshes = this.presetEdgeMeshes3D;
+            this.presetFaces = this.presetFaces3D;
+            this.presetFaceMeshes = this.presetFaceMeshes3D;
             this.usedMatrixLetters = this.usedMatrixLetters3D;
             this.selectedMatrixId = this.selectedMatrixId3D;
             this.colorIndex = this.colorIndex3D;
@@ -1756,6 +1786,10 @@ class VectoramaApp {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
         });
+
+        // Clear preset face meshes
+        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.length = 0;
         
         // Clear preset edge meshes
         this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
@@ -1778,7 +1812,51 @@ class VectoramaApp {
             });
         }
 
+        this.renderPresetFaces();
         this.renderPresetEdges();
+    }
+
+    renderPresetFaces() {
+        if (this.dimension !== '3d') return;
+        if (this.presetFaces.length === 0) return;
+
+        const faceStyle = this.getPresetFaceStyle();
+
+        this.presetFaces.forEach(face => {
+            const aVec = this.vectors.find(v => v.id === face.aId);
+            const bVec = this.vectors.find(v => v.id === face.bId);
+            const cVec = this.vectors.find(v => v.id === face.cId);
+
+            if (!aVec || !bVec || !cVec) return;
+            if (!aVec.visible || !bVec.visible || !cVec.visible) return;
+
+            const positions = new Float32Array([
+                aVec.currentEnd.x, aVec.currentEnd.y, aVec.currentEnd.z,
+                bVec.currentEnd.x, bVec.currentEnd.y, bVec.currentEnd.z,
+                cVec.currentEnd.x, cVec.currentEnd.y, cVec.currentEnd.z
+            ]);
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshBasicMaterial({
+                color: faceStyle.color,
+                transparent: true,
+                opacity: faceStyle.opacity,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                depthTest: true,
+                polygonOffset: true,
+                polygonOffsetFactor: -2,
+                polygonOffsetUnits: -2
+            });
+
+            const triangle = new THREE.Mesh(geometry, material);
+            triangle.renderOrder = 1;
+            this.presetFaceMeshes.push(triangle);
+            this.scene.add(triangle);
+        });
     }
 
     renderPresetEdges() {
@@ -1843,7 +1921,18 @@ class VectoramaApp {
         return currentTheme === 'light' ? 0x000000 : 0xffffff;
     }
 
+    getPresetFaceStyle() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'light') {
+            return { color: 0x000000, opacity: 0.07 };
+        }
+        return { color: 0xffffff, opacity: 0.11 };
+    }
+
     clearPresetEdges() {
+        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.length = 0;
+        this.presetFaces.length = 0;
         this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
         this.presetEdgeMeshes.length = 0;
         this.presetEdges.length = 0;
@@ -2774,7 +2863,9 @@ class VectoramaApp {
         const index = this.vectors.findIndex(v => v.id === id);
         if (index !== -1) {
             const vec = this.vectors[index];
-            const removedPresetVertex = this.presetEdges.some(edge => edge.startId === id || edge.endId === id);
+            const removedPresetVertex =
+                this.presetEdges.some(edge => edge.startId === id || edge.endId === id) ||
+                this.presetFaces.some(face => face.aId === id || face.bId === id || face.cId === id);
             // Remove all visualizations
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
@@ -3274,6 +3365,7 @@ class VectoramaApp {
         // Define preset vector coordinates
         let vectors = [];
         let edgeIndexPairs = [];
+        let faceIndexTriples = [];
         
         switch(preset) {
             // 2D Presets
@@ -3352,6 +3444,14 @@ class VectoramaApp {
                     [4, 5], [5, 6], [6, 7], [7, 4],
                     [0, 4], [1, 5], [2, 6], [3, 7]
                 ];
+                faceIndexTriples = [
+                    [0, 1, 2], [0, 2, 3],
+                    [4, 5, 6], [4, 6, 7],
+                    [0, 1, 5], [0, 5, 4],
+                    [1, 2, 6], [1, 6, 5],
+                    [2, 3, 7], [2, 7, 6],
+                    [3, 0, 4], [3, 4, 7]
+                ];
                 break;
                 
             case 'preset-tetrahedron':
@@ -3365,6 +3465,7 @@ class VectoramaApp {
                     [0, -1, a]
                 ];
                 edgeIndexPairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+                faceIndexTriples = [[0, 1, 2], [0, 3, 1], [0, 2, 3], [1, 3, 2]];
                 break;
                 
             case 'preset-octahedron':
@@ -3381,6 +3482,10 @@ class VectoramaApp {
                     [0, 2], [0, 3], [0, 4], [0, 5],
                     [1, 2], [1, 3], [1, 4], [1, 5],
                     [2, 4], [2, 5], [3, 4], [3, 5]
+                ];
+                faceIndexTriples = [
+                    [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4],
+                    [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]
                 ];
                 break;
                 
@@ -3442,6 +3547,33 @@ class VectoramaApp {
                 for (let i = 0; i < pointsPerRing; i++) {
                     edgeIndexPairs.push([lastRingStart + i, bottomIndex]);
                 }
+
+                // Triangulate top cap
+                for (let i = 0; i < pointsPerRing; i++) {
+                    const next = (i + 1) % pointsPerRing;
+                    faceIndexTriples.push([topIndex, ringStart(0) + i, ringStart(0) + next]);
+                }
+
+                // Triangulate between neighboring rings
+                for (let ring = 0; ring < rings - 2; ring++) {
+                    const currentStart = ringStart(ring);
+                    const nextStart = ringStart(ring + 1);
+                    for (let i = 0; i < pointsPerRing; i++) {
+                        const next = (i + 1) % pointsPerRing;
+                        const a = currentStart + i;
+                        const b = currentStart + next;
+                        const c = nextStart + i;
+                        const d = nextStart + next;
+                        faceIndexTriples.push([a, c, b]);
+                        faceIndexTriples.push([b, c, d]);
+                    }
+                }
+
+                // Triangulate bottom cap
+                for (let i = 0; i < pointsPerRing; i++) {
+                    const next = (i + 1) % pointsPerRing;
+                    faceIndexTriples.push([bottomIndex, lastRingStart + next, lastRingStart + i]);
+                }
                 break;
         }
         
@@ -3453,8 +3585,16 @@ class VectoramaApp {
             endId: addedVectors[endIndex].id
         }));
 
+        const presetFaces = faceIndexTriples.map(([aIndex, bIndex, cIndex]) => ({
+            aId: addedVectors[aIndex].id,
+            bId: addedVectors[bIndex].id,
+            cId: addedVectors[cIndex].id
+        }));
+
         this.presetEdges.length = 0;
         this.presetEdges.push(...presetEdges);
+        this.presetFaces.length = 0;
+        this.presetFaces.push(...presetFaces);
 
         this.updateVectorDisplay();
     }
