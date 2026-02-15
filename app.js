@@ -8,6 +8,17 @@ const startBtn = document.getElementById('start-btn');
 
 let appInitialized = false;
 
+function returnToTitleScreen() {
+    titleScreen.classList.remove('hidden');
+    mainApp.style.display = 'none';
+    appInitialized = false;
+
+    if (window.vectoramaApp && window.vectoramaApp.cleanup) {
+        window.vectoramaApp.cleanup();
+    }
+    window.vectoramaApp = null;
+}
+
 startBtn.addEventListener('click', () => {
     titleScreen.classList.add('hidden');
     mainApp.style.display = 'block';
@@ -32,16 +43,13 @@ document.addEventListener('keydown', (e) => {
         window.vectoramaApp = app;
         appInitialized = true;
     } else if (e.code === 'Escape' && appInitialized) {
-        // Return to title screen
-        titleScreen.classList.remove('hidden');
-        mainApp.style.display = 'none';
-        appInitialized = false;
-        
-        // Clean up the app instance if needed
-        if (window.vectoramaApp && window.vectoramaApp.cleanup) {
-            window.vectoramaApp.cleanup();
+        const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+        if (shortcutsOverlay && shortcutsOverlay.classList.contains('show') && window.vectoramaApp && window.vectoramaApp.toggleShortcutsOverlay) {
+            window.vectoramaApp.toggleShortcutsOverlay();
+            return;
         }
-        window.vectoramaApp = null;
+
+        returnToTitleScreen();
     }
 });
 
@@ -1258,6 +1266,30 @@ class VectoramaApp {
         if (intersectionToggleBtn) {
             intersectionToggleBtn.addEventListener('click', () => this.toggleIntersections());
         }
+
+        const returnToTitleButton = document.getElementById('return-to-title');
+        if (returnToTitleButton) {
+            returnToTitleButton.onclick = () => {
+                this.toggleShortcutsOverlay(false);
+                returnToTitleScreen();
+            };
+        }
+
+        const helpButtonPanel = document.getElementById('help-button');
+        if (helpButtonPanel) {
+            helpButtonPanel.onclick = () => {
+                this.toggleShortcutsOverlay();
+            };
+        }
+
+        const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+        if (shortcutsOverlay) {
+            shortcutsOverlay.onclick = (e) => {
+                if (e.target === shortcutsOverlay) {
+                    this.toggleShortcutsOverlay(false);
+                }
+            };
+        }
         
         // Second button row - Dimension toggle
         document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
@@ -1341,6 +1373,22 @@ class VectoramaApp {
         this.updateIntersectionsToggleUI();
         this.updatePlaneExtentControl();
         this.updateVectorDisplayModeUI();
+    }
+
+    toggleShortcutsOverlay(forceState = null) {
+        const overlay = document.getElementById('shortcuts-overlay');
+        if (!overlay) return;
+
+        const shouldShow = forceState === null ? !overlay.classList.contains('show') : Boolean(forceState);
+
+        if (shouldShow) {
+            overlay.classList.add('show');
+        } else {
+            overlay.classList.remove('show');
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+        }
     }
     
     trackEngagement() {
@@ -1960,30 +2008,42 @@ class VectoramaApp {
     }
 
     updateGridToggleUI() {
-        const gridOff = document.getElementById('grid-off');
-        const gridOn = document.getElementById('grid-on');
-        if (!gridOff || !gridOn) return;
+        const gridToggleButton = document.getElementById('grid-toggle-btn');
+        const gridIcon = document.getElementById('grid-icon');
+        if (!gridToggleButton) return;
 
-        if (this.gridVisible) {
-            gridOff.classList.remove('grid-active');
-            gridOn.classList.add('grid-active');
-        } else {
-            gridOn.classList.remove('grid-active');
-            gridOff.classList.add('grid-active');
+        gridToggleButton.style.background = this.gridVisible ? '#2A3F5A' : '#1a2a3f';
+        gridToggleButton.style.opacity = this.gridVisible ? '1' : '0.6';
+        gridToggleButton.title = this.gridVisible
+            ? 'Grid enabled (click to disable)'
+            : 'Grid disabled (click to enable)';
+
+        if (gridIcon) {
+            if (this.gridVisible) {
+                gridIcon.classList.add('grid-active');
+            } else {
+                gridIcon.classList.remove('grid-active');
+            }
         }
     }
 
     updateIntersectionsToggleUI() {
-        const intersectionOff = document.getElementById('intersection-off');
-        const intersectionOn = document.getElementById('intersection-on');
-        if (!intersectionOff || !intersectionOn) return;
+        const intersectionToggleButton = document.getElementById('intersection-toggle-btn');
+        const intersectionIcon = document.getElementById('intersection-icon');
+        if (!intersectionToggleButton) return;
 
-        if (this.intersectionsVisible) {
-            intersectionOff.classList.remove('intersection-active');
-            intersectionOn.classList.add('intersection-active');
-        } else {
-            intersectionOn.classList.remove('intersection-active');
-            intersectionOff.classList.add('intersection-active');
+        intersectionToggleButton.style.background = this.intersectionsVisible ? '#2A3F5A' : '#1a2a3f';
+        intersectionToggleButton.style.opacity = this.intersectionsVisible ? '1' : '0.6';
+        intersectionToggleButton.title = this.intersectionsVisible
+            ? 'Intersections enabled (click to disable)'
+            : 'Intersections disabled (click to enable)';
+
+        if (intersectionIcon) {
+            if (this.intersectionsVisible) {
+                intersectionIcon.classList.add('intersection-active');
+            } else {
+                intersectionIcon.classList.remove('intersection-active');
+            }
         }
     }
 
@@ -3327,9 +3387,9 @@ class VectoramaApp {
         if (currentForm === 'cross') {
             equationSpan.textContent = '(r - a) × b = 0';
         } else if (currentForm === 'cartesian') {
-            equationSpan.textContent = this.dimension === '3d'
-                ? '(x-aₓ)/bₓ = (y-aᵧ)/bᵧ = (z-a_z)/b_z'
-                : '(x-aₓ)/bₓ = (y-aᵧ)/bᵧ';
+            equationSpan.innerHTML = this.dimension === '3d'
+                ? '(x-a<sub>x</sub>)/b<sub>x</sub> = (y-a<sub>y</sub>)/b<sub>y</sub> = (z-a<sub>z</sub>)/b<sub>z</sub>'
+                : '(x-a<sub>x</sub>)/b<sub>x</sub> = (y-a<sub>y</sub>)/b<sub>y</sub>';
         } else {
             equationSpan.textContent = 'r = a + tb';
         }
