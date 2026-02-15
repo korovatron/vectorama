@@ -372,12 +372,20 @@ class VectoramaApp {
             // Match 3D grid color and transparency
             this.gridHelper = new THREE.GridHelper(size, divisions, 0x888888, 0x888888);
             this.gridHelper.rotation.x = Math.PI / 2;
-            this.gridHelper.position.z = -0.01;
+            this.gridHelper.position.z = 0;
             this.gridHelper.visible = this.gridVisible;
             
-            // Make grid transparent like 3D grid lines
-            this.gridHelper.material.transparent = true;
-            this.gridHelper.material.opacity = 0.5;
+            // Make 2D grid a true background layer to avoid parallax/z-fighting against axes and vectors
+            const gridMaterials = Array.isArray(this.gridHelper.material)
+                ? this.gridHelper.material
+                : [this.gridHelper.material];
+            gridMaterials.forEach(material => {
+                material.transparent = true;
+                material.opacity = 0.5;
+                material.depthWrite = false;
+                material.depthTest = false;
+            });
+            this.gridHelper.renderOrder = -100;
             
             this.scene.add(this.gridHelper);
             
@@ -760,6 +768,58 @@ class VectoramaApp {
         };
     }
 
+    getPointSpriteTexture() {
+        if (this.pointSpriteTexture) {
+            return this.pointSpriteTexture;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+
+        context.clearRect(0, 0, 128, 128);
+        context.beginPath();
+        context.arc(64, 64, 52, 0, Math.PI * 2);
+        context.fillStyle = '#ffffff';
+        context.fill();
+
+        this.pointSpriteTexture = new THREE.CanvasTexture(canvas);
+        this.pointSpriteTexture.needsUpdate = true;
+        return this.pointSpriteTexture;
+    }
+
+    createVectorPointVisual(color, position) {
+        const pointSize = 0.15;
+
+        if (this.dimension === '2d') {
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: this.getPointSpriteTexture(),
+                color: color,
+                transparent: true,
+                depthTest: true,
+                depthWrite: true
+            });
+            const pointSprite = new THREE.Sprite(spriteMaterial);
+            pointSprite.position.copy(position);
+            pointSprite.scale.set(pointSize * 2, pointSize * 2, 1);
+            pointSprite.renderOrder = 1;
+            return pointSprite;
+        }
+
+        const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
+        const pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        pointSphere.position.copy(position);
+        pointSphere.renderOrder = 1;
+        return pointSphere;
+    }
+
     getAxisNumberLabelScale(distanceToTarget) {
         const baseScale = distanceToTarget * 0.05; // Existing/current size (large mode)
         const modeFactor = this.vectorSizeMode === 'small' ? 0.75 : 1.0;
@@ -804,7 +864,7 @@ class VectoramaApp {
     }
 
     createSmoothArrow(direction, origin, length, color, headLength = 0.2, headWidth = 0.1) {
-        // Create arrow with higher quality geometry to prevent gaps and flickering
+        // Create arrow geometry
         const group = new THREE.Group();
         
         // Cap head dimensions to be proportional to vector length to prevent oversized heads on short vectors
@@ -817,9 +877,51 @@ class VectoramaApp {
         
         const shaftLength = length - cappedHeadLength;
         const shaftRadius = cappedHeadWidth * 0.3;
+
+        if (this.dimension === '2d') {
+            const flatDir = direction.clone();
+            flatDir.z = 0;
+            if (flatDir.lengthSq() < 1e-10) {
+                return group;
+            }
+            flatDir.normalize();
+
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                depthWrite: false,
+                depthTest: false,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
+            });
+
+            const shaftWidth = cappedHeadWidth * 0.65;
+            const shaftGeometry = new THREE.PlaneGeometry(shaftLength, shaftWidth);
+            const shaft = new THREE.Mesh(shaftGeometry, material);
+            shaft.position.set(shaftLength / 2, 0, 0);
+            shaft.renderOrder = 1006;
+
+            const headShape = new THREE.Shape();
+            headShape.moveTo(0, -cappedHeadWidth);
+            headShape.lineTo(0, cappedHeadWidth);
+            headShape.lineTo(cappedHeadLength, 0);
+            headShape.lineTo(0, -cappedHeadWidth);
+            const headGeometry = new THREE.ShapeGeometry(headShape);
+            const head = new THREE.Mesh(headGeometry, material);
+            head.position.set(shaftLength, 0, 0);
+            head.renderOrder = 1006;
+
+            group.add(shaft, head);
+            group.position.copy(origin);
+            group.position.z = 0;
+            group.rotation.z = Math.atan2(flatDir.y, flatDir.x);
+            group.renderOrder = 1006;
+            return group;
+        }
         
-        // In 2D mode, use triangular geometry; in 3D mode, use circular
-        const radialSegments = this.dimension === '2d' ? 3 : 16;
+        // Use smooth radial geometry in both modes to avoid apparent arrow-head morphing during pan
+        const radialSegments = 16;
         
         // Shaft - cylinder with segments based on mode
         const shaftGeometry = new THREE.CylinderGeometry(
@@ -846,7 +948,7 @@ class VectoramaApp {
         const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction.clone().normalize());
         shaft.quaternion.copy(quaternion);
         
-        // Head - cone with segments based on mode (triangle in 2D, circle in 3D)
+        // Head - smooth cone
         const headGeometry = new THREE.ConeGeometry(
             cappedHeadWidth, 
             cappedHeadLength, 
@@ -866,8 +968,33 @@ class VectoramaApp {
     }
 
     createSmoothArrowHead(direction, position, color, headLength = 0.2, headWidth = 0.1) {
+        if (this.dimension === '2d') {
+            const flatDir = direction.clone();
+            flatDir.z = 0;
+            if (flatDir.lengthSq() < 1e-10) {
+                return new THREE.Group();
+            }
+            flatDir.normalize();
+
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                depthWrite: true,
+                depthTest: true,
+                side: THREE.DoubleSide
+            });
+            const headShape = new THREE.Shape();
+            headShape.moveTo(0, -headWidth);
+            headShape.lineTo(0, headWidth);
+            headShape.lineTo(headLength, 0);
+            headShape.lineTo(0, -headWidth);
+            const head = new THREE.Mesh(new THREE.ShapeGeometry(headShape), material);
+            head.position.copy(flatDir.multiplyScalar(position));
+            head.rotation.z = Math.atan2(flatDir.y, flatDir.x);
+            return head;
+        }
+
         // Create just an arrow head at a specific position along the direction
-        const radialSegments = this.dimension === '2d' ? 3 : 16;
+        const radialSegments = 16;
         
         const headGeometry = new THREE.ConeGeometry(
             headWidth, 
@@ -1656,10 +1783,6 @@ class VectoramaApp {
             dimension: this.dimension,
             vectorDisplayMode: this.vectorDisplayMode,
             currentGridSpacing: this.currentGridSpacing,
-            groupCollapsed: {
-                ...this.getDefaultGroupCollapsedState(),
-                ...this.groupCollapsed
-            },
             counters: {
                 nextVectorId: this.nextVectorId,
                 nextMatrixId: this.nextMatrixId,
@@ -1741,10 +1864,7 @@ class VectoramaApp {
 
         if (!state || typeof state !== 'object') return false;
 
-        this.groupCollapsed = {
-            ...this.getDefaultGroupCollapsedState(),
-            ...(state.groupCollapsed || {})
-        };
+        this.groupCollapsed = this.getDefaultGroupCollapsedState();
 
         this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
         // Session defaults (not persisted)
@@ -2100,18 +2220,8 @@ class VectoramaApp {
                     thickness.headWidth
                 );
                 
-                // Create point sphere
-                const pointSize = 0.15;
-                const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
-                const sphereMaterial = new THREE.MeshBasicMaterial({ 
-                    color: vec.color,
-                    polygonOffset: true,
-                    polygonOffsetFactor: -1,
-                    polygonOffsetUnits: -1
-                });
-                vec.pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-                vec.pointSphere.position.copy(new THREE.Vector3(x, y, z));
-                vec.pointSphere.renderOrder = 1;
+                // Create point marker (sprite in 2D, sphere in 3D)
+                vec.pointSphere = this.createVectorPointVisual(vec.color, new THREE.Vector3(x, y, z));
             }
         });
         
@@ -2524,18 +2634,8 @@ class VectoramaApp {
             thickness.headWidth
         );
 
-        // Create point sphere for points mode
-        const pointSize = 0.15;
-        const sphereGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ 
-            color: color,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1
-        });
-        const pointSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        pointSphere.position.copy(new THREE.Vector3(x, y, z));
-        pointSphere.renderOrder = 1; // Render after axes
+        // Create point marker for points mode (sprite in 2D, sphere in 3D)
+        const pointSphere = this.createVectorPointVisual(color, new THREE.Vector3(x, y, z));
 
         const vectorId = this.nextVectorId++;
         const vectorName = this.getNextIndexedName('V', this.vectors);
@@ -3158,12 +3258,14 @@ class VectoramaApp {
         });
         controls.appendChild(colorIndicator);
 
-        const infoBtn = document.createElement('button');
-        infoBtn.className = 'matrix-info-btn';
-        infoBtn.title = 'Show vector information';
-        infoBtn.textContent = 'i';
-        infoBtn.addEventListener('click', () => this.showVectorInfo(vec.id));
-        controls.appendChild(infoBtn);
+        if (vec.visible) {
+            const infoBtn = document.createElement('button');
+            infoBtn.className = 'matrix-info-btn';
+            infoBtn.title = 'Show vector information';
+            infoBtn.textContent = 'i';
+            infoBtn.addEventListener('click', () => this.showVectorInfo(vec.id));
+            controls.appendChild(infoBtn);
+        }
 
         // Remove button
         const removeBtn = document.createElement('button');
@@ -3426,12 +3528,14 @@ class VectoramaApp {
         controls.appendChild(formToggleBtn);
         
         // Info button (i icon)
-        const infoBtn = document.createElement('button');
-        infoBtn.className = 'matrix-info-btn';
-        infoBtn.title = 'Show line information';
-        infoBtn.textContent = 'i';
-        infoBtn.addEventListener('click', () => this.showLineInfo(line.id));
-        controls.appendChild(infoBtn);
+        if (line.visible) {
+            const infoBtn = document.createElement('button');
+            infoBtn.className = 'matrix-info-btn';
+            infoBtn.title = 'Show line information';
+            infoBtn.textContent = 'i';
+            infoBtn.addEventListener('click', () => this.showLineInfo(line.id));
+            controls.appendChild(infoBtn);
+        }
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -3532,12 +3636,14 @@ class VectoramaApp {
         controls.appendChild(formToggleBtn);
         
         // Info button (i icon)
-        const infoBtn = document.createElement('button');
-        infoBtn.className = 'matrix-info-btn';
-        infoBtn.title = 'Show plane information';
-        infoBtn.textContent = 'i';
-        infoBtn.addEventListener('click', () => this.showPlaneInfo(plane.id));
-        controls.appendChild(infoBtn);
+        if (plane.visible) {
+            const infoBtn = document.createElement('button');
+            infoBtn.className = 'matrix-info-btn';
+            infoBtn.title = 'Show plane information';
+            infoBtn.textContent = 'i';
+            infoBtn.addEventListener('click', () => this.showPlaneInfo(plane.id));
+            controls.appendChild(infoBtn);
+        }
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -4146,6 +4252,11 @@ class VectoramaApp {
         const vec = this.vectors.find(v => v.id === id);
         if (vec) {
             vec.visible = !vec.visible;
+
+            if (!vec.visible && this.vectorInfoPanelId === id) {
+                this.vectorInfoPanelId = null;
+                document.getElementById('vector-info-panel').style.display = 'none';
+            }
             
             // Update visualization based on current mode
             this.updateVectorDisplay();
@@ -4160,6 +4271,12 @@ class VectoramaApp {
         const line = this.lines.find(l => l.id === id);
         if (line) {
             line.visible = !line.visible;
+
+            if (!line.visible && this.lineInfoPanelId === id) {
+                this.lineInfoPanelId = null;
+                document.getElementById('line-info-panel').style.display = 'none';
+            }
+
             if (line.mesh) {
                 line.mesh.visible = line.visible;
             }
@@ -4173,6 +4290,12 @@ class VectoramaApp {
         const plane = this.planes.find(p => p.id === id);
         if (plane) {
             plane.visible = !plane.visible;
+
+            if (!plane.visible && this.planeInfoPanelId === id) {
+                this.planeInfoPanelId = null;
+                document.getElementById('plane-info-panel').style.display = 'none';
+            }
+
             if (plane.mesh) {
                 plane.mesh.visible = plane.visible;
             }
@@ -4359,6 +4482,15 @@ class VectoramaApp {
     }
 
     showLineInfo(id) {
+        const line = this.lines.find(l => l.id === id);
+        if (!line || !line.visible) {
+            if (this.lineInfoPanelId === id) {
+                this.lineInfoPanelId = null;
+            }
+            document.getElementById('line-info-panel').style.display = 'none';
+            return;
+        }
+
         // Hide other info panels
         document.getElementById('eigenvalue-panel').style.display = 'none';
         document.getElementById('vector-info-panel').style.display = 'none';
@@ -4389,6 +4521,15 @@ class VectoramaApp {
     }
 
     showPlaneInfo(id) {
+        const plane = this.planes.find(p => p.id === id);
+        if (!plane || !plane.visible) {
+            if (this.planeInfoPanelId === id) {
+                this.planeInfoPanelId = null;
+            }
+            document.getElementById('plane-info-panel').style.display = 'none';
+            return;
+        }
+
         // Hide other info panels
         document.getElementById('eigenvalue-panel').style.display = 'none';
         document.getElementById('vector-info-panel').style.display = 'none';
@@ -4419,6 +4560,15 @@ class VectoramaApp {
     }
 
     showVectorInfo(id) {
+        const vec = this.vectors.find(v => v.id === id);
+        if (!vec || !vec.visible) {
+            if (this.vectorInfoPanelId === id) {
+                this.vectorInfoPanelId = null;
+            }
+            document.getElementById('vector-info-panel').style.display = 'none';
+            return;
+        }
+
         // Hide other info panels
         document.getElementById('eigenvalue-panel').style.display = 'none';
         document.getElementById('line-info-panel').style.display = 'none';
@@ -6318,7 +6468,12 @@ class VectoramaApp {
             
             this.vectors.forEach(vec => {
                 if (vec.pointSphere) {
-                    vec.pointSphere.scale.set(screenConstantScale, screenConstantScale, screenConstantScale);
+                    if (vec.pointSphere.isSprite) {
+                        const spriteScale = screenConstantScale * 0.34;
+                        vec.pointSphere.scale.set(spriteScale, spriteScale, 1);
+                    } else {
+                        vec.pointSphere.scale.set(screenConstantScale, screenConstantScale, screenConstantScale);
+                    }
                 }
             });
             return;
