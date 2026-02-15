@@ -161,6 +161,7 @@ class VectoramaApp {
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
         this.vectorDisplayMode = 'points'; // 'vectors' or 'points'
+        this.vectorSizeMode = 'small'; // 'small' or 'large'
         this.presetEdges2D = []; // Hidden edge pairs for 2D preset groups
         this.presetEdges3D = []; // Hidden edge pairs for 3D preset groups
         this.presetEdgeMeshes2D = []; // Rendered edge meshes for 2D presets
@@ -686,7 +687,7 @@ class VectoramaApp {
         
         // Scale based on camera distance for consistent screen size
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.05;
+        const scale = this.getAxisNumberLabelScale(distanceToTarget);
         sprite.scale.set(scale * 2, scale, 1); // Wider aspect ratio for numbers
         
         return sprite;
@@ -718,6 +719,25 @@ class VectoramaApp {
             headLength: 0.5 * clampedScale,
             headWidth: 0.25 * clampedScale
         };
+    }
+
+    getVectorSizeModeFactor() {
+        return this.vectorSizeMode === 'small' ? 0.75 : 1.0;
+    }
+
+    getVectorArrowThickness() {
+        const thickness = this.getArrowThickness();
+        const factor = this.getVectorSizeModeFactor();
+        return {
+            headLength: thickness.headLength * factor,
+            headWidth: thickness.headWidth * factor
+        };
+    }
+
+    getAxisNumberLabelScale(distanceToTarget) {
+        const baseScale = distanceToTarget * 0.05; // Existing/current size (large mode)
+        const modeFactor = this.vectorSizeMode === 'small' ? 0.75 : 1.0;
+        return baseScale * modeFactor;
     }
 
     createAxisLine(start, end, color, thickness) {
@@ -1086,6 +1106,14 @@ class VectoramaApp {
         // Third button row - Vector display mode toggle
         document.getElementById('vector-display-toggle-btn').addEventListener('click', () => this.toggleVectorDisplayMode());
 
+        // Bottom row - Vector size mode toggle
+        const vectorSizeToggleBtn = document.getElementById('vector-size-toggle-btn');
+        if (vectorSizeToggleBtn) {
+            vectorSizeToggleBtn.addEventListener('click', () => this.toggleVectorSizeMode());
+            this.updateVectorSizeModeUI();
+            this.updateInfoPanelsSizeModeUI();
+        }
+
         // Canvas drag to add vectors
         this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
@@ -1356,7 +1384,7 @@ class VectoramaApp {
                 const direction = new THREE.Vector3(x, y, z).normalize();
                 const length = Math.sqrt(x * x + y * y + z * z);
                 
-                const thickness = this.getArrowThickness();
+                const thickness = this.getVectorArrowThickness();
                 vec.arrow = this.createSmoothArrow(
                     direction,
                     origin,
@@ -1520,6 +1548,47 @@ class VectoramaApp {
         
         // Update vector visualization
         this.updateVectorDisplay();
+    }
+
+    toggleVectorSizeMode() {
+        this.vectorSizeMode = this.vectorSizeMode === 'small' ? 'large' : 'small';
+        this.updateVectorSizeModeUI();
+        this.updateInfoPanelsSizeModeUI();
+        this.updateVectorThickness(true);
+        this.updatePointSphereScales();
+        this.updateNumberLabelScales();
+    }
+
+    updateVectorSizeModeUI() {
+        const sizeSmall = document.getElementById('size-small');
+        const sizeLarge = document.getElementById('size-large');
+        if (!sizeSmall || !sizeLarge) return;
+
+        sizeSmall.classList.remove('size-active');
+        sizeLarge.classList.remove('size-active');
+
+        if (this.vectorSizeMode === 'small') {
+            sizeSmall.classList.add('size-active');
+        } else {
+            sizeLarge.classList.add('size-active');
+        }
+    }
+
+    updateInfoPanelsSizeModeUI() {
+        const infoPanelIds = ['eigenvalue-panel', 'line-info-panel', 'plane-info-panel', 'vector-info-panel'];
+        const isMobileOrTablet = this.deviceInfo && (this.deviceInfo.isMobilePhone || this.deviceInfo.isTablet);
+        const useLargePanels = this.vectorSizeMode === 'large' && !isMobileOrTablet;
+
+        infoPanelIds.forEach(id => {
+            const panel = document.getElementById(id);
+            if (!panel) return;
+
+            if (useLargePanels) {
+                panel.classList.add('info-panel-large');
+            } else {
+                panel.classList.remove('info-panel-large');
+            }
+        });
     }
 
     getTransformationMatrix(matrixId = null) {
@@ -1702,7 +1771,7 @@ class VectoramaApp {
             // Semi-transparent preview color
             const color = 0x888888;
             
-            const thickness = this.getArrowThickness();
+            const thickness = this.getVectorArrowThickness();
             this.tempArrow = this.createSmoothArrow(
                 direction,
                 origin,
@@ -1734,7 +1803,7 @@ class VectoramaApp {
         this.colorIndex++;
         const color = new THREE.Color(colorHex);
         
-        const thickness = this.getArrowThickness();
+        const thickness = this.getVectorArrowThickness();
         const arrow = this.createSmoothArrow(
             direction,
             origin,
@@ -1778,6 +1847,7 @@ class VectoramaApp {
         
         // Add appropriate visualization based on current mode
         this.updateVectorDisplay();
+        this.updatePointSphereScales();
         this.updateObjectsList();
 
         return vector;
@@ -1995,10 +2065,11 @@ class VectoramaApp {
     renderPresetEdges() {
         if (this.presetEdges.length === 0) return;
 
-        const thickness = this.getArrowThickness();
+        const thickness = this.getVectorArrowThickness();
         const lineRadius = thickness.headWidth * 0.18;
         const radialSegments = this.dimension === '2d' ? 3 : 16;
         const edgeColor = this.getPresetEdgeColor();
+        const isSmallMode = this.vectorSizeMode === 'small';
 
         this.presetEdges.forEach(edge => {
             const startVec = this.vectors.find(v => v.id === edge.startId);
@@ -2027,15 +2098,15 @@ class VectoramaApp {
 
             const material = new THREE.MeshBasicMaterial({
                 color: edgeColor,
-                depthWrite: true,
-                depthTest: true,
+                depthWrite: !isSmallMode,
+                depthTest: !isSmallMode,
                 polygonOffset: true,
-                polygonOffsetFactor: -4,
-                polygonOffsetUnits: -4
+                polygonOffsetFactor: isSmallMode ? -6 : -4,
+                polygonOffsetUnits: isSmallMode ? -6 : -4
             });
 
             const cylinder = new THREE.Mesh(geometry, material);
-            cylinder.renderOrder = 2;
+            cylinder.renderOrder = isSmallMode ? 1003 : 2;
 
             const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
             cylinder.position.copy(midpoint);
@@ -2994,7 +3065,7 @@ class VectoramaApp {
         const length = vec.currentEnd.length();
         
         if (length > 0) {
-            const thickness = this.getArrowThickness();
+            const thickness = this.getVectorArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
                 new THREE.Vector3(0, 0, 0),
@@ -3358,7 +3429,7 @@ class VectoramaApp {
             const length = original.length();
             
             this.scene.remove(vec.arrow);
-            const thickness = this.getArrowThickness();
+            const thickness = this.getVectorArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
                 new THREE.Vector3(0, 0, 0),
@@ -3936,7 +4007,7 @@ class VectoramaApp {
                     this.scene.remove(vec.arrow);
                 }
                 
-                const thickness = this.getArrowThickness();
+                const thickness = this.getVectorArrowThickness();
                 vec.arrow = this.createSmoothArrow(
                     direction,
                     new THREE.Vector3(0, 0, 0),
@@ -4189,9 +4260,43 @@ class VectoramaApp {
         return `${prefix}${candidate}`;
     }
 
+    getColorDistance(hexA, hexB) {
+        const colorA = new THREE.Color(hexA);
+        const colorB = new THREE.Color(hexB);
+
+        const dr = (colorA.r - colorB.r) * 255;
+        const dg = (colorA.g - colorB.g) * 255;
+        const db = (colorA.b - colorB.b) * 255;
+
+        return Math.sqrt(dr * dr + dg * dg + db * db);
+    }
+
+    getNextDistinctObjectColor(previousColorHex = null) {
+        const palette = this.vectorColors;
+        if (!palette || palette.length === 0) return '#4A90E2';
+
+        const startIndex = this.colorIndex;
+        const minimumDistance = 120;
+
+        for (let offset = 0; offset < palette.length; offset++) {
+            const paletteIndex = (startIndex + offset) % palette.length;
+            const candidate = palette[paletteIndex];
+
+            if (!previousColorHex || this.getColorDistance(candidate, previousColorHex) >= minimumDistance) {
+                this.colorIndex = paletteIndex + 1;
+                return candidate;
+            }
+        }
+
+        const fallbackIndex = startIndex % palette.length;
+        const fallback = palette[fallbackIndex];
+        this.colorIndex = fallbackIndex + 1;
+        return fallback;
+    }
+
     addLine(ax = 0, ay = 1, az = 0, bx = 1, by = 0, bz = 0) {
-        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
-        this.colorIndex++;
+        const previousLineColor = this.lines.length > 0 ? this.lines[this.lines.length - 1].color : null;
+        const colorHex = this.getNextDistinctObjectColor(previousLineColor);
         
         const line = {
             id: this.nextLineId++,
@@ -4221,8 +4326,8 @@ class VectoramaApp {
     addPlane(a = 0, b = 0, c = 1, d = 0) {
         if (this.dimension === '2d') return;
         
-        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
-        this.colorIndex++;
+        const previousPlaneColor = this.planes.length > 0 ? this.planes[this.planes.length - 1].color : null;
+        const colorHex = this.getNextDistinctObjectColor(previousPlaneColor);
         
         const plane = {
             id: this.nextPlaneId++,
@@ -4458,7 +4563,7 @@ class VectoramaApp {
         }
     }
 
-    updateVectorThickness() {
+    updateVectorThickness(force = false) {
         // Recreate all vectors with updated thickness based on current camera distance
         if (this.isAnimating) return; // Don't update during animation
         
@@ -4468,7 +4573,7 @@ class VectoramaApp {
         const relativeChange = this.lastCameraDistance > 0 ? distanceChange / this.lastCameraDistance : 1;
         
         // Only update if distance changed by more than 10%
-        if (relativeChange < 0.1) return;
+        if (!force && relativeChange < 0.1) return;
         
         this.lastCameraDistance = currentDistance;
         
@@ -4481,7 +4586,7 @@ class VectoramaApp {
                 this.scene.remove(vec.arrow);
             }
             
-            const thickness = this.getArrowThickness();
+            const thickness = this.getVectorArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
                 new THREE.Vector3(0, 0, 0),
@@ -5083,7 +5188,7 @@ class VectoramaApp {
         if (!this.axisNumbers) return;
         
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.05;
+        const scale = this.getAxisNumberLabelScale(distanceToTarget);
         const labelOffset = distanceToTarget * 0.03;
         
         this.axisNumbers.children.forEach(sprite => {
@@ -5114,10 +5219,11 @@ class VectoramaApp {
     updatePointSphereScales() {
         // Calculate scale based on camera distance to target
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const sizeFactor = this.getVectorSizeModeFactor();
         
         if (this.dimension === '2d') {
             // In 2D, scale with distance to maintain constant screen size
-            const screenConstantScale = distanceToTarget * 0.085;
+            const screenConstantScale = distanceToTarget * 0.085 * sizeFactor;
             
             this.vectors.forEach(vec => {
                 if (vec.pointSphere) {
@@ -5128,10 +5234,10 @@ class VectoramaApp {
         }
         
         // 3D mode: Update sphere scales based on camera distance
-        const baseScale = distanceToTarget * 0.08;
+        const baseScale = distanceToTarget * 0.08 * sizeFactor;
         
         // Set minimum scale to ensure visibility at all zoom levels
-        const minScale = 0.2;
+        const minScale = 0.2 * sizeFactor;
         const maxScaleLimit = 8.0;
         
         this.vectors.forEach(vec => {
@@ -6571,8 +6677,27 @@ class VectoramaApp {
             return this.formatDisplayAngle(radians, 1);
         };
 
+        const addPropertyRow = (container, property, value, valueClassName = '') => {
+            const row = document.createElement('div');
+            row.className = 'eigenvalue-item';
+
+            const label = document.createElement('div');
+            label.className = 'eigenvalue-label';
+            label.textContent = `${property}:`;
+
+            const val = document.createElement('div');
+            val.className = `eigenvalue-value${valueClassName ? ` ${valueClassName}` : ''}`;
+            val.textContent = value;
+
+            row.appendChild(label);
+            row.appendChild(val);
+            container.appendChild(row);
+            return { row, label, val };
+        };
+
         // Update header with vector name
         headerSpan.textContent = `${vector.name || `V${vector.id}`}: Information`;
+        panel.style.borderLeftColor = vector.color.getStyle();
 
         // Show panel and build content
         panel.style.display = 'block';
@@ -6581,39 +6706,22 @@ class VectoramaApp {
         const vectorValue = this.getVectorPointVector(vector);
         const magnitude = vectorValue.length();
 
-        const basicsSection = document.createElement('div');
-        basicsSection.style.padding = '8px';
-        basicsSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
-
-        const magnitudeRow = document.createElement('div');
-        magnitudeRow.style.fontSize = '12px';
-        magnitudeRow.style.marginBottom = '6px';
-        magnitudeRow.textContent = `Magnitude: ${this.formatDisplayNumber(magnitude, 3)}`;
-        basicsSection.appendChild(magnitudeRow);
-
-        const unitRow = document.createElement('div');
-        unitRow.style.fontSize = '12px';
+        addPropertyRow(contentDiv, 'Magnitude', this.formatDisplayNumber(magnitude, 3));
         if (magnitude < 1e-10) {
-            unitRow.textContent = 'Unit vector: undefined (zero vector)';
+            addPropertyRow(contentDiv, 'Unit vector', 'undefined (zero vector)');
         } else {
             const unit = vectorValue.clone().multiplyScalar(1 / magnitude);
-            unitRow.textContent = `Unit vector: ${this.formatVectorComponents(unit)}`;
+            addPropertyRow(contentDiv, 'Unit vector', this.formatVectorComponents(unit), 'eigenvector');
         }
-        basicsSection.appendChild(unitRow);
 
-        contentDiv.appendChild(basicsSection);
+        const relationSeparator = document.createElement('div');
+        relationSeparator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        relationSeparator.style.margin = '8px 0';
+        contentDiv.appendChild(relationSeparator);
 
         const otherVectors = this.vectors.filter(v => v.id !== vector.id && v.visible);
         if (otherVectors.length > 0) {
             const relationSection = document.createElement('div');
-            relationSection.style.padding = '8px';
-
-            const relationLabel = document.createElement('div');
-            relationLabel.textContent = 'Compare with vector:';
-            relationLabel.style.fontSize = '11px';
-            relationLabel.style.marginBottom = '6px';
-            relationLabel.style.opacity = '0.8';
-            relationSection.appendChild(relationLabel);
 
             const relationSelect = document.createElement('select');
             relationSelect.style.width = '100%';
@@ -6647,10 +6755,11 @@ class VectoramaApp {
                 relationSelect.value = String(savedSelection);
             }
 
-            relationSection.appendChild(relationSelect);
+            const selectRow = addPropertyRow(relationSection, 'Compare with', '');
+            selectRow.val.textContent = '';
+            selectRow.val.appendChild(relationSelect);
 
             const relationResult = document.createElement('div');
-            relationResult.style.marginTop = '6px';
             relationResult.style.display = 'none';
             relationSection.appendChild(relationResult);
 
@@ -6671,30 +6780,19 @@ class VectoramaApp {
                 const angle = this.calculateVectorAngle(vector, otherVector);
                 const v2LengthSq = v2.lengthSq();
 
-                let projectionText = 'Projection: undefined';
+                let projectionProperty = 'Projection';
+                let projectionValue = 'undefined';
                 if (v2LengthSq > 1e-10) {
                     const projection = v2.clone().multiplyScalar(dot / v2LengthSq);
-                    projectionText = `Projection on ${otherVector.name || `V${otherVector.id}`}: ${this.formatVectorComponents(projection)}`;
+                    projectionProperty = `Projection on ${otherVector.name || `V${otherVector.id}`}`;
+                    projectionValue = this.formatVectorComponents(projection);
                 }
 
                 relationResult.innerHTML = '';
 
-                const dotRow = document.createElement('div');
-                dotRow.style.fontSize = '12px';
-                dotRow.style.marginBottom = '4px';
-                dotRow.textContent = `Dot product: ${this.formatDisplayNumber(dot, 3)}`;
-                relationResult.appendChild(dotRow);
-
-                const angleRow = document.createElement('div');
-                angleRow.style.fontSize = '12px';
-                angleRow.style.marginBottom = '4px';
-                angleRow.textContent = `Angle: ${angle === null ? 'undefined' : formatAngle(angle)}`;
-                relationResult.appendChild(angleRow);
-
-                const projectionRow = document.createElement('div');
-                projectionRow.style.fontSize = '12px';
-                projectionRow.textContent = projectionText;
-                relationResult.appendChild(projectionRow);
+                addPropertyRow(relationResult, 'Dot product', this.formatDisplayNumber(dot, 3));
+                addPropertyRow(relationResult, 'Angle', angle === null ? 'undefined' : formatAngle(angle));
+                addPropertyRow(relationResult, projectionProperty, projectionValue, 'eigenvector');
 
                 relationResult.style.display = 'block';
                 this.angleVisualizationState = {
@@ -6717,7 +6815,6 @@ class VectoramaApp {
             contentDiv.appendChild(relationSection);
         } else {
             const noVectorsMsg = document.createElement('div');
-            noVectorsMsg.style.padding = '8px';
             noVectorsMsg.style.fontStyle = 'italic';
             noVectorsMsg.style.opacity = '0.7';
             noVectorsMsg.textContent = 'Add another vector to compare angle, dot product, and projection';
@@ -6755,6 +6852,7 @@ class VectoramaApp {
         
         // Update header with line name
         headerSpan.textContent = `${line.name}: Information`;
+        panel.style.borderLeftColor = line.color;
         
         // Show panel and build content
         panel.style.display = 'block';
@@ -7348,6 +7446,7 @@ class VectoramaApp {
         
         // Update header with plane name
         headerSpan.textContent = `${plane.name}: Information`;
+        panel.style.borderLeftColor = plane.color;
         
         // Show panel and build content
         panel.style.display = 'block';

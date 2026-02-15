@@ -148,28 +148,6 @@
                     RESET<br>AXES
                 </button>
                 
-                <button id="grid-toggle-btn" class="top-btn" title="Toggle Grid">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg class="grid-icon" id="grid-off" width="16" height="16" viewBox="0 0 16 16">
-                            <!-- Empty square -->
-                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
-                        </svg>
-                        <span class="grid-separator">|</span>
-                        <svg class="grid-icon grid-active" id="grid-on" width="16" height="16" viewBox="0 0 16 16">
-                            <!-- 3x3 grid -->
-                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
-                            <line x1="6" y1="2" x2="6" y2="14" stroke="currentColor" stroke-width="1" />
-                            <line x1="10" y1="2" x2="10" y2="14" stroke="currentColor" stroke-width="1" />
-                            <line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1" />
-                            <line x1="2" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="1" />
-                        </svg>
-                    </div>
-                </button>
-            </div>
-            
-            <!-- Second Button Row -->
-            <div class="top-button-row">
-                
                 <button id="vector-display-toggle-btn" class="top-btn" title="Cycle Vector Display Mode">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
                         <span style="color: #ffffff; font-size: 9px;">Vectors</span>
@@ -188,11 +166,23 @@
                         </div>
                     </div>
                 </button>
+            </div>
+            
+            <!-- Second Button Row -->
+            <div class="top-button-row">
                 
                 <button id="dimension-toggle-btn" class="top-btn" title="Toggle 2D/3D">
                     <span class="dim-option dim-active" id="dim-2d">2D</span>
                     <span class="dim-separator">|</span>
                     <span class="dim-option" id="dim-3d">3D</span>
+                </button>
+
+                <button id="vector-size-toggle-btn" class="top-btn" title="Toggle vector size mode">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="size-option size-active" id="size-small" style="font-size: 11px;">A</span>
+                        <span class="size-separator">|</span>
+                        <span class="size-option" id="size-large" style="font-size: 16px;">A</span>
+                    </div>
                 </button>
                 
                 <button id="theme-toggle" class="top-btn" title="Toggle Theme">
@@ -222,6 +212,30 @@
             <!-- Objects List (unified: matrices, planes, lines, vectors) -->
             <div id="objects-container">
                 <!-- All objects (matrices, planes, lines, vectors) will be added here dynamically -->
+            </div>
+
+            <!-- Bottom controls under objects -->
+            <div class="panel-separator"></div>
+            <div class="top-button-row">
+                <button id="grid-toggle-btn" class="top-btn" title="Toggle Grid">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg class="grid-icon" id="grid-off" width="16" height="16" viewBox="0 0 16 16">
+                            <!-- Empty square -->
+                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                        <span class="grid-separator">|</span>
+                        <svg class="grid-icon grid-active" id="grid-on" width="16" height="16" viewBox="0 0 16 16">
+                            <!-- 3x3 grid -->
+                            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" />
+                            <line x1="6" y1="2" x2="6" y2="14" stroke="currentColor" stroke-width="1" />
+                            <line x1="10" y1="2" x2="10" y2="14" stroke="currentColor" stroke-width="1" />
+                            <line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1" />
+                            <line x1="2" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="1" />
+                        </svg>
+                    </div>
+                </button>
+                <button class="top-btn" disabled aria-hidden="true" style="opacity: 0.35; cursor: default;"></button>
+                <button class="top-btn" disabled aria-hidden="true" style="opacity: 0.35; cursor: default;"></button>
             </div>
             
             <!-- Transform Mode Content -->

@@ -405,6 +405,20 @@ body {
     color: #666;
 }
 
+.size-option {
+    color: #666;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.size-option.size-active {
+    color: #ffffff;
+}
+
+.size-separator {
+    color: #666;
+}
+
 .add-button {
     position: relative;
     padding: 8px 12px;
@@ -1341,6 +1355,11 @@ body {
     z-index: 100;
     pointer-events: auto;
     user-select: none;
+}
+
+.eigenvalue-panel.info-panel-large {
+    transform: scale(1.2);
+    transform-origin: bottom right;
 }
 
 /* Debug Panel */
