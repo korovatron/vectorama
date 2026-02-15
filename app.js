@@ -23,17 +23,7 @@ function clearTitleSequenceTimers() {
     titleSequenceTimeouts = [];
 }
 
-function waitForTitleDelay(ms, runId) {
-    return new Promise((resolve) => {
-        const timeoutId = setTimeout(() => {
-            titleSequenceTimeouts = titleSequenceTimeouts.filter((id) => id !== timeoutId);
-            resolve(runId === titleSequenceRunId);
-        }, ms);
-        titleSequenceTimeouts.push(timeoutId);
-    });
-}
-
-function animateTitleTransform(fromTransform, toTransform, duration, runId) {
+function animateTitleTimeline(initialTransform, unshearedTransform, uprightTransform, runId) {
     return new Promise((resolve) => {
         if (!titleLogo || runId !== titleSequenceRunId) {
             resolve(false);
@@ -46,16 +36,24 @@ function animateTitleTransform(fromTransform, toTransform, duration, runId) {
         }
 
         titleLogo.style.willChange = 'transform';
-        titleLogo.style.transform = fromTransform;
+        titleLogo.style.transform = initialTransform;
+
+        const totalDuration = 5500;
+        const ease = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 
         const animation = titleLogo.animate(
             [
-                { transform: fromTransform },
-                { transform: toTransform }
+                { transform: initialTransform, offset: 0, easing: 'linear' },
+                { transform: initialTransform, offset: 2000 / totalDuration, easing: ease },
+                { transform: unshearedTransform, offset: 2500 / totalDuration, easing: 'linear' },
+                { transform: unshearedTransform, offset: 3500 / totalDuration, easing: ease },
+                { transform: uprightTransform, offset: 4000 / totalDuration, easing: 'linear' },
+                { transform: uprightTransform, offset: 5000 / totalDuration, easing: ease },
+                { transform: 'none', offset: 1 }
             ],
             {
-                duration,
-                easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
+                duration: totalDuration,
+                easing: 'linear',
                 fill: 'forwards'
             }
         );
@@ -68,7 +66,7 @@ function animateTitleTransform(fromTransform, toTransform, duration, runId) {
                 return;
             }
 
-            titleLogo.style.transform = toTransform;
+            titleLogo.style.transform = 'none';
             titleLogo.style.willChange = 'auto';
             titleSequenceAnimation = null;
             resolve(true);
@@ -101,7 +99,7 @@ async function replayTitleSequence() {
     }
 
     titleLogo.style.animation = 'none';
-    titleLogo.style.willChange = 'auto';
+    titleLogo.style.willChange = 'transform';
 
     const initialTransform = 'rotate(180deg) scaleX(-1) skewX(45deg)';
     const unshearedTransform = 'rotate(180deg) scaleX(-1) skewX(0deg)';
@@ -109,16 +107,7 @@ async function replayTitleSequence() {
 
     titleLogo.style.transform = initialTransform;
 
-    if (!(await waitForTitleDelay(2000, runId))) return;
-    if (!(await animateTitleTransform(initialTransform, unshearedTransform, 500, runId))) return;
-
-    titleLogo.style.willChange = 'auto';
-    if (!(await waitForTitleDelay(1000, runId))) return;
-    if (!(await animateTitleTransform(unshearedTransform, uprightTransform, 500, runId))) return;
-
-    titleLogo.style.willChange = 'auto';
-    if (!(await waitForTitleDelay(1000, runId))) return;
-    if (!(await animateTitleTransform(uprightTransform, 'none', 500, runId))) return;
+    if (!(await animateTitleTimeline(initialTransform, unshearedTransform, uprightTransform, runId))) return;
 
     titleLogo.style.animation = 'none';
     titleLogo.style.transform = 'none';
