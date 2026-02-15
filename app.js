@@ -5,8 +5,37 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const titleScreen = document.getElementById('title-screen');
 const mainApp = document.getElementById('main-app');
 const startBtn = document.getElementById('start-btn');
+const titleLogo = document.querySelector('.title-logo');
+const titleTagline = document.querySelector('.title-tagline');
 
 let appInitialized = false;
+
+if (titleLogo && titleTagline) {
+    const defaultTaglineText = titleTagline.textContent;
+    const introTaglineText = titleTagline.dataset.introTagline;
+
+    if (introTaglineText) {
+        titleTagline.textContent = introTaglineText;
+
+        titleLogo.addEventListener('animationend', (event) => {
+            if (event.animationName === 'title-logo-startup-transform') {
+                titleTagline.textContent = defaultTaglineText;
+            }
+        }, { once: true });
+    }
+}
+
+function startApp() {
+    titleScreen.classList.add('hidden');
+    mainApp.style.display = 'block';
+
+    // Initialize the app only after the container is visible
+    if (!appInitialized) {
+        const app = new VectoramaApp();
+        window.vectoramaApp = app;
+        appInitialized = true;
+    }
+}
 
 function returnToTitleScreen() {
     titleScreen.classList.remove('hidden');
@@ -20,15 +49,7 @@ function returnToTitleScreen() {
 }
 
 startBtn.addEventListener('click', () => {
-    titleScreen.classList.add('hidden');
-    mainApp.style.display = 'block';
-    
-    // Initialize the app only after the container is visible
-    if (!appInitialized) {
-        const app = new VectoramaApp();
-        window.vectoramaApp = app;
-        appInitialized = true;
-    }
+    startApp();
 });
 
 // Allow space bar to start the app from title screen
@@ -36,12 +57,7 @@ startBtn.addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !appInitialized) {
         e.preventDefault(); // Prevent page scroll
-        titleScreen.classList.add('hidden');
-        mainApp.style.display = 'block';
-        
-        const app = new VectoramaApp();
-        window.vectoramaApp = app;
-        appInitialized = true;
+        startApp();
     } else if (e.code === 'Escape' && appInitialized) {
         const shortcutsOverlay = document.getElementById('shortcuts-overlay');
         if (shortcutsOverlay && shortcutsOverlay.classList.contains('show') && window.vectoramaApp && window.vectoramaApp.toggleShortcutsOverlay) {
