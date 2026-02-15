@@ -83,6 +83,13 @@ body {
     width: auto;
     height: auto;
     object-fit: contain;
+    image-rendering: auto;
+    image-rendering: smooth;
+    -ms-interpolation-mode: bicubic;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: transform;
     -webkit-user-drag: none;
     user-drag: none;
     pointer-events: auto;
@@ -105,7 +112,7 @@ body {
 }
 
 .title-tagline {
-    font-size: 1.4em;
+    font-size: 1.15em;
     font-weight: 500;
     color: var(--text-primary);
     margin: 0;
