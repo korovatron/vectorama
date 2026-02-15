@@ -4484,6 +4484,31 @@ class VectoramaApp {
         return intersection;
     }
 
+    classifyLineRelationship(line1, line2) {
+        const currentPoint1 = line1.currentPoint || line1.point;
+        const currentDirection1 = line1.currentDirection || line1.direction;
+        const currentPoint2 = line2.currentPoint || line2.point;
+        const currentDirection2 = line2.currentDirection || line2.direction;
+
+        const p1 = new THREE.Vector3(currentPoint1.x, currentPoint1.y, currentPoint1.z);
+        const d1 = new THREE.Vector3(currentDirection1.x, currentDirection1.y, currentDirection1.z).normalize();
+        const p2 = new THREE.Vector3(currentPoint2.x, currentPoint2.y, currentPoint2.z);
+        const d2 = new THREE.Vector3(currentDirection2.x, currentDirection2.y, currentDirection2.z).normalize();
+
+        const crossD1D2 = new THREE.Vector3().crossVectors(d1, d2);
+        if (crossD1D2.lengthSq() < 0.0001) {
+            return 'parallel';
+        }
+
+        const p1ToP2 = new THREE.Vector3().subVectors(p2, p1);
+        const dotProduct = p1ToP2.dot(crossD1D2);
+        if (Math.abs(dotProduct) > 0.01) {
+            return 'skew';
+        }
+
+        return 'intersecting';
+    }
+
     createIntersectionLabel(point) {
         // Format coordinates for display
         const x = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
@@ -6337,9 +6362,20 @@ class VectoramaApp {
             const degrees = radians * (180 / Math.PI);
             return degrees.toFixed(1) + '°';
         };
+
+        const formatDistance = (distance) => {
+            return distance.toFixed(3);
+        };
         
         // Get other lines (excluding current one)
         const otherLines = this.lines.filter(l => l.id !== line.id && l.visible);
+
+        // Keep line-angle and line-distance controls mutually exclusive
+        let angleLineSelectRef = null;
+        let angleLineResultRef = null;
+        let angleLineBadgeRef = null;
+        let distanceLineSelectRef = null;
+        let distanceLineResultRef = null;
         
         // Get all visible planes
         const visiblePlanes = this.planes.filter(p => p.visible);
@@ -6393,18 +6429,36 @@ class VectoramaApp {
             
             lineSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
+                    // Reset distance selection/result when angle selection is made
+                    if (distanceLineSelectRef) {
+                        distanceLineSelectRef.value = '';
+                    }
+                    if (distanceLineResultRef) {
+                        distanceLineResultRef.style.display = 'none';
+                    }
+
                     const otherLine = this.lines.find(l => l.id === parseInt(e.target.value));
                     if (otherLine) {
                         const angle = this.calculateLineLineAngle(line, otherLine);
                         lineResult.textContent = formatAngle(angle);
-                        lineResult.appendChild(lineSkewBadge);
+                        lineResult.appendChild(lineRelationBadge);
                         lineResult.style.display = 'block';
 
-                        const intersection = this.calculateLineLineIntersection(line, otherLine);
-                        if (intersection) {
-                            lineSkewBadge.style.display = 'none';
+                        const relationship = this.classifyLineRelationship(line, otherLine);
+                        if (relationship === 'parallel') {
+                            lineRelationBadge.textContent = 'Parallel';
+                            lineRelationBadge.style.background = 'rgba(74, 144, 226, 0.25)';
+                            lineRelationBadge.style.border = '1px solid rgba(74, 144, 226, 0.6)';
+                            lineRelationBadge.style.color = '#64B5F6';
+                            lineRelationBadge.style.display = 'inline-block';
+                        } else if (relationship === 'skew') {
+                            lineRelationBadge.textContent = 'Skew';
+                            lineRelationBadge.style.background = 'rgba(243, 156, 18, 0.25)';
+                            lineRelationBadge.style.border = '1px solid rgba(243, 156, 18, 0.6)';
+                            lineRelationBadge.style.color = '#F39C12';
+                            lineRelationBadge.style.display = 'inline-block';
                         } else {
-                            lineSkewBadge.style.display = 'inline-block';
+                            lineRelationBadge.style.display = 'none';
                         }
 
                         this.angleVisualizationState = {
@@ -6416,7 +6470,7 @@ class VectoramaApp {
                     }
                 } else {
                     lineResult.style.display = 'none';
-                    lineSkewBadge.style.display = 'none';
+                    lineRelationBadge.style.display = 'none';
                     this.angleVisualizationState = null;
                     this.clearAngleVisualization();
                 }
@@ -6432,18 +6486,22 @@ class VectoramaApp {
             lineResult.style.display = 'none';
             lineSection.appendChild(lineResult);
 
-            const lineSkewBadge = document.createElement('span');
-            lineSkewBadge.textContent = 'Skew';
-            lineSkewBadge.style.display = 'none';
-            lineSkewBadge.style.marginLeft = '8px';
-            lineSkewBadge.style.padding = '1px 6px';
-            lineSkewBadge.style.fontSize = '10px';
-            lineSkewBadge.style.fontWeight = 'bold';
-            lineSkewBadge.style.borderRadius = '999px';
-            lineSkewBadge.style.background = 'rgba(243, 156, 18, 0.25)';
-            lineSkewBadge.style.border = '1px solid rgba(243, 156, 18, 0.6)';
-            lineSkewBadge.style.color = '#F39C12';
-            lineResult.appendChild(lineSkewBadge);
+            const lineRelationBadge = document.createElement('span');
+            lineRelationBadge.textContent = 'Skew';
+            lineRelationBadge.style.display = 'none';
+            lineRelationBadge.style.marginLeft = '8px';
+            lineRelationBadge.style.padding = '1px 6px';
+            lineRelationBadge.style.fontSize = '10px';
+            lineRelationBadge.style.fontWeight = 'bold';
+            lineRelationBadge.style.borderRadius = '999px';
+            lineRelationBadge.style.background = 'rgba(243, 156, 18, 0.25)';
+            lineRelationBadge.style.border = '1px solid rgba(243, 156, 18, 0.6)';
+            lineRelationBadge.style.color = '#F39C12';
+            lineResult.appendChild(lineRelationBadge);
+
+            angleLineSelectRef = lineSelect;
+            angleLineResultRef = lineResult;
+            angleLineBadgeRef = lineRelationBadge;
 
             // Restore displayed result if this selection was already active
             if (lineSelect.value) {
@@ -6452,13 +6510,23 @@ class VectoramaApp {
                 if (selectedLine) {
                     const angle = this.calculateLineLineAngle(line, selectedLine);
                     lineResult.textContent = formatAngle(angle);
-                    lineResult.appendChild(lineSkewBadge);
+                    lineResult.appendChild(lineRelationBadge);
 
-                    const intersection = this.calculateLineLineIntersection(line, selectedLine);
-                    if (intersection) {
-                        lineSkewBadge.style.display = 'none';
+                    const relationship = this.classifyLineRelationship(line, selectedLine);
+                    if (relationship === 'parallel') {
+                        lineRelationBadge.textContent = 'Parallel';
+                        lineRelationBadge.style.background = 'rgba(74, 144, 226, 0.25)';
+                        lineRelationBadge.style.border = '1px solid rgba(74, 144, 226, 0.6)';
+                        lineRelationBadge.style.color = '#64B5F6';
+                        lineRelationBadge.style.display = 'inline-block';
+                    } else if (relationship === 'skew') {
+                        lineRelationBadge.textContent = 'Skew';
+                        lineRelationBadge.style.background = 'rgba(243, 156, 18, 0.25)';
+                        lineRelationBadge.style.border = '1px solid rgba(243, 156, 18, 0.6)';
+                        lineRelationBadge.style.color = '#F39C12';
+                        lineRelationBadge.style.display = 'inline-block';
                     } else {
-                        lineSkewBadge.style.display = 'inline-block';
+                        lineRelationBadge.style.display = 'none';
                     }
 
                     lineResult.style.display = 'block';
@@ -6466,6 +6534,134 @@ class VectoramaApp {
             }
             
             contentDiv.appendChild(lineSection);
+        }
+
+        // Perpendicular distance to other lines section
+        if (otherLines.length > 0) {
+            const distanceSection = document.createElement('div');
+            distanceSection.style.padding = '8px';
+            distanceSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+
+            const distanceLabel = document.createElement('div');
+            distanceLabel.textContent = 'Distance to line:';
+            distanceLabel.style.fontSize = '11px';
+            distanceLabel.style.marginBottom = '6px';
+            distanceLabel.style.opacity = '0.8';
+            distanceSection.appendChild(distanceLabel);
+
+            const distanceSelect = document.createElement('select');
+            distanceSelect.style.width = '100%';
+            distanceSelect.style.padding = '4px';
+            distanceSelect.style.fontSize = '11px';
+            distanceSelect.style.background = '#2A3F5A';
+            distanceSelect.style.color = 'white';
+            distanceSelect.style.border = '1px solid #555';
+            distanceSelect.style.borderRadius = '3px';
+            distanceSelect.style.cursor = 'pointer';
+
+            const distanceDefaultOption = document.createElement('option');
+            distanceDefaultOption.value = '';
+            distanceDefaultOption.textContent = '-- Select line --';
+            distanceSelect.appendChild(distanceDefaultOption);
+
+            otherLines.forEach(l => {
+                const option = document.createElement('option');
+                option.value = l.id;
+                option.textContent = l.name;
+                distanceSelect.appendChild(option);
+            });
+
+            const savedDistanceSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'line-distance' &&
+                this.angleVisualizationState.lineId === line.id
+                ? this.angleVisualizationState.otherLineId
+                : null;
+
+            if (savedDistanceSelection && otherLines.some(l => l.id === savedDistanceSelection)) {
+                distanceSelect.value = String(savedDistanceSelection);
+            }
+
+            const applyDistanceSelection = (selectedLineId) => {
+                if (!selectedLineId) {
+                    distanceResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
+                    return;
+                }
+
+                // Reset angle selection/result when distance selection is made
+                if (angleLineSelectRef) {
+                    angleLineSelectRef.value = '';
+                }
+                if (angleLineResultRef) {
+                    angleLineResultRef.style.display = 'none';
+                }
+                if (angleLineBadgeRef) {
+                    angleLineBadgeRef.style.display = 'none';
+                }
+
+                const otherLine = this.lines.find(l => l.id === selectedLineId);
+                if (!otherLine) return;
+
+                const distanceData = this.calculateLineToLineDistance(line, otherLine);
+                if (!distanceData) return;
+
+                distanceResult.textContent = formatDistance(distanceData.distance);
+                distanceResult.style.display = 'block';
+                this.angleVisualizationState = {
+                    type: 'line-distance',
+                    lineId: line.id,
+                    otherLineId: otherLine.id
+                };
+                this.updateAngleVisualization();
+            };
+
+            distanceSelect.addEventListener('change', (e) => {
+                const selectedLineId = e.target.value ? parseInt(e.target.value) : null;
+                applyDistanceSelection(selectedLineId);
+            });
+
+            // Re-apply distance mode when clicking an already-selected option after switching modes
+            distanceSelect.addEventListener('click', () => {
+                if (!distanceSelect.value) return;
+
+                const selectedLineId = parseInt(distanceSelect.value);
+                const isAlreadyDistanceMode = this.angleVisualizationState &&
+                    this.angleVisualizationState.type === 'line-distance' &&
+                    this.angleVisualizationState.lineId === line.id &&
+                    this.angleVisualizationState.otherLineId === selectedLineId;
+
+                if (!isAlreadyDistanceMode) {
+                    applyDistanceSelection(selectedLineId);
+                }
+            });
+
+            distanceSection.appendChild(distanceSelect);
+
+            const distanceResult = document.createElement('div');
+            distanceResult.style.marginTop = '6px';
+            distanceResult.style.fontSize = '13px';
+            distanceResult.style.fontWeight = 'bold';
+            distanceResult.style.color = '#64B5F6';
+            distanceResult.style.display = 'none';
+            distanceSection.appendChild(distanceResult);
+
+            distanceLineSelectRef = distanceSelect;
+            distanceLineResultRef = distanceResult;
+
+            if (distanceSelect.value) {
+                const selectedId = parseInt(distanceSelect.value);
+                const selectedLine = this.lines.find(l => l.id === selectedId);
+                if (selectedLine) {
+                    const distanceData = this.calculateLineToLineDistance(line, selectedLine);
+                    if (distanceData) {
+                        distanceResult.textContent = formatDistance(distanceData.distance);
+                        distanceResult.style.display = 'block';
+                    }
+                }
+            }
+
+            contentDiv.appendChild(distanceSection);
         }
         
         // Angle with planes section (only in 3D)
@@ -6566,8 +6762,8 @@ class VectoramaApp {
             noObjectsMsg.style.fontStyle = 'italic';
             noObjectsMsg.style.opacity = '0.7';
             noObjectsMsg.textContent = this.dimension === '3d' ? 
-                'Add other lines or planes to calculate angles' : 
-                'Add other lines to calculate angles';
+                'Add other lines or planes to calculate angles and distances' : 
+                'Add other lines to calculate angles and distances';
             contentDiv.appendChild(noObjectsMsg);
         }
     }
@@ -6862,6 +7058,68 @@ class VectoramaApp {
         return angle;
     }
 
+    calculateLineToLineDistance(line1, line2) {
+        const p1 = this.getLinePointVector(line1);
+        const p2 = this.getLinePointVector(line2);
+        const d1 = this.getLineDirectionVector(line1);
+        const d2 = this.getLineDirectionVector(line2);
+
+        if (!p1 || !p2 || !d1 || !d2) return null;
+
+        const epsilon = 1e-6;
+        const r = p1.clone().sub(p2);
+        const a = d1.dot(d1);
+        const b = d1.dot(d2);
+        const c = d2.dot(d2);
+        const d = d1.dot(r);
+        const e = d2.dot(r);
+        const denominator = a * c - b * b;
+
+        let s;
+        let t;
+
+        if (Math.abs(denominator) < epsilon) {
+            // Parallel (or nearly parallel) lines
+            s = 0;
+            t = e / c;
+        } else {
+            s = (b * e - c * d) / denominator;
+            t = (a * e - b * d) / denominator;
+        }
+
+        const closestPointOnLine1 = p1.clone().add(d1.clone().multiplyScalar(s));
+        const closestPointOnLine2 = p2.clone().add(d2.clone().multiplyScalar(t));
+        const connector = closestPointOnLine2.clone().sub(closestPointOnLine1);
+
+        return {
+            pointOnLine1: closestPointOnLine1,
+            pointOnLine2: closestPointOnLine2,
+            distance: connector.length()
+        };
+    }
+
+    calculateLineIntersectionOnXZ(line1, line2) {
+        const p1 = this.getLinePointVector(line1);
+        const p2 = this.getLinePointVector(line2);
+        const d1 = this.getLineDirectionVector(line1);
+        const d2 = this.getLineDirectionVector(line2);
+
+        if (!p1 || !p2 || !d1 || !d2) return null;
+
+        const det = d1.x * d2.z - d1.z * d2.x;
+        if (Math.abs(det) < 1e-8) return null;
+
+        const dx = p2.x - p1.x;
+        const dz = p2.z - p1.z;
+        const t = (dx * d2.z - dz * d2.x) / det;
+
+        return new THREE.Vector3(
+            p1.x + t * d1.x,
+            0,
+            p1.z + t * d1.z
+        );
+    }
+
     getLinePointVector(line) {
         const currentPoint = line.currentPoint || line.point;
         return new THREE.Vector3(currentPoint.x, currentPoint.y, currentPoint.z);
@@ -6953,6 +7211,35 @@ class VectoramaApp {
         return arc;
     }
 
+    createRightAngleMarker(vertex, directionA, directionB, size, color) {
+        const dirA = directionA.clone().normalize();
+        const dirB = directionB.clone().normalize();
+
+        if (dirA.lengthSq() < 1e-10 || dirB.lengthSq() < 1e-10) return null;
+
+        // Ensure directionB is perpendicular to directionA for a clean right-angle symbol
+        const perpB = dirB.clone().sub(dirA.clone().multiplyScalar(dirB.dot(dirA)));
+        if (perpB.lengthSq() < 1e-10) return null;
+        perpB.normalize();
+
+        const p1 = vertex.clone().add(dirA.clone().multiplyScalar(size));
+        const p2 = p1.clone().add(perpB.clone().multiplyScalar(size));
+        const p3 = vertex.clone().add(perpB.clone().multiplyScalar(size));
+
+        const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2, p3]);
+        const material = new THREE.LineBasicMaterial({
+            color: new THREE.Color(color),
+            transparent: true,
+            opacity: 0.95,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const marker = new THREE.Line(geometry, material);
+        marker.renderOrder = 1004;
+        return marker;
+    }
+
     createAngleTextLabel(text, color) {
         const canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -7021,6 +7308,103 @@ class VectoramaApp {
         let ray2Color = '#64B5F6';
         let angle = 0;
 
+        if (state.type === 'line-distance') {
+            const line1 = this.lines.find(l => l.id === state.lineId && l.visible);
+            const line2 = this.lines.find(l => l.id === state.otherLineId && l.visible);
+            if (!line1 || !line2) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const distanceData = this.calculateLineToLineDistance(line1, line2);
+            if (!distanceData) return;
+
+            const { pointOnLine1, pointOnLine2, distance } = distanceData;
+            const line1Direction = this.getLineDirectionVector(line1);
+            const line2Direction = this.getLineDirectionVector(line2);
+            if (!line1Direction || !line2Direction) return;
+
+            const connectorDirection = pointOnLine2.clone().sub(pointOnLine1);
+            if (connectorDirection.lengthSq() < 1e-12) return;
+            connectorDirection.normalize();
+
+            const connectorPoints = [pointOnLine1.clone(), pointOnLine2.clone()];
+            const connectorGeometry = new THREE.BufferGeometry().setFromPoints(connectorPoints);
+            const connectorMaterial = new THREE.LineBasicMaterial({
+                color: new THREE.Color(overlayColor),
+                transparent: true,
+                opacity: 0.95,
+                depthTest: false,
+                depthWrite: false
+            });
+            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
+            connectorLine.renderOrder = 1003;
+            overlayGroup.add(connectorLine);
+            cycleMaterials.push(connectorMaterial);
+
+            const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
+            const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
+            const markerMaterial1 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: true });
+            const markerMaterial2 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: false });
+            markerMaterial1.depthTest = false;
+            const marker1 = new THREE.Mesh(markerGeometry, markerMaterial1);
+            const marker2 = new THREE.Mesh(markerGeometry, markerMaterial2);
+            marker1.position.copy(pointOnLine1);
+            marker2.position.copy(pointOnLine2);
+            marker1.renderOrder = 1004;
+            marker2.renderOrder = 1004;
+            overlayGroup.add(marker1);
+            overlayGroup.add(marker2);
+            cycleMaterials.push(markerMaterial1, markerMaterial2);
+
+            const rightAngleSize = Math.min(
+                Math.max(0.08, radius * 0.15),
+                Math.max(0.05, distance * 0.35)
+            );
+
+            const rightAngle1 = this.createRightAngleMarker(
+                pointOnLine1,
+                line1Direction,
+                connectorDirection,
+                rightAngleSize,
+                overlayColor
+            );
+            const rightAngle2 = this.createRightAngleMarker(
+                pointOnLine2,
+                line2Direction,
+                connectorDirection.clone().multiplyScalar(-1),
+                rightAngleSize,
+                overlayColor
+            );
+
+            if (rightAngle1) {
+                overlayGroup.add(rightAngle1);
+                cycleMaterials.push(rightAngle1.material);
+            }
+            if (rightAngle2) {
+                overlayGroup.add(rightAngle2);
+                cycleMaterials.push(rightAngle2.material);
+            }
+
+            const midpoint = pointOnLine1.clone().add(pointOnLine2).multiplyScalar(0.5);
+            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
+            const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
+            if (offsetDirection.lengthSq() < 1e-8) {
+                offsetDirection.set(0, 1, 0);
+            } else {
+                offsetDirection.normalize();
+            }
+            label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
+            overlayGroup.add(label);
+            cycleMaterials.push(label.material);
+
+            overlayGroup.userData.cycleMaterials = cycleMaterials;
+            this.angleVisualization = overlayGroup;
+            this.scene.add(this.angleVisualization);
+            return;
+        }
+
         if (state.type === 'line-line') {
             const line1 = this.lines.find(l => l.id === state.lineId && l.visible);
             const line2 = this.lines.find(l => l.id === state.otherLineId && l.visible);
@@ -7037,7 +7421,29 @@ class VectoramaApp {
             if (d1.dot(d2) < 0) d2.multiplyScalar(-1);
 
             const intersection = this.calculateLineLineIntersection(line1, line2);
-            origin = intersection ? intersection.clone() : this.getLinePointVector(line1);
+            if (intersection) {
+                origin = intersection.clone();
+            } else {
+                const distanceData = this.calculateLineToLineDistance(line1, line2);
+                if (distanceData) {
+                    const midpoint = distanceData.pointOnLine1.clone().add(distanceData.pointOnLine2).multiplyScalar(0.5);
+                    origin = midpoint;
+
+                    // In top-down views, place skew-angle marker at where lines visually cross in XZ projection
+                    const viewDirection = new THREE.Vector3();
+                    this.camera.getWorldDirection(viewDirection);
+                    const isTopDownView = Math.abs(viewDirection.y) > 0.85;
+                    if (this.dimension === '3d' && isTopDownView) {
+                        const projectedIntersectionXZ = this.calculateLineIntersectionOnXZ(line1, line2);
+                        if (projectedIntersectionXZ) {
+                            origin = projectedIntersectionXZ;
+                            origin.y = midpoint.y;
+                        }
+                    }
+                } else {
+                    origin = this.getLinePointVector(line1);
+                }
+            }
             ray1Direction = d1;
             ray2Direction = d2;
             ray1Color = line1.color;
