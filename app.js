@@ -66,6 +66,7 @@ window.addEventListener('orientationchange', () => {
 const themeToggle = document.getElementById('theme-toggle');
 const lightIcon = document.getElementById('light-icon');
 const darkIcon = document.getElementById('dark-icon');
+const APP_STATE_STORAGE_KEY = 'vectorama-app-state-v1';
 
 // Load theme from localStorage or default to dark
 const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -97,6 +98,7 @@ themeToggle.addEventListener('click', () => {
     // Update scene background if app exists
     if (window.vectoramaApp) {
         window.vectoramaApp.updateTheme();
+        window.vectoramaApp.scheduleStateSave();
     }
 });
 
@@ -195,6 +197,10 @@ class VectoramaApp {
             lines: true,
             vectors: true
         };
+
+        this.cameraState2D = null;
+        this.cameraState3D = null;
+        this.stateSaveTimeout = null;
         
         // Unique ID counters
         this.nextVectorId = 1;
@@ -214,9 +220,13 @@ class VectoramaApp {
         this.createGrid();
         this.createAxes();
         this.animate();
-        
-        // Initialize with default content
-        this.initializeDefaultContent();
+
+        const restoredFromState = this.restoreAppState();
+        if (!restoredFromState) {
+            // Initialize with default content
+            this.initializeDefaultContent();
+            this.captureCurrentCameraState();
+        }
         
         // Visualize invariant spaces for initial identity matrix after scene is ready
         requestAnimationFrame(() => {
@@ -301,6 +311,8 @@ class VectoramaApp {
         
         this.controls.addEventListener('end', () => {
             this.isInteracting = false;
+            this.captureCurrentCameraState();
+            this.scheduleStateSave();
         });
 
         // Raycaster for clicking
@@ -1177,6 +1189,8 @@ class VectoramaApp {
         
         // Initialize dropdown visibility based on starting dimension
         this.updateDropdownVisibility();
+        this.updateGridToggleUI();
+        this.updateVectorDisplayModeUI();
     }
     
     trackEngagement() {
@@ -1216,9 +1230,605 @@ class VectoramaApp {
         });
     }
 
-    switchDimension(dimension) {
+    getDefaultGroupCollapsedState() {
+        return {
+            matrices: true,
+            planes: true,
+            lines: true,
+            vectors: true
+        };
+    }
+
+    toFiniteNumber(value, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    normalizeDimension(value) {
+        return value === '3d' ? '3d' : '2d';
+    }
+
+    serializeColor(colorValue, fallback = '#4A90E2') {
+        if (colorValue && colorValue.isColor) {
+            return `#${colorValue.getHexString()}`;
+        }
+        if (typeof colorValue === 'string' && colorValue.trim()) {
+            return colorValue;
+        }
+        return fallback;
+    }
+
+    serializeVector(vector) {
+        return {
+            id: this.toFiniteNumber(vector.id, 0),
+            name: vector.name || null,
+            visible: vector.visible !== false,
+            color: this.serializeColor(vector.color),
+            originalEnd: {
+                x: this.toFiniteNumber(vector.originalEnd?.x, 0),
+                y: this.toFiniteNumber(vector.originalEnd?.y, 0),
+                z: this.toFiniteNumber(vector.originalEnd?.z, 0)
+            },
+            currentEnd: {
+                x: this.toFiniteNumber(vector.currentEnd?.x, 0),
+                y: this.toFiniteNumber(vector.currentEnd?.y, 0),
+                z: this.toFiniteNumber(vector.currentEnd?.z, 0)
+            }
+        };
+    }
+
+    deserializeVectors(vectors = []) {
+        return vectors.map((vector, index) => {
+            const originalEnd = new THREE.Vector3(
+                this.toFiniteNumber(vector?.originalEnd?.x, 0),
+                this.toFiniteNumber(vector?.originalEnd?.y, 0),
+                this.toFiniteNumber(vector?.originalEnd?.z, 0)
+            );
+            const currentEnd = new THREE.Vector3(
+                this.toFiniteNumber(vector?.currentEnd?.x, originalEnd.x),
+                this.toFiniteNumber(vector?.currentEnd?.y, originalEnd.y),
+                this.toFiniteNumber(vector?.currentEnd?.z, originalEnd.z)
+            );
+
+            let color = null;
+            try {
+                color = new THREE.Color(this.serializeColor(vector?.color));
+            } catch {
+                color = new THREE.Color(this.vectorColors[index % this.vectorColors.length]);
+            }
+
+            return {
+                id: this.toFiniteNumber(vector?.id, index + 1),
+                name: vector?.name || `V${index + 1}`,
+                visible: vector?.visible !== false,
+                color,
+                originalEnd,
+                currentEnd,
+                arrow: null,
+                pointSphere: null,
+                labelSprite: null
+            };
+        });
+    }
+
+    serializeMatrix(matrix) {
+        return {
+            id: this.toFiniteNumber(matrix.id, 0),
+            name: matrix.name || null,
+            values: Array.isArray(matrix.values) ? matrix.values : [],
+            color: this.serializeColor(matrix.color, '#904AE2')
+        };
+    }
+
+    deserializeMatrices(matrices = [], defaultSize = 2) {
+        return matrices.map((matrix, index) => {
+            const size = Math.max(2, Math.min(3, Array.isArray(matrix?.values) ? matrix.values.length : defaultSize));
+            const values = [];
+            for (let row = 0; row < size; row++) {
+                values[row] = [];
+                for (let col = 0; col < size; col++) {
+                    values[row][col] = this.toFiniteNumber(matrix?.values?.[row]?.[col], row === col ? 1 : 0);
+                }
+            }
+
+            let color = null;
+            try {
+                color = new THREE.Color(this.serializeColor(matrix?.color, '#904AE2'));
+            } catch {
+                color = new THREE.Color(0x904AE2);
+            }
+
+            return {
+                id: this.toFiniteNumber(matrix?.id, index + 1),
+                name: matrix?.name || null,
+                values,
+                color
+            };
+        });
+    }
+
+    serializeLine(line) {
+        return {
+            id: this.toFiniteNumber(line.id, 0),
+            name: line.name || null,
+            color: this.serializeColor(line.color),
+            visible: line.visible !== false,
+            point: {
+                x: this.toFiniteNumber(line.point?.x, 0),
+                y: this.toFiniteNumber(line.point?.y, 0),
+                z: this.toFiniteNumber(line.point?.z, 0)
+            },
+            direction: {
+                x: this.toFiniteNumber(line.direction?.x, 0),
+                y: this.toFiniteNumber(line.direction?.y, 0),
+                z: this.toFiniteNumber(line.direction?.z, 0)
+            },
+            originalPoint: {
+                x: this.toFiniteNumber(line.originalPoint?.x, line.point?.x),
+                y: this.toFiniteNumber(line.originalPoint?.y, line.point?.y),
+                z: this.toFiniteNumber(line.originalPoint?.z, line.point?.z)
+            },
+            originalDirection: {
+                x: this.toFiniteNumber(line.originalDirection?.x, line.direction?.x),
+                y: this.toFiniteNumber(line.originalDirection?.y, line.direction?.y),
+                z: this.toFiniteNumber(line.originalDirection?.z, line.direction?.z)
+            },
+            currentPoint: {
+                x: this.toFiniteNumber(line.currentPoint?.x, line.point?.x),
+                y: this.toFiniteNumber(line.currentPoint?.y, line.point?.y),
+                z: this.toFiniteNumber(line.currentPoint?.z, line.point?.z)
+            },
+            currentDirection: {
+                x: this.toFiniteNumber(line.currentDirection?.x, line.direction?.x),
+                y: this.toFiniteNumber(line.currentDirection?.y, line.direction?.y),
+                z: this.toFiniteNumber(line.currentDirection?.z, line.direction?.z)
+            }
+        };
+    }
+
+    deserializeLines(lines = []) {
+        return lines.map((line, index) => ({
+            id: this.toFiniteNumber(line?.id, index + 1),
+            name: line?.name || `L${index + 1}`,
+            color: this.serializeColor(line?.color),
+            visible: line?.visible !== false,
+            point: {
+                x: this.toFiniteNumber(line?.point?.x, 0),
+                y: this.toFiniteNumber(line?.point?.y, 0),
+                z: this.toFiniteNumber(line?.point?.z, 0)
+            },
+            direction: {
+                x: this.toFiniteNumber(line?.direction?.x, 1),
+                y: this.toFiniteNumber(line?.direction?.y, 0),
+                z: this.toFiniteNumber(line?.direction?.z, 0)
+            },
+            originalPoint: {
+                x: this.toFiniteNumber(line?.originalPoint?.x, line?.point?.x),
+                y: this.toFiniteNumber(line?.originalPoint?.y, line?.point?.y),
+                z: this.toFiniteNumber(line?.originalPoint?.z, line?.point?.z)
+            },
+            originalDirection: {
+                x: this.toFiniteNumber(line?.originalDirection?.x, line?.direction?.x),
+                y: this.toFiniteNumber(line?.originalDirection?.y, line?.direction?.y),
+                z: this.toFiniteNumber(line?.originalDirection?.z, line?.direction?.z)
+            },
+            currentPoint: {
+                x: this.toFiniteNumber(line?.currentPoint?.x, line?.point?.x),
+                y: this.toFiniteNumber(line?.currentPoint?.y, line?.point?.y),
+                z: this.toFiniteNumber(line?.currentPoint?.z, line?.point?.z)
+            },
+            currentDirection: {
+                x: this.toFiniteNumber(line?.currentDirection?.x, line?.direction?.x),
+                y: this.toFiniteNumber(line?.currentDirection?.y, line?.direction?.y),
+                z: this.toFiniteNumber(line?.currentDirection?.z, line?.direction?.z)
+            },
+            mesh: null
+        }));
+    }
+
+    serializePlane(plane) {
+        return {
+            id: this.toFiniteNumber(plane.id, 0),
+            name: plane.name || null,
+            color: this.serializeColor(plane.color),
+            visible: plane.visible !== false,
+            a: this.toFiniteNumber(plane.a, 0),
+            b: this.toFiniteNumber(plane.b, 0),
+            c: this.toFiniteNumber(plane.c, 1),
+            d: this.toFiniteNumber(plane.d, 0),
+            originalA: this.toFiniteNumber(plane.originalA, plane.a),
+            originalB: this.toFiniteNumber(plane.originalB, plane.b),
+            originalC: this.toFiniteNumber(plane.originalC, plane.c),
+            originalD: this.toFiniteNumber(plane.originalD, plane.d),
+            currentA: this.toFiniteNumber(plane.currentA, plane.a),
+            currentB: this.toFiniteNumber(plane.currentB, plane.b),
+            currentC: this.toFiniteNumber(plane.currentC, plane.c),
+            currentD: this.toFiniteNumber(plane.currentD, plane.d),
+            formPreference: plane.formPreference === 'vector' ? 'vector' : 'cartesian'
+        };
+    }
+
+    deserializePlanes(planes = []) {
+        return planes.map((plane, index) => ({
+            id: this.toFiniteNumber(plane?.id, index + 1),
+            name: plane?.name || `P${index + 1}`,
+            color: this.serializeColor(plane?.color),
+            visible: plane?.visible !== false,
+            a: this.toFiniteNumber(plane?.a, 0),
+            b: this.toFiniteNumber(plane?.b, 0),
+            c: this.toFiniteNumber(plane?.c, 1),
+            d: this.toFiniteNumber(plane?.d, 0),
+            originalA: this.toFiniteNumber(plane?.originalA, plane?.a),
+            originalB: this.toFiniteNumber(plane?.originalB, plane?.b),
+            originalC: this.toFiniteNumber(plane?.originalC, plane?.c),
+            originalD: this.toFiniteNumber(plane?.originalD, plane?.d),
+            currentA: this.toFiniteNumber(plane?.currentA, plane?.a),
+            currentB: this.toFiniteNumber(plane?.currentB, plane?.b),
+            currentC: this.toFiniteNumber(plane?.currentC, plane?.c),
+            currentD: this.toFiniteNumber(plane?.currentD, plane?.d),
+            formPreference: plane?.formPreference === 'vector' ? 'vector' : 'cartesian',
+            mesh: null
+        }));
+    }
+
+    serializeCameraState(cameraState) {
+        if (!cameraState) return null;
+        return {
+            position: {
+                x: this.toFiniteNumber(cameraState.position?.x, 0),
+                y: this.toFiniteNumber(cameraState.position?.y, 0),
+                z: this.toFiniteNumber(cameraState.position?.z, 10)
+            },
+            quaternion: {
+                x: this.toFiniteNumber(cameraState.quaternion?.x, 0),
+                y: this.toFiniteNumber(cameraState.quaternion?.y, 0),
+                z: this.toFiniteNumber(cameraState.quaternion?.z, 0),
+                w: this.toFiniteNumber(cameraState.quaternion?.w, 1)
+            },
+            target: {
+                x: this.toFiniteNumber(cameraState.target?.x, 0),
+                y: this.toFiniteNumber(cameraState.target?.y, 0),
+                z: this.toFiniteNumber(cameraState.target?.z, 0)
+            },
+            fov: this.toFiniteNumber(cameraState.fov, this.camera.fov)
+        };
+    }
+
+    deserializeCameraState(cameraState) {
+        if (!cameraState) return null;
+        return {
+            position: {
+                x: this.toFiniteNumber(cameraState.position?.x, 0),
+                y: this.toFiniteNumber(cameraState.position?.y, 0),
+                z: this.toFiniteNumber(cameraState.position?.z, 10)
+            },
+            quaternion: {
+                x: this.toFiniteNumber(cameraState.quaternion?.x, 0),
+                y: this.toFiniteNumber(cameraState.quaternion?.y, 0),
+                z: this.toFiniteNumber(cameraState.quaternion?.z, 0),
+                w: this.toFiniteNumber(cameraState.quaternion?.w, 1)
+            },
+            target: {
+                x: this.toFiniteNumber(cameraState.target?.x, 0),
+                y: this.toFiniteNumber(cameraState.target?.y, 0),
+                z: this.toFiniteNumber(cameraState.target?.z, 0)
+            },
+            fov: this.toFiniteNumber(cameraState.fov, this.camera.fov)
+        };
+    }
+
+    captureCurrentCameraState() {
+        const state = {
+            position: {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            },
+            quaternion: {
+                x: this.camera.quaternion.x,
+                y: this.camera.quaternion.y,
+                z: this.camera.quaternion.z,
+                w: this.camera.quaternion.w
+            },
+            target: {
+                x: this.controls.target.x,
+                y: this.controls.target.y,
+                z: this.controls.target.z
+            },
+            fov: this.camera.fov
+        };
+
+        if (this.dimension === '2d') {
+            this.cameraState2D = state;
+        } else {
+            this.cameraState3D = state;
+        }
+    }
+
+    getCameraStateForDimension(dimension) {
+        return dimension === '3d' ? this.cameraState3D : this.cameraState2D;
+    }
+
+    applyCameraState(cameraState) {
+        if (!cameraState) return;
+
+        this.camera.position.set(
+            this.toFiniteNumber(cameraState.position?.x, this.camera.position.x),
+            this.toFiniteNumber(cameraState.position?.y, this.camera.position.y),
+            this.toFiniteNumber(cameraState.position?.z, this.camera.position.z)
+        );
+        this.camera.quaternion.set(
+            this.toFiniteNumber(cameraState.quaternion?.x, this.camera.quaternion.x),
+            this.toFiniteNumber(cameraState.quaternion?.y, this.camera.quaternion.y),
+            this.toFiniteNumber(cameraState.quaternion?.z, this.camera.quaternion.z),
+            this.toFiniteNumber(cameraState.quaternion?.w, this.camera.quaternion.w)
+        );
+        this.controls.target.set(
+            this.toFiniteNumber(cameraState.target?.x, this.controls.target.x),
+            this.toFiniteNumber(cameraState.target?.y, this.controls.target.y),
+            this.toFiniteNumber(cameraState.target?.z, this.controls.target.z)
+        );
+        this.camera.fov = this.toFiniteNumber(cameraState.fov, this.camera.fov);
+        this.camera.updateProjectionMatrix();
+        this.controls.update();
+    }
+
+    syncDimensionStateRefs() {
+        if (this.dimension === '2d') {
+            this.vectors2D = this.vectors;
+            this.matrices2D = this.matrices;
+            this.lines2D = this.lines;
+            this.presetEdges2D = this.presetEdges;
+            this.presetEdgeMeshes2D = this.presetEdgeMeshes;
+            this.presetFaces2D = this.presetFaces;
+            this.presetFaceMeshes2D = this.presetFaceMeshes;
+            this.usedMatrixLetters2D = this.usedMatrixLetters;
+            this.selectedMatrixId2D = this.selectedMatrixId;
+            this.colorIndex2D = this.colorIndex;
+        } else {
+            this.vectors3D = this.vectors;
+            this.matrices3D = this.matrices;
+            this.lines3D = this.lines;
+            this.planes3D = this.planes;
+            this.presetEdges3D = this.presetEdges;
+            this.presetEdgeMeshes3D = this.presetEdgeMeshes;
+            this.presetFaces3D = this.presetFaces;
+            this.presetFaceMeshes3D = this.presetFaceMeshes;
+            this.usedMatrixLetters3D = this.usedMatrixLetters;
+            this.selectedMatrixId3D = this.selectedMatrixId;
+            this.colorIndex3D = this.colorIndex;
+        }
+    }
+
+    buildAppStateSnapshot() {
+        this.captureCurrentCameraState();
+        this.syncDimensionStateRefs();
+
+        return {
+            version: 1,
+            dimension: this.dimension,
+            gridVisible: this.gridVisible,
+            vectorDisplayMode: this.vectorDisplayMode,
+            vectorSizeMode: this.vectorSizeMode,
+            currentGridSpacing: this.currentGridSpacing,
+            groupCollapsed: {
+                ...this.getDefaultGroupCollapsedState(),
+                ...this.groupCollapsed
+            },
+            counters: {
+                nextVectorId: this.nextVectorId,
+                nextMatrixId: this.nextMatrixId,
+                nextLineId: this.nextLineId,
+                nextPlaneId: this.nextPlaneId
+            },
+            colorIndex2D: this.colorIndex2D,
+            colorIndex3D: this.colorIndex3D,
+            selectedMatrixId2D: this.selectedMatrixId2D,
+            selectedMatrixId3D: this.selectedMatrixId3D,
+            usedMatrixLetters2D: Array.from(this.usedMatrixLetters2D),
+            usedMatrixLetters3D: Array.from(this.usedMatrixLetters3D),
+            vectors2D: this.vectors2D.map(v => this.serializeVector(v)),
+            vectors3D: this.vectors3D.map(v => this.serializeVector(v)),
+            matrices2D: this.matrices2D.map(m => this.serializeMatrix(m)),
+            matrices3D: this.matrices3D.map(m => this.serializeMatrix(m)),
+            lines2D: this.lines2D.map(l => this.serializeLine(l)),
+            lines3D: this.lines3D.map(l => this.serializeLine(l)),
+            planes3D: this.planes3D.map(p => this.serializePlane(p)),
+            presetEdges2D: Array.isArray(this.presetEdges2D) ? this.presetEdges2D.map(edge => ({
+                startId: this.toFiniteNumber(edge?.startId, 0),
+                endId: this.toFiniteNumber(edge?.endId, 0)
+            })) : [],
+            presetEdges3D: Array.isArray(this.presetEdges3D) ? this.presetEdges3D.map(edge => ({
+                startId: this.toFiniteNumber(edge?.startId, 0),
+                endId: this.toFiniteNumber(edge?.endId, 0)
+            })) : [],
+            presetFaces2D: Array.isArray(this.presetFaces2D) ? this.presetFaces2D.map(face => ({
+                aId: this.toFiniteNumber(face?.aId, 0),
+                bId: this.toFiniteNumber(face?.bId, 0),
+                cId: this.toFiniteNumber(face?.cId, 0)
+            })) : [],
+            presetFaces3D: Array.isArray(this.presetFaces3D) ? this.presetFaces3D.map(face => ({
+                aId: this.toFiniteNumber(face?.aId, 0),
+                bId: this.toFiniteNumber(face?.bId, 0),
+                cId: this.toFiniteNumber(face?.cId, 0)
+            })) : [],
+            cameraState2D: this.serializeCameraState(this.cameraState2D),
+            cameraState3D: this.serializeCameraState(this.cameraState3D)
+        };
+    }
+
+    saveAppState() {
+        try {
+            const snapshot = this.buildAppStateSnapshot();
+            localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(snapshot));
+        } catch (error) {
+            console.warn('Failed to save app state:', error);
+        }
+    }
+
+    scheduleStateSave() {
+        if (this.stateSaveTimeout) {
+            clearTimeout(this.stateSaveTimeout);
+        }
+
+        this.stateSaveTimeout = setTimeout(() => {
+            this.stateSaveTimeout = null;
+            this.saveAppState();
+        }, 200);
+    }
+
+    restoreAppState() {
+        let rawState = null;
+        try {
+            rawState = localStorage.getItem(APP_STATE_STORAGE_KEY);
+        } catch {
+            return false;
+        }
+
+        if (!rawState) return false;
+
+        let state = null;
+        try {
+            state = JSON.parse(rawState);
+        } catch {
+            return false;
+        }
+
+        if (!state || typeof state !== 'object') return false;
+
+        this.groupCollapsed = {
+            ...this.getDefaultGroupCollapsedState(),
+            ...(state.groupCollapsed || {})
+        };
+
+        this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
+        this.vectorSizeMode = state.vectorSizeMode === 'large' ? 'large' : 'small';
+        this.gridVisible = state.gridVisible !== false;
+        this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
+
+        this.vectors2D = this.deserializeVectors(state.vectors2D || []);
+        this.vectors3D = this.deserializeVectors(state.vectors3D || []);
+        this.matrices2D = this.deserializeMatrices(state.matrices2D || [], 2);
+        this.matrices3D = this.deserializeMatrices(state.matrices3D || [], 3);
+        this.lines2D = this.deserializeLines(state.lines2D || []);
+        this.lines3D = this.deserializeLines(state.lines3D || []);
+        this.planes3D = this.deserializePlanes(state.planes3D || []);
+
+        this.presetEdges2D = Array.isArray(state.presetEdges2D) ? state.presetEdges2D.map(edge => ({
+            startId: this.toFiniteNumber(edge?.startId, 0),
+            endId: this.toFiniteNumber(edge?.endId, 0)
+        })) : [];
+        this.presetEdges3D = Array.isArray(state.presetEdges3D) ? state.presetEdges3D.map(edge => ({
+            startId: this.toFiniteNumber(edge?.startId, 0),
+            endId: this.toFiniteNumber(edge?.endId, 0)
+        })) : [];
+        this.presetFaces2D = Array.isArray(state.presetFaces2D) ? state.presetFaces2D.map(face => ({
+            aId: this.toFiniteNumber(face?.aId, 0),
+            bId: this.toFiniteNumber(face?.bId, 0),
+            cId: this.toFiniteNumber(face?.cId, 0)
+        })) : [];
+        this.presetFaces3D = Array.isArray(state.presetFaces3D) ? state.presetFaces3D.map(face => ({
+            aId: this.toFiniteNumber(face?.aId, 0),
+            bId: this.toFiniteNumber(face?.bId, 0),
+            cId: this.toFiniteNumber(face?.cId, 0)
+        })) : [];
+
+        this.presetEdgeMeshes2D = [];
+        this.presetEdgeMeshes3D = [];
+        this.presetFaceMeshes2D = [];
+        this.presetFaceMeshes3D = [];
+
+        this.usedMatrixLetters2D = new Set(Array.isArray(state.usedMatrixLetters2D)
+            ? state.usedMatrixLetters2D
+            : this.matrices2D.map(matrix => matrix.name).filter(Boolean));
+        this.usedMatrixLetters3D = new Set(Array.isArray(state.usedMatrixLetters3D)
+            ? state.usedMatrixLetters3D
+            : this.matrices3D.map(matrix => matrix.name).filter(Boolean));
+
+        this.selectedMatrixId2D = state.selectedMatrixId2D ?? (this.matrices2D[0]?.id ?? null);
+        this.selectedMatrixId3D = state.selectedMatrixId3D ?? (this.matrices3D[0]?.id ?? null);
+        this.colorIndex2D = this.toFiniteNumber(state.colorIndex2D, 0);
+        this.colorIndex3D = this.toFiniteNumber(state.colorIndex3D, 0);
+
+        this.cameraState2D = this.deserializeCameraState(state.cameraState2D);
+        this.cameraState3D = this.deserializeCameraState(state.cameraState3D);
+
+        this.vectors = this.vectors2D;
+        this.matrices = this.matrices2D;
+        this.lines = this.lines2D;
+        this.planes = this.planes3D;
+        this.presetEdges = this.presetEdges2D;
+        this.presetEdgeMeshes = this.presetEdgeMeshes2D;
+        this.presetFaces = this.presetFaces2D;
+        this.presetFaceMeshes = this.presetFaceMeshes2D;
+        this.usedMatrixLetters = this.usedMatrixLetters2D;
+        this.selectedMatrixId = this.selectedMatrixId2D;
+        this.colorIndex = this.colorIndex2D;
+
+        const counters = state.counters || {};
+        const maxVectorId = Math.max(0, ...this.vectors2D.map(v => v.id), ...this.vectors3D.map(v => v.id));
+        const maxMatrixId = Math.max(0, ...this.matrices2D.map(m => m.id), ...this.matrices3D.map(m => m.id));
+        const maxLineId = Math.max(0, ...this.lines2D.map(l => l.id), ...this.lines3D.map(l => l.id));
+        const maxPlaneId = Math.max(0, ...this.planes3D.map(p => p.id));
+
+        this.nextVectorId = Math.max(this.toFiniteNumber(counters.nextVectorId, 1), maxVectorId + 1);
+        this.nextMatrixId = Math.max(this.toFiniteNumber(counters.nextMatrixId, 1), maxMatrixId + 1);
+        this.nextLineId = Math.max(this.toFiniteNumber(counters.nextLineId, 1), maxLineId + 1);
+        this.nextPlaneId = Math.max(this.toFiniteNumber(counters.nextPlaneId, 1), maxPlaneId + 1);
+
+        this.updateVectorDisplayModeUI();
+        this.updateVectorSizeModeUI();
+        this.updateInfoPanelsSizeModeUI();
+        this.updateGridToggleUI();
+
+        const targetDimension = this.normalizeDimension(state.dimension);
+        this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
+        this.updateObjectsList();
+        this.updateIntersections();
+
+        return true;
+    }
+
+    updateGridToggleUI() {
+        const gridOff = document.getElementById('grid-off');
+        const gridOn = document.getElementById('grid-on');
+        if (!gridOff || !gridOn) return;
+
+        if (this.gridVisible) {
+            gridOff.classList.remove('grid-active');
+            gridOn.classList.add('grid-active');
+        } else {
+            gridOn.classList.remove('grid-active');
+            gridOff.classList.add('grid-active');
+        }
+    }
+
+    updateVectorDisplayModeUI() {
+        const vecArrow = document.getElementById('vec-arrow');
+        const vecPoint = document.getElementById('vec-point');
+        if (!vecArrow || !vecPoint) return;
+
+        vecArrow.classList.remove('vec-active');
+        vecPoint.classList.remove('vec-active');
+
+        if (this.vectorDisplayMode === 'vectors') {
+            vecArrow.classList.add('vec-active');
+        } else {
+            vecPoint.classList.add('vec-active');
+        }
+    }
+
+    switchDimension(dimension, options = {}) {
+        const {
+            skipCameraStateCapture = false,
+            skipStateSave = false
+        } = options;
+
         // Save old dimension before changing
         const oldDimension = this.dimension;
+        if (!skipCameraStateCapture) {
+            this.captureCurrentCameraState();
+        }
         
         this.dimension = dimension;
         this.isResizing = true; // Prevent animation loop from interfering
@@ -1279,7 +1889,12 @@ class VectoramaApp {
             };
         }
 
-        this.controls.update();
+        const savedCameraState = this.getCameraStateForDimension(dimension);
+        if (savedCameraState) {
+            this.applyCameraState(savedCameraState);
+        } else {
+            this.controls.update();
+        }
         
         // Recalculate axis lengths for the new camera position and dimension
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
@@ -1440,6 +2055,10 @@ class VectoramaApp {
         this.updateIntersections();
         this.angleVisualizationState = null;
         this.clearAngleVisualization();
+        this.captureCurrentCameraState();
+        if (!skipStateSave) {
+            this.scheduleStateSave();
+        }
     }
 
     resetView() {
@@ -1517,18 +2136,8 @@ class VectoramaApp {
             this.gridHelper.visible = this.gridVisible;
         }
         
-        // Update icon active states
-        const gridOff = document.getElementById('grid-off');
-        const gridOn = document.getElementById('grid-on');
-        if (gridOff && gridOn) {
-            if (this.gridVisible) {
-                gridOff.classList.remove('grid-active');
-                gridOn.classList.add('grid-active');
-            } else {
-                gridOn.classList.remove('grid-active');
-                gridOff.classList.add('grid-active');
-            }
-        }
+        this.updateGridToggleUI();
+        this.scheduleStateSave();
     }
     
     toggleDimension() {
@@ -1544,22 +2153,11 @@ class VectoramaApp {
         const nextIndex = (currentIndex + 1) % modes.length;
         this.vectorDisplayMode = modes[nextIndex];
         
-        // Update button active states
-        const vecArrow = document.getElementById('vec-arrow');
-        const vecPoint = document.getElementById('vec-point');
-        if (vecArrow && vecPoint) {
-            vecArrow.classList.remove('vec-active');
-            vecPoint.classList.remove('vec-active');
-            
-            if (this.vectorDisplayMode === 'vectors') {
-                vecArrow.classList.add('vec-active');
-            } else if (this.vectorDisplayMode === 'points') {
-                vecPoint.classList.add('vec-active');
-            }
-        }
+        this.updateVectorDisplayModeUI();
         
         // Update vector visualization
         this.updateVectorDisplay();
+        this.scheduleStateSave();
     }
 
     toggleVectorSizeMode() {
@@ -1569,6 +2167,7 @@ class VectoramaApp {
         this.updateVectorThickness(true);
         this.updatePointSphereScales();
         this.updateNumberLabelScales();
+        this.scheduleStateSave();
     }
 
     updateVectorSizeModeUI() {
@@ -1861,6 +2460,7 @@ class VectoramaApp {
         this.updateVectorDisplay();
         this.updatePointSphereScales();
         this.updateObjectsList();
+        this.scheduleStateSave();
 
         return vector;
     }
@@ -2259,6 +2859,7 @@ class VectoramaApp {
             
             // Update count in label (in case items changed)
             label.textContent = `${groupName} (${items.length})`;
+            this.scheduleStateSave();
         });
         
         groupContainer.appendChild(header);
@@ -2314,6 +2915,7 @@ class VectoramaApp {
                     const c = parseInt(e.target.getAttribute('data-col'));
                     matrix.values[r][c] = parseFloat(e.target.value) || 0;
                     this.visualizeInvariantSpaces();
+                    this.scheduleStateSave();
                 });
                 grid.appendChild(input);
             }
@@ -2766,6 +3368,7 @@ class VectoramaApp {
         formToggleBtn.addEventListener('click', () => {
             plane.formPreference = plane.formPreference === 'cartesian' ? 'vector' : 'cartesian';
             this.updateObjectsList(); // Just refresh UI
+            this.scheduleStateSave();
         });
         controls.appendChild(formToggleBtn);
         
@@ -3099,6 +3702,10 @@ class VectoramaApp {
             // Re-add to scene based on current mode and visibility
             this.updateVectorDisplay();
         }
+
+        if (!this.isAnimating) {
+            this.scheduleStateSave();
+        }
     }
 
     removeVector(id) {
@@ -3133,6 +3740,7 @@ class VectoramaApp {
             this.updateVectorDisplay();
             
             this.updateVectorList();
+            this.scheduleStateSave();
         }
     }
 
@@ -3146,6 +3754,7 @@ class VectoramaApp {
             
             // Update the list to reflect the change
             this.updateObjectsList();
+            this.scheduleStateSave();
         }
     }
     
@@ -3158,6 +3767,7 @@ class VectoramaApp {
             }
             this.updateObjectsList();
             this.updateIntersections();
+            this.scheduleStateSave();
         }
     }
     
@@ -3170,6 +3780,7 @@ class VectoramaApp {
             }
             this.updateObjectsList();
             this.updateIntersections();
+            this.scheduleStateSave();
         }
     }
     
@@ -3195,6 +3806,7 @@ class VectoramaApp {
             
             this.updateObjectsList();
             this.updateIntersections();
+            this.scheduleStateSave();
         }
     }
     
@@ -3220,6 +3832,7 @@ class VectoramaApp {
             
             this.updateObjectsList();
             this.updateIntersections();
+            this.scheduleStateSave();
         }
     }
 
@@ -3434,6 +4047,7 @@ class VectoramaApp {
         }
         
         this.updateObjectsList();
+        this.scheduleStateSave();
     }
 
     resetVectors() {
@@ -3525,6 +4139,7 @@ class VectoramaApp {
         }
         
         this.updateObjectsList();
+        this.scheduleStateSave();
     }
 
     addPresetMatrix(preset) {
@@ -3643,6 +4258,7 @@ class VectoramaApp {
         }
         
         this.updateObjectsList();
+        this.scheduleStateSave();
     }
 
     addPresetVectors(preset) {
@@ -3884,6 +4500,7 @@ class VectoramaApp {
         this.presetFaces.push(...presetFaces);
 
         this.updateVectorDisplay();
+        this.scheduleStateSave();
     }
 
     removeMatrix(id) {
@@ -3916,6 +4533,7 @@ class VectoramaApp {
             }
             
             this.updateObjectsList();
+            this.scheduleStateSave();
         }
     }
 
@@ -4152,6 +4770,7 @@ class VectoramaApp {
                 // Final update of objects list and intersections
                 this.updateObjectsList();
                 this.updateIntersections();
+                this.scheduleStateSave();
             }
         };
 
@@ -4336,6 +4955,7 @@ class VectoramaApp {
         this.renderLine(line);
         this.updateObjectsList();
         this.updateIntersections();
+        this.scheduleStateSave();
         return line;
     }
 
@@ -4365,6 +4985,7 @@ class VectoramaApp {
         this.renderPlane(plane);
         this.updateObjectsList();
         this.updateIntersections();
+        this.scheduleStateSave();
         return plane;
     }
 
@@ -4429,6 +5050,10 @@ class VectoramaApp {
         
         line.mesh.visible = line.visible;
         this.scene.add(line.mesh);
+
+        if (!this.isAnimating && !this.isInteracting) {
+            this.scheduleStateSave();
+        }
     }
 
     renderPlane(plane) {
@@ -4464,6 +5089,10 @@ class VectoramaApp {
         plane.mesh.lookAt(plane.mesh.position.clone().add(normal));
         plane.mesh.visible = plane.visible;
         this.scene.add(plane.mesh);
+
+        if (!this.isAnimating && !this.isInteracting) {
+            this.scheduleStateSave();
+        }
     }
 
     onWindowResize() {
@@ -5280,6 +5909,7 @@ class VectoramaApp {
 
         // Refresh preset edge color (black in light mode, white in dark mode)
         this.updateVectorDisplay();
+        this.scheduleStateSave();
     }
 
     // Eigenvalue and Eigenvector Computation
@@ -8610,6 +9240,8 @@ class VectoramaApp {
                 this.controls.target.copy(this.viewResetAnimation.endTarget);
                 this.camera.quaternion.copy(this.viewResetAnimation.endQuaternion);
                 this.viewResetAnimation = null;
+                this.captureCurrentCameraState();
+                this.scheduleStateSave();
             }
         }
 
