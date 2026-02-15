@@ -10,38 +10,120 @@ const titleTagline = document.querySelector('.title-tagline');
 const defaultTaglineText = titleTagline ? titleTagline.textContent : '';
 const introTaglineText = titleTagline ? titleTagline.dataset.introTagline : '';
 
-let titleIntroAnimationEndHandler = null;
+let titleSequenceRunId = 0;
+let titleSequenceTimeouts = [];
+let titleSequenceAnimation = null;
 
 let appInitialized = false;
 
-function replayTitleSequence() {
+function clearTitleSequenceTimers() {
+    for (const timeoutId of titleSequenceTimeouts) {
+        clearTimeout(timeoutId);
+    }
+    titleSequenceTimeouts = [];
+}
+
+function waitForTitleDelay(ms, runId) {
+    return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
+            titleSequenceTimeouts = titleSequenceTimeouts.filter((id) => id !== timeoutId);
+            resolve(runId === titleSequenceRunId);
+        }, ms);
+        titleSequenceTimeouts.push(timeoutId);
+    });
+}
+
+function animateTitleTransform(fromTransform, toTransform, duration, runId) {
+    return new Promise((resolve) => {
+        if (!titleLogo || runId !== titleSequenceRunId) {
+            resolve(false);
+            return;
+        }
+
+        if (titleSequenceAnimation) {
+            titleSequenceAnimation.cancel();
+            titleSequenceAnimation = null;
+        }
+
+        titleLogo.style.willChange = 'transform';
+        titleLogo.style.transform = fromTransform;
+
+        const animation = titleLogo.animate(
+            [
+                { transform: fromTransform },
+                { transform: toTransform }
+            ],
+            {
+                duration,
+                easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
+                fill: 'forwards'
+            }
+        );
+
+        titleSequenceAnimation = animation;
+
+        animation.onfinish = () => {
+            if (runId !== titleSequenceRunId) {
+                resolve(false);
+                return;
+            }
+
+            titleLogo.style.transform = toTransform;
+            titleLogo.style.willChange = 'auto';
+            titleSequenceAnimation = null;
+            resolve(true);
+        };
+
+        animation.oncancel = () => {
+            resolve(false);
+        };
+    });
+}
+
+async function replayTitleSequence() {
     if (!titleLogo || !titleTagline) {
         return;
     }
 
-    if (titleIntroAnimationEndHandler) {
-        titleLogo.removeEventListener('animationend', titleIntroAnimationEndHandler);
-        titleIntroAnimationEndHandler = null;
+    titleSequenceRunId += 1;
+    const runId = titleSequenceRunId;
+
+    clearTitleSequenceTimers();
+    if (titleSequenceAnimation) {
+        titleSequenceAnimation.cancel();
+        titleSequenceAnimation = null;
     }
 
     if (introTaglineText) {
         titleTagline.textContent = introTaglineText;
-
-        titleIntroAnimationEndHandler = (event) => {
-            if (event.animationName === 'title-logo-startup-transform') {
-                titleTagline.textContent = defaultTaglineText;
-                titleIntroAnimationEndHandler = null;
-            }
-        };
-
-        titleLogo.addEventListener('animationend', titleIntroAnimationEndHandler, { once: true });
     } else {
         titleTagline.textContent = defaultTaglineText;
     }
 
     titleLogo.style.animation = 'none';
-    void titleLogo.offsetWidth;
-    titleLogo.style.animation = '';
+    titleLogo.style.willChange = 'auto';
+
+    const initialTransform = 'rotate(180deg) scaleX(-1) skewX(45deg)';
+    const unshearedTransform = 'rotate(180deg) scaleX(-1) skewX(0deg)';
+    const uprightTransform = 'rotate(0deg) scaleX(-1) skewX(0deg)';
+
+    titleLogo.style.transform = initialTransform;
+
+    if (!(await waitForTitleDelay(2000, runId))) return;
+    if (!(await animateTitleTransform(initialTransform, unshearedTransform, 500, runId))) return;
+
+    titleLogo.style.willChange = 'auto';
+    if (!(await waitForTitleDelay(1000, runId))) return;
+    if (!(await animateTitleTransform(unshearedTransform, uprightTransform, 500, runId))) return;
+
+    titleLogo.style.willChange = 'auto';
+    if (!(await waitForTitleDelay(1000, runId))) return;
+    if (!(await animateTitleTransform(uprightTransform, 'none', 500, runId))) return;
+
+    titleLogo.style.animation = 'none';
+    titleLogo.style.transform = 'none';
+    titleLogo.style.willChange = 'auto';
+    titleTagline.textContent = defaultTaglineText;
 }
 
 if (titleLogo && titleTagline) {
