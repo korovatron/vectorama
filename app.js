@@ -7,22 +7,45 @@ const mainApp = document.getElementById('main-app');
 const startBtn = document.getElementById('start-btn');
 const titleLogo = document.querySelector('.title-logo');
 const titleTagline = document.querySelector('.title-tagline');
+const defaultTaglineText = titleTagline ? titleTagline.textContent : '';
+const introTaglineText = titleTagline ? titleTagline.dataset.introTagline : '';
+
+let titleIntroAnimationEndHandler = null;
 
 let appInitialized = false;
 
-if (titleLogo && titleTagline) {
-    const defaultTaglineText = titleTagline.textContent;
-    const introTaglineText = titleTagline.dataset.introTagline;
+function replayTitleSequence() {
+    if (!titleLogo || !titleTagline) {
+        return;
+    }
+
+    if (titleIntroAnimationEndHandler) {
+        titleLogo.removeEventListener('animationend', titleIntroAnimationEndHandler);
+        titleIntroAnimationEndHandler = null;
+    }
 
     if (introTaglineText) {
         titleTagline.textContent = introTaglineText;
 
-        titleLogo.addEventListener('animationend', (event) => {
+        titleIntroAnimationEndHandler = (event) => {
             if (event.animationName === 'title-logo-startup-transform') {
                 titleTagline.textContent = defaultTaglineText;
+                titleIntroAnimationEndHandler = null;
             }
-        }, { once: true });
+        };
+
+        titleLogo.addEventListener('animationend', titleIntroAnimationEndHandler, { once: true });
+    } else {
+        titleTagline.textContent = defaultTaglineText;
     }
+
+    titleLogo.style.animation = 'none';
+    void titleLogo.offsetWidth;
+    titleLogo.style.animation = '';
+}
+
+if (titleLogo && titleTagline) {
+    replayTitleSequence();
 }
 
 function startApp() {
@@ -41,6 +64,7 @@ function returnToTitleScreen() {
     titleScreen.classList.remove('hidden');
     mainApp.style.display = 'none';
     appInitialized = false;
+    replayTitleSequence();
 
     if (window.vectoramaApp && window.vectoramaApp.cleanup) {
         window.vectoramaApp.cleanup();
