@@ -159,8 +159,13 @@ class VectoramaApp {
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
-        this.vectorDisplayMode = 'points'; // 'vectors', 'points', 'path'
-        this.pathLines = []; // Store path visualization lines
+        this.vectorDisplayMode = 'points'; // 'vectors' or 'points'
+        this.presetEdges2D = []; // Hidden edge pairs for 2D preset groups
+        this.presetEdges3D = []; // Hidden edge pairs for 3D preset groups
+        this.presetEdgeMeshes2D = []; // Rendered edge meshes for 2D presets
+        this.presetEdgeMeshes3D = []; // Rendered edge meshes for 3D presets
+        this.presetEdges = this.presetEdges2D;
+        this.presetEdgeMeshes = this.presetEdgeMeshes2D;
         
         // Debug performance tracking
         this.debugEnabled = false; // Set to true to enable debug panel
@@ -843,11 +848,8 @@ class VectoramaApp {
         if (this.matrices2D.length > 0) {
             this.matrices2D[0].values = [[0, -1], [1, 0]];
         }
-        // Add unit square vectors
-        this.addVector(0, 0, 0);
-        this.addVector(1, 0, 0);
-        this.addVector(1, 1, 0);
-        this.addVector(0, 1, 0);
+        // Add unit square vectors using preset edge metadata
+        this.addPresetVectors('preset-square');
         
         // Pre-initialize 3D mode data (without adding to scene)
         // Add matrix data directly - composite rotation in 2 dimensions
@@ -867,6 +869,7 @@ class VectoramaApp {
             [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
         ];
         
+        const cubeVectors = [];
         cubeVertices.forEach(coords => {
             const colorHex = this.vectorColors[this.colorIndex3D % this.vectorColors.length];
             this.colorIndex3D++;
@@ -881,7 +884,19 @@ class VectoramaApp {
                 visible: true
             };
             this.vectors3D.push(vector3D);
+            cubeVectors.push(vector3D);
         });
+
+        // Store default cube edges so 3D startup matches preset behavior
+        const cubeEdgeIndexPairs = [
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            [4, 5], [5, 6], [6, 7], [7, 4],
+            [0, 4], [1, 5], [2, 6], [3, 7]
+        ];
+        this.presetEdges3D = cubeEdgeIndexPairs.map(([startIndex, endIndex]) => ({
+            startId: cubeVectors[startIndex].id,
+            endId: cubeVectors[endIndex].id
+        }));
         
         // Update the display for 2D mode
         this.updateObjectsList();
@@ -1243,6 +1258,8 @@ class VectoramaApp {
             this.vectors2D = this.vectors;
             this.matrices2D = this.matrices;
             this.lines2D = this.lines;
+            this.presetEdges2D = this.presetEdges;
+            this.presetEdgeMeshes2D = this.presetEdgeMeshes;
             this.usedMatrixLetters2D = this.usedMatrixLetters;
             this.selectedMatrixId2D = this.selectedMatrixId;
             this.colorIndex2D = this.colorIndex;
@@ -1251,6 +1268,8 @@ class VectoramaApp {
             this.matrices3D = this.matrices;
             this.lines3D = this.lines;
             this.planes3D = this.planes;
+            this.presetEdges3D = this.presetEdges;
+            this.presetEdgeMeshes3D = this.presetEdgeMeshes;
             this.usedMatrixLetters3D = this.usedMatrixLetters;
             this.selectedMatrixId3D = this.selectedMatrixId;
             this.colorIndex3D = this.colorIndex;
@@ -1267,8 +1286,8 @@ class VectoramaApp {
         this.planes.forEach(plane => {
             if (plane.mesh) this.scene.remove(plane.mesh);
         });
-        this.pathLines.forEach(line => this.scene.remove(line));
-        this.pathLines = [];
+        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.length = 0;
         
         // Swap to the new dimension's data
         if (dimension === '2d') {
@@ -1276,6 +1295,8 @@ class VectoramaApp {
             this.matrices = this.matrices2D;
             this.lines = this.lines2D;
             this.planes = []; // No planes in 2D
+            this.presetEdges = this.presetEdges2D;
+            this.presetEdgeMeshes = this.presetEdgeMeshes2D;
             this.usedMatrixLetters = this.usedMatrixLetters2D;
             this.selectedMatrixId = this.selectedMatrixId2D;
             this.colorIndex = this.colorIndex2D;
@@ -1284,6 +1305,8 @@ class VectoramaApp {
             this.matrices = this.matrices3D;
             this.lines = this.lines3D;
             this.planes = this.planes3D;
+            this.presetEdges = this.presetEdges3D;
+            this.presetEdgeMeshes = this.presetEdgeMeshes3D;
             this.usedMatrixLetters = this.usedMatrixLetters3D;
             this.selectedMatrixId = this.selectedMatrixId3D;
             this.colorIndex = this.colorIndex3D;
@@ -1442,8 +1465,8 @@ class VectoramaApp {
     }
 
     toggleVectorDisplayMode() {
-        // Cycle through: vectors -> points -> path -> vectors
-        const modes = ['vectors', 'points', 'path'];
+        // Cycle through: vectors -> points -> vectors
+        const modes = ['vectors', 'points'];
         const currentIndex = modes.indexOf(this.vectorDisplayMode);
         const nextIndex = (currentIndex + 1) % modes.length;
         this.vectorDisplayMode = modes[nextIndex];
@@ -1451,18 +1474,14 @@ class VectoramaApp {
         // Update button active states
         const vecArrow = document.getElementById('vec-arrow');
         const vecPoint = document.getElementById('vec-point');
-        const vecPath = document.getElementById('vec-path');
-        if (vecArrow && vecPoint && vecPath) {
+        if (vecArrow && vecPoint) {
             vecArrow.classList.remove('vec-active');
             vecPoint.classList.remove('vec-active');
-            vecPath.classList.remove('vec-active');
             
             if (this.vectorDisplayMode === 'vectors') {
                 vecArrow.classList.add('vec-active');
             } else if (this.vectorDisplayMode === 'points') {
                 vecPoint.classList.add('vec-active');
-            } else if (this.vectorDisplayMode === 'path') {
-                vecPath.classList.add('vec-active');
             }
         }
         
@@ -1723,6 +1742,8 @@ class VectoramaApp {
         // Add appropriate visualization based on current mode
         this.updateVectorDisplay();
         this.updateObjectsList();
+
+        return vector;
     }
 
     updateVectorList() {
@@ -1736,9 +1757,9 @@ class VectoramaApp {
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
         });
         
-        // Clear path lines
-        this.pathLines.forEach(line => this.scene.remove(line));
-        this.pathLines = [];
+        // Clear preset edge meshes
+        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.length = 0;
         
         // Add appropriate visualizations based on mode
         if (this.vectorDisplayMode === 'vectors') {
@@ -1755,69 +1776,77 @@ class VectoramaApp {
                     this.scene.add(vec.pointSphere);
                 }
             });
-        } else if (this.vectorDisplayMode === 'path') {
-            // Show points and connecting lines for visible vectors
-            const visibleVectors = this.vectors.filter(v => v.visible);
-            
-            visibleVectors.forEach(vec => {
-                if (vec.pointSphere) {
-                    this.scene.add(vec.pointSphere);
-                }
-            });
-            
-            // Create lines connecting the points in sequence using cylinders (same as axes)
-            if (visibleVectors.length > 1) {
-                const thickness = this.getArrowThickness();
-                const lineRadius = thickness.headWidth * 0.15; // Same thickness as axes
-                const radialSegments = this.dimension === '2d' ? 3 : 16;
-                
-                for (let i = 0; i < visibleVectors.length; i++) {
-                    const startVec = visibleVectors[i];
-                    const endVec = visibleVectors[(i + 1) % visibleVectors.length]; // Wrap around to first
-                    
-                    const start = startVec.currentEnd.clone();
-                    const end = endVec.currentEnd.clone();
-                    
-                    // Create cylinder line
-                    const direction = new THREE.Vector3().subVectors(end, start);
-                    const length = direction.length();
-                    direction.normalize();
-                    
-                    const geometry = new THREE.CylinderGeometry(
-                        lineRadius,
-                        lineRadius,
-                        length,
-                        radialSegments,
-                        1,
-                        false
-                    );
-                    
-                    const material = new THREE.MeshBasicMaterial({ 
-                        color: startVec.color,
-                        depthWrite: true,
-                        depthTest: true,
-                        polygonOffset: true,
-                        polygonOffsetFactor: -1,
-                        polygonOffsetUnits: -1
-                    });
-                    
-                    const cylinder = new THREE.Mesh(geometry, material);
-                    cylinder.renderOrder = 1; // Render after axes
-                    
-                    // Position at midpoint
-                    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-                    cylinder.position.copy(midpoint);
-                    
-                    // Orient along direction
-                    const axis = new THREE.Vector3(0, 1, 0);
-                    const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
-                    cylinder.quaternion.copy(quaternion);
-                    
-                    this.pathLines.push(cylinder);
-                    this.scene.add(cylinder);
-                }
-            }
         }
+
+        this.renderPresetEdges();
+    }
+
+    renderPresetEdges() {
+        if (this.presetEdges.length === 0) return;
+
+        const thickness = this.getArrowThickness();
+        const lineRadius = thickness.headWidth * 0.18;
+        const radialSegments = this.dimension === '2d' ? 3 : 16;
+        const edgeColor = this.getPresetEdgeColor();
+
+        this.presetEdges.forEach(edge => {
+            const startVec = this.vectors.find(v => v.id === edge.startId);
+            const endVec = this.vectors.find(v => v.id === edge.endId);
+
+            if (!startVec || !endVec) return;
+            if (!startVec.visible || !endVec.visible) return;
+
+            const start = startVec.currentEnd.clone();
+            const end = endVec.currentEnd.clone();
+            const direction = new THREE.Vector3().subVectors(end, start);
+            const length = direction.length();
+
+            if (length === 0) return;
+
+            direction.normalize();
+
+            const geometry = new THREE.CylinderGeometry(
+                lineRadius,
+                lineRadius,
+                length,
+                radialSegments,
+                1,
+                false
+            );
+
+            const material = new THREE.MeshBasicMaterial({
+                color: edgeColor,
+                depthWrite: true,
+                depthTest: true,
+                polygonOffset: true,
+                polygonOffsetFactor: -4,
+                polygonOffsetUnits: -4
+            });
+
+            const cylinder = new THREE.Mesh(geometry, material);
+            cylinder.renderOrder = 2;
+
+            const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+            cylinder.position.copy(midpoint);
+
+            const axis = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
+            cylinder.quaternion.copy(quaternion);
+
+            this.presetEdgeMeshes.push(cylinder);
+            this.scene.add(cylinder);
+        });
+    }
+
+    getPresetEdgeColor() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        return currentTheme === 'light' ? 0x000000 : 0xffffff;
+    }
+
+    clearPresetEdges() {
+        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.length = 0;
+        this.presetEdges.length = 0;
     }
     
     updateObjectsList() {
@@ -2745,16 +2774,19 @@ class VectoramaApp {
         const index = this.vectors.findIndex(v => v.id === id);
         if (index !== -1) {
             const vec = this.vectors[index];
+            const removedPresetVertex = this.presetEdges.some(edge => edge.startId === id || edge.endId === id);
             // Remove all visualizations
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
             
             this.vectors.splice(index, 1);
-            
-            // Rebuild path if in path mode
-            if (this.vectorDisplayMode === 'path') {
-                this.updateVectorDisplay();
+
+            // If any single preset vertex is deleted, revert to normal vectors (no joined edges)
+            if (removedPresetVertex) {
+                this.clearPresetEdges();
             }
+            
+            this.updateVectorDisplay();
             
             this.updateVectorList();
         }
@@ -3013,8 +3045,7 @@ class VectoramaApp {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
         });
-        this.pathLines.forEach(line => this.scene.remove(line));
-        this.pathLines = [];
+        this.clearPresetEdges();
         this.vectors = [];
         
         // Update the dimension-specific storage
@@ -3242,6 +3273,7 @@ class VectoramaApp {
         
         // Define preset vector coordinates
         let vectors = [];
+        let edgeIndexPairs = [];
         
         switch(preset) {
             // 2D Presets
@@ -3253,6 +3285,7 @@ class VectoramaApp {
                     [1, 1, 0],
                     [0, 1, 0]
                 ];
+                edgeIndexPairs = [[0, 1], [1, 2], [2, 3], [3, 0]];
                 break;
                 
             case 'preset-triangle':
@@ -3262,6 +3295,7 @@ class VectoramaApp {
                     [1, 0, 0],
                     [0.5, 0.866, 0]
                 ];
+                edgeIndexPairs = [[0, 1], [1, 2], [2, 0]];
                 break;
                 
             case 'preset-pentagon':
@@ -3269,6 +3303,9 @@ class VectoramaApp {
                 for (let i = 0; i < 5; i++) {
                     const angle = (i * 2 * Math.PI / 5) - Math.PI / 2; // Start from top
                     vectors.push([Math.cos(angle), Math.sin(angle), 0]);
+                }
+                for (let i = 0; i < 5; i++) {
+                    edgeIndexPairs.push([i, (i + 1) % 5]);
                 }
                 break;
                 
@@ -3281,6 +3318,9 @@ class VectoramaApp {
                     const radius = i % 2 === 0 ? outerRadius : innerRadius;
                     vectors.push([radius * Math.cos(angle), radius * Math.sin(angle), 0]);
                 }
+                for (let i = 0; i < 10; i++) {
+                    edgeIndexPairs.push([i, (i + 1) % 10]);
+                }
                 break;
                 
             case 'preset-circle':
@@ -3288,6 +3328,9 @@ class VectoramaApp {
                 for (let i = 0; i < 8; i++) {
                     const angle = (i * 2 * Math.PI / 8); // Start from right
                     vectors.push([Math.cos(angle), Math.sin(angle), 0]);
+                }
+                for (let i = 0; i < 8; i++) {
+                    edgeIndexPairs.push([i, (i + 1) % 8]);
                 }
                 break;
                 
@@ -3304,6 +3347,11 @@ class VectoramaApp {
                     [1, 1, 1],
                     [0, 1, 1]
                 ];
+                edgeIndexPairs = [
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [5, 6], [6, 7], [7, 4],
+                    [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
                 break;
                 
             case 'preset-tetrahedron':
@@ -3316,6 +3364,7 @@ class VectoramaApp {
                     [0, 1, a],
                     [0, -1, a]
                 ];
+                edgeIndexPairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
                 break;
                 
             case 'preset-octahedron':
@@ -3327,6 +3376,11 @@ class VectoramaApp {
                     [0, -1, 0],
                     [0, 0, 1],
                     [0, 0, -1]
+                ];
+                edgeIndexPairs = [
+                    [0, 2], [0, 3], [0, 4], [0, 5],
+                    [1, 2], [1, 3], [1, 4], [1, 5],
+                    [2, 4], [2, 5], [3, 4], [3, 5]
                 ];
                 break;
                 
@@ -3356,11 +3410,53 @@ class VectoramaApp {
                 
                 // Bottom pole
                 vectors.push([0, 0, -1]);
+
+                const topIndex = 0;
+                const bottomIndex = vectors.length - 1;
+                const ringStart = (ring) => 1 + (ring * pointsPerRing); // ring in [0..rings-2]
+
+                // Connect top pole to first ring
+                for (let i = 0; i < pointsPerRing; i++) {
+                    edgeIndexPairs.push([topIndex, ringStart(0) + i]);
+                }
+
+                // Connect each ring in a loop
+                for (let ring = 0; ring < rings - 1; ring++) {
+                    const start = ringStart(ring);
+                    for (let i = 0; i < pointsPerRing; i++) {
+                        edgeIndexPairs.push([start + i, start + ((i + 1) % pointsPerRing)]);
+                    }
+                }
+
+                // Connect neighboring rings by longitude
+                for (let ring = 0; ring < rings - 2; ring++) {
+                    const currentStart = ringStart(ring);
+                    const nextStart = ringStart(ring + 1);
+                    for (let i = 0; i < pointsPerRing; i++) {
+                        edgeIndexPairs.push([currentStart + i, nextStart + i]);
+                    }
+                }
+
+                // Connect last ring to bottom pole
+                const lastRingStart = ringStart(rings - 2);
+                for (let i = 0; i < pointsPerRing; i++) {
+                    edgeIndexPairs.push([lastRingStart + i, bottomIndex]);
+                }
                 break;
         }
         
-        // Add all vectors
-        vectors.forEach(v => this.addVector(v[0], v[1], v[2]));
+        // Add all vectors and remember IDs for hidden preset edges
+        const addedVectors = vectors.map(v => this.addVector(v[0], v[1], v[2]));
+
+        const presetEdges = edgeIndexPairs.map(([startIndex, endIndex]) => ({
+            startId: addedVectors[startIndex].id,
+            endId: addedVectors[endIndex].id
+        }));
+
+        this.presetEdges.length = 0;
+        this.presetEdges.push(...presetEdges);
+
+        this.updateVectorDisplay();
     }
 
     removeMatrix(id) {
@@ -4670,6 +4766,9 @@ class VectoramaApp {
         
         // Regenerate grid and axis numbers with theme-appropriate colors
         this.createGrid();
+
+        // Refresh preset edge color (black in light mode, white in dark mode)
+        this.updateVectorDisplay();
     }
 
     // Eigenvalue and Eigenvector Computation
