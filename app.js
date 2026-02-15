@@ -1897,6 +1897,9 @@ class VectoramaApp {
             // Show points for visible vectors
             this.vectors.forEach(vec => {
                 if (vec.visible && vec.pointSphere) {
+                    vec.pointSphere.renderOrder = 1004;
+                    vec.pointSphere.material.depthTest = false;
+                    vec.pointSphere.material.depthWrite = false;
                     this.scene.add(vec.pointSphere);
                 }
             });
@@ -2082,6 +2085,7 @@ class VectoramaApp {
         const radialSegments = this.dimension === '2d' ? 3 : 16;
         const edgeColor = this.getPresetEdgeColor();
         const isSmallMode = this.vectorSizeMode === 'small';
+        const useOverlayEdges = isSmallMode;
 
         this.presetEdges.forEach(edge => {
             const startVec = this.vectors.find(v => v.id === edge.startId);
@@ -2110,15 +2114,15 @@ class VectoramaApp {
 
             const material = new THREE.MeshBasicMaterial({
                 color: edgeColor,
-                depthWrite: !isSmallMode,
-                depthTest: !isSmallMode,
+                depthWrite: !useOverlayEdges,
+                depthTest: !useOverlayEdges,
                 polygonOffset: true,
-                polygonOffsetFactor: isSmallMode ? -6 : -4,
-                polygonOffsetUnits: isSmallMode ? -6 : -4
+                polygonOffsetFactor: useOverlayEdges ? -6 : -4,
+                polygonOffsetUnits: useOverlayEdges ? -6 : -4
             });
 
             const cylinder = new THREE.Mesh(geometry, material);
-            cylinder.renderOrder = isSmallMode ? 1003 : 2;
+            cylinder.renderOrder = useOverlayEdges ? 1003 : 2;
 
             const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
             cylinder.position.copy(midpoint);
