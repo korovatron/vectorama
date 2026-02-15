@@ -234,7 +234,25 @@
                         </svg>
                     </div>
                 </button>
-                <button class="top-btn" disabled aria-hidden="true" style="opacity: 0.35; cursor: default;"></button>
+                <button id="intersection-toggle-btn" class="top-btn" title="Toggle Intersections">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg class="intersection-icon" id="intersection-off" width="16" height="16" viewBox="0 0 16 16">
+                            <circle cx="4" cy="4" r="1.5" fill="currentColor" />
+                            <circle cx="12" cy="4" r="1.5" fill="currentColor" />
+                            <circle cx="8" cy="12" r="1.5" fill="currentColor" />
+                            <line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                        <span class="intersection-separator">|</span>
+                        <svg class="intersection-icon intersection-active" id="intersection-on" width="16" height="16" viewBox="0 0 16 16">
+                            <circle cx="4" cy="4" r="1.5" fill="currentColor" />
+                            <circle cx="12" cy="4" r="1.5" fill="currentColor" />
+                            <circle cx="8" cy="12" r="1.5" fill="currentColor" />
+                            <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" stroke-width="1.2" />
+                            <line x1="4" y1="4" x2="8" y2="12" stroke="currentColor" stroke-width="1.2" />
+                            <line x1="12" y1="4" x2="8" y2="12" stroke="currentColor" stroke-width="1.2" />
+                        </svg>
+                    </div>
+                </button>
                 <button class="top-btn" disabled aria-hidden="true" style="opacity: 0.35; cursor: default;"></button>
             </div>
             
@@ -246,6 +264,14 @@
         <!-- 3D Canvas -->
         <div class="canvas-container">
             <canvas id="three-canvas"></canvas>
+
+            <div id="plane-extent-control" class="plane-extent-control" style="display: none;">
+                <div class="plane-extent-label-row">
+                    <span>Plane Size</span>
+                    <span id="plane-extent-value">10</span>
+                </div>
+                <input id="plane-extent-slider" type="range" min="5" max="20" step="1" value="10" aria-label="Plane size">
+            </div>
             
             <!-- Debug Info Panel (top-right) -->
             <div id="debug-panel" class="debug-panel" style="display: none;">

@@ -143,6 +143,8 @@ class VectoramaApp {
         this.lastCameraDistance = 0; // Track camera distance for vector thickness updates
         this.tempArrow = null;
         this.gridVisible = true; // Grid visibility state
+        this.intersectionsVisible = true; // Intersection markers/lines visibility state
+        this.planeExtent = 10; // Plane half-size in each direction
         this.currentGridSpacing = 1; // Current grid spacing
         this.isResizing = false; // Flag to prevent animation loop interference
         this.resizeTimeout = null; // For debouncing
@@ -1123,6 +1125,12 @@ class VectoramaApp {
         
         // Second button row - Grid toggle
         document.getElementById('grid-toggle-btn').addEventListener('click', () => this.toggleGrid());
+
+        // Bottom row - Intersections toggle
+        const intersectionToggleBtn = document.getElementById('intersection-toggle-btn');
+        if (intersectionToggleBtn) {
+            intersectionToggleBtn.addEventListener('click', () => this.toggleIntersections());
+        }
         
         // Second button row - Dimension toggle
         document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
@@ -1136,6 +1144,19 @@ class VectoramaApp {
             vectorSizeToggleBtn.addEventListener('click', () => this.toggleVectorSizeMode());
             this.updateVectorSizeModeUI();
             this.updateInfoPanelsSizeModeUI();
+        }
+
+        const planeExtentSlider = document.getElementById('plane-extent-slider');
+        if (planeExtentSlider) {
+            planeExtentSlider.value = String(this.planeExtent);
+            planeExtentSlider.addEventListener('input', (e) => {
+                const nextExtent = this.toFiniteNumber(e.target.value, 10);
+                this.planeExtent = Math.max(5, Math.min(20, nextExtent));
+                this.updatePlaneExtentControl();
+                this.planes.forEach(plane => this.renderPlane(plane));
+                this.updateIntersections();
+                this.scheduleStateSave();
+            });
         }
 
         // Canvas drag to add vectors
@@ -1190,6 +1211,8 @@ class VectoramaApp {
         // Initialize dropdown visibility based on starting dimension
         this.updateDropdownVisibility();
         this.updateGridToggleUI();
+        this.updateIntersectionsToggleUI();
+        this.updatePlaneExtentControl();
         this.updateVectorDisplayModeUI();
     }
     
@@ -1246,6 +1269,28 @@ class VectoramaApp {
 
     normalizeDimension(value) {
         return value === '3d' ? '3d' : '2d';
+    }
+
+    normalizePlaneFormPreference(value) {
+        if (value === 'cartesian') return 'cartesian';
+        if (value === 'vector') return 'vector';
+        if (value === 'scalar') return 'scalar';
+        if (value === 'dot') return 'dot';
+        return 'dot';
+    }
+
+    getNextPlaneFormPreference(value) {
+        const normalized = this.normalizePlaneFormPreference(value);
+        if (normalized === 'dot') return 'cartesian';
+        if (normalized === 'cartesian') return 'vector';
+        if (normalized === 'vector') return 'scalar';
+        return 'dot';
+    }
+
+    normalizeLineFormPreference(value) {
+        if (value === 'cross') return 'cross';
+        if (value === 'cartesian') return 'cartesian';
+        return 'parametric';
     }
 
     serializeColor(colorValue, fallback = '#4A90E2') {
@@ -1382,7 +1427,8 @@ class VectoramaApp {
                 x: this.toFiniteNumber(line.currentDirection?.x, line.direction?.x),
                 y: this.toFiniteNumber(line.currentDirection?.y, line.direction?.y),
                 z: this.toFiniteNumber(line.currentDirection?.z, line.direction?.z)
-            }
+            },
+            formPreference: this.normalizeLineFormPreference(line.formPreference)
         };
     }
 
@@ -1422,6 +1468,7 @@ class VectoramaApp {
                 y: this.toFiniteNumber(line?.currentDirection?.y, line?.direction?.y),
                 z: this.toFiniteNumber(line?.currentDirection?.z, line?.direction?.z)
             },
+            formPreference: this.normalizeLineFormPreference(line?.formPreference),
             mesh: null
         }));
     }
@@ -1444,7 +1491,7 @@ class VectoramaApp {
             currentB: this.toFiniteNumber(plane.currentB, plane.b),
             currentC: this.toFiniteNumber(plane.currentC, plane.c),
             currentD: this.toFiniteNumber(plane.currentD, plane.d),
-            formPreference: plane.formPreference === 'vector' ? 'vector' : 'cartesian'
+            formPreference: this.normalizePlaneFormPreference(plane.formPreference)
         };
     }
 
@@ -1466,7 +1513,7 @@ class VectoramaApp {
             currentB: this.toFiniteNumber(plane?.currentB, plane?.b),
             currentC: this.toFiniteNumber(plane?.currentC, plane?.c),
             currentD: this.toFiniteNumber(plane?.currentD, plane?.d),
-            formPreference: plane?.formPreference === 'vector' ? 'vector' : 'cartesian',
+            formPreference: this.normalizePlaneFormPreference(plane?.formPreference),
             mesh: null
         }));
     }
@@ -1607,9 +1654,7 @@ class VectoramaApp {
         return {
             version: 1,
             dimension: this.dimension,
-            gridVisible: this.gridVisible,
             vectorDisplayMode: this.vectorDisplayMode,
-            vectorSizeMode: this.vectorSizeMode,
             currentGridSpacing: this.currentGridSpacing,
             groupCollapsed: {
                 ...this.getDefaultGroupCollapsedState(),
@@ -1702,8 +1747,11 @@ class VectoramaApp {
         };
 
         this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
-        this.vectorSizeMode = state.vectorSizeMode === 'large' ? 'large' : 'small';
-        this.gridVisible = state.gridVisible !== false;
+        // Session defaults (not persisted)
+        this.vectorSizeMode = 'small';
+        this.gridVisible = true;
+        this.intersectionsVisible = true;
+        this.planeExtent = 10;
         this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
 
         this.vectors2D = this.deserializeVectors(state.vectors2D || []);
@@ -1780,6 +1828,8 @@ class VectoramaApp {
         this.updateVectorSizeModeUI();
         this.updateInfoPanelsSizeModeUI();
         this.updateGridToggleUI();
+        this.updateIntersectionsToggleUI();
+        this.updatePlaneExtentControl();
 
         const targetDimension = this.normalizeDimension(state.dimension);
         this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
@@ -1801,6 +1851,35 @@ class VectoramaApp {
             gridOn.classList.remove('grid-active');
             gridOff.classList.add('grid-active');
         }
+    }
+
+    updateIntersectionsToggleUI() {
+        const intersectionOff = document.getElementById('intersection-off');
+        const intersectionOn = document.getElementById('intersection-on');
+        if (!intersectionOff || !intersectionOn) return;
+
+        if (this.intersectionsVisible) {
+            intersectionOff.classList.remove('intersection-active');
+            intersectionOn.classList.add('intersection-active');
+        } else {
+            intersectionOn.classList.remove('intersection-active');
+            intersectionOff.classList.add('intersection-active');
+        }
+    }
+
+    updatePlaneExtentControl() {
+        const control = document.getElementById('plane-extent-control');
+        const slider = document.getElementById('plane-extent-slider');
+        const valueLabel = document.getElementById('plane-extent-value');
+        if (!control || !slider || !valueLabel) return;
+
+        const hasVisiblePlane = this.dimension === '3d' && this.planes.some(plane => plane.visible);
+        control.style.display = hasVisiblePlane ? 'block' : 'none';
+
+        const clampedExtent = Math.max(5, Math.min(20, this.toFiniteNumber(this.planeExtent, 10)));
+        this.planeExtent = clampedExtent;
+        slider.value = String(clampedExtent);
+        valueLabel.textContent = String(clampedExtent);
     }
 
     updateVectorDisplayModeUI() {
@@ -2135,8 +2214,29 @@ class VectoramaApp {
         if (this.gridHelper) {
             this.gridHelper.visible = this.gridVisible;
         }
+
+        if (this.axisNumbers) {
+            this.axisNumbers.visible = this.gridVisible;
+        }
         
         this.updateGridToggleUI();
+        this.scheduleStateSave();
+    }
+
+    toggleIntersections() {
+        this.intersectionsVisible = !this.intersectionsVisible;
+
+        if (this.intersectionsVisible) {
+            this.updateIntersections();
+        } else {
+            this.clearIntersections();
+            this.updateVectorPanel();
+            this.updateLinePanel();
+            this.updatePlanePanel();
+            this.updateAngleVisualization();
+        }
+
+        this.updateIntersectionsToggleUI();
         this.scheduleStateSave();
     }
     
@@ -2781,6 +2881,7 @@ class VectoramaApp {
         this.updateLinePanel();
         this.updatePlanePanel();
         this.updateAngleVisualization();
+        this.updatePlaneExtentControl();
     }
     
     renderCollapsibleGroup(container, groupKey, groupName, items, renderFunction) {
@@ -3099,6 +3200,7 @@ class VectoramaApp {
             if (Math.abs(val - nearestInt) < 0.0001) return nearestInt.toString();
             return val.toFixed(2);
         };
+        const currentForm = this.normalizeLineFormPreference(line.formPreference);
         
         // Header: L1       r = a + tb
         const headerRow = document.createElement('div');
@@ -3120,7 +3222,15 @@ class VectoramaApp {
         headerRow.appendChild(spacer);
         
         const equationSpan = document.createElement('span');
-        equationSpan.textContent = 'r = a + tb';
+        if (currentForm === 'cross') {
+            equationSpan.textContent = '(r - a) × b = 0';
+        } else if (currentForm === 'cartesian') {
+            equationSpan.textContent = this.dimension === '3d'
+                ? '(x-aₓ)/bₓ = (y-aᵧ)/bᵧ = (z-a_z)/b_z'
+                : '(x-aₓ)/bₓ = (y-aᵧ)/bᵧ';
+        } else {
+            equationSpan.textContent = 'r = a + tb';
+        }
         headerRow.appendChild(equationSpan);
         
         lineInfo.appendChild(headerRow);
@@ -3287,6 +3397,33 @@ class VectoramaApp {
         colorIndicator.style.cursor = 'pointer';
         colorIndicator.addEventListener('click', () => this.toggleLineVisibility(line.id));
         controls.appendChild(colorIndicator);
+
+        const formToggleBtn = document.createElement('button');
+        formToggleBtn.className = 'form-toggle-btn';
+        const formLabelMap = {
+            parametric: 'P',
+            cross: '×',
+            cartesian: 'C'
+        };
+        const nextFormMap = {
+            parametric: 'cross',
+            cross: 'cartesian',
+            cartesian: 'parametric'
+        };
+        const formTitleMap = {
+            parametric: 'Parametric',
+            cross: 'Cross Product',
+            cartesian: 'Cartesian'
+        };
+        const nextForm = nextFormMap[currentForm];
+        formToggleBtn.textContent = formLabelMap[currentForm];
+        formToggleBtn.title = `Toggle to ${formTitleMap[nextForm]} form`;
+        formToggleBtn.addEventListener('click', () => {
+            line.formPreference = nextFormMap[this.normalizeLineFormPreference(line.formPreference)];
+            this.updateObjectsList();
+            this.scheduleStateSave();
+        });
+        controls.appendChild(formToggleBtn);
         
         // Info button (i icon)
         const infoBtn = document.createElement('button');
@@ -3339,11 +3476,18 @@ class VectoramaApp {
         nameSpan.textContent = plane.name;
         planeInfo.appendChild(nameSpan);
         
+        const currentForm = this.normalizePlaneFormPreference(plane.formPreference);
+        plane.formPreference = currentForm;
+
         // Render based on form preference
-        if (plane.formPreference === 'cartesian') {
+        if (currentForm === 'cartesian') {
             this.renderCartesianForm(planeInfo, plane, formatNum);
-        } else {
+        } else if (currentForm === 'vector') {
             this.renderVectorForm(planeInfo, plane, formatNum);
+        } else if (currentForm === 'scalar') {
+            this.renderScalarForm(planeInfo, plane, formatNum);
+        } else {
+            this.renderDotForm(planeInfo, plane, formatNum);
         }
         
         mainRow.appendChild(planeInfo);
@@ -3360,13 +3504,28 @@ class VectoramaApp {
         colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
         controls.appendChild(colorIndicator);
 
-        // Form toggle button (C|V)
+        // Form toggle button (C|V|S)
         const formToggleBtn = document.createElement('button');
         formToggleBtn.className = 'form-toggle-btn';
-        formToggleBtn.textContent = plane.formPreference === 'cartesian' ? 'C' : 'V';
-        formToggleBtn.title = `Toggle to ${plane.formPreference === 'cartesian' ? 'Vector' : 'Cartesian'} form`;
-        formToggleBtn.addEventListener('click', () => {
-            plane.formPreference = plane.formPreference === 'cartesian' ? 'vector' : 'cartesian';
+        const formLabelMap = {
+            cartesian: 'C',
+            vector: 'V',
+            scalar: 'S',
+            dot: 'D'
+        };
+        const formTitleMap = {
+            cartesian: 'Cartesian',
+            vector: 'Vector',
+            scalar: 'Scalar Product',
+            dot: 'Dot Product'
+        };
+        const normalizedForm = this.normalizePlaneFormPreference(plane.formPreference);
+        const nextForm = this.getNextPlaneFormPreference(normalizedForm);
+        formToggleBtn.textContent = formLabelMap[normalizedForm] || 'D';
+        formToggleBtn.title = `Toggle to ${formTitleMap[nextForm]} form`;
+        formToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            plane.formPreference = this.getNextPlaneFormPreference(plane.formPreference);
             this.updateObjectsList(); // Just refresh UI
             this.scheduleStateSave();
         });
@@ -3675,6 +3834,245 @@ class VectoramaApp {
         });
     }
 
+    renderScalarForm(planeInfo, plane, formatNum) {
+        const scalarForm = this.cartesianToScalar(plane.a, plane.b, plane.c, plane.d);
+
+        const equationRow = document.createElement('div');
+        equationRow.style.fontSize = '0.8em';
+        equationRow.style.opacity = '0.85';
+        equationRow.textContent = '(r - a) · n = 0';
+        planeInfo.appendChild(equationRow);
+
+        const row1 = document.createElement('div');
+        row1.style.display = 'flex';
+        row1.style.gap = '4px';
+        row1.style.alignItems = 'center';
+
+        const aLabel = document.createElement('span');
+        aLabel.textContent = 'a = (';
+        aLabel.style.fontSize = '0.85em';
+        aLabel.style.minWidth = '36px';
+        row1.appendChild(aLabel);
+
+        const axInput = document.createElement('input');
+        axInput.type = 'number';
+        axInput.step = '0.1';
+        axInput.value = formatNum(scalarForm.anchor.x);
+        axInput.className = 'equation-input';
+        row1.appendChild(axInput);
+
+        const comma1 = document.createElement('span');
+        comma1.textContent = ',';
+        comma1.style.fontSize = '0.85em';
+        row1.appendChild(comma1);
+
+        const ayInput = document.createElement('input');
+        ayInput.type = 'number';
+        ayInput.step = '0.1';
+        ayInput.value = formatNum(scalarForm.anchor.y);
+        ayInput.className = 'equation-input';
+        row1.appendChild(ayInput);
+
+        const comma2 = document.createElement('span');
+        comma2.textContent = ',';
+        comma2.style.fontSize = '0.85em';
+        row1.appendChild(comma2);
+
+        const azInput = document.createElement('input');
+        azInput.type = 'number';
+        azInput.step = '0.1';
+        azInput.value = formatNum(scalarForm.anchor.z);
+        azInput.className = 'equation-input';
+        row1.appendChild(azInput);
+
+        const closeParen1 = document.createElement('span');
+        closeParen1.textContent = ')';
+        closeParen1.style.fontSize = '0.85em';
+        row1.appendChild(closeParen1);
+
+        planeInfo.appendChild(row1);
+
+        const row2 = document.createElement('div');
+        row2.style.display = 'flex';
+        row2.style.gap = '4px';
+        row2.style.alignItems = 'center';
+
+        const nLabel = document.createElement('span');
+        nLabel.textContent = 'n = (';
+        nLabel.style.fontSize = '0.85em';
+        nLabel.style.minWidth = '36px';
+        row2.appendChild(nLabel);
+
+        const nxInput = document.createElement('input');
+        nxInput.type = 'number';
+        nxInput.step = '0.1';
+        nxInput.value = formatNum(scalarForm.normal.x);
+        nxInput.className = 'equation-input';
+        row2.appendChild(nxInput);
+
+        const comma3 = document.createElement('span');
+        comma3.textContent = ',';
+        comma3.style.fontSize = '0.85em';
+        row2.appendChild(comma3);
+
+        const nyInput = document.createElement('input');
+        nyInput.type = 'number';
+        nyInput.step = '0.1';
+        nyInput.value = formatNum(scalarForm.normal.y);
+        nyInput.className = 'equation-input';
+        row2.appendChild(nyInput);
+
+        const comma4 = document.createElement('span');
+        comma4.textContent = ',';
+        comma4.style.fontSize = '0.85em';
+        row2.appendChild(comma4);
+
+        const nzInput = document.createElement('input');
+        nzInput.type = 'number';
+        nzInput.step = '0.1';
+        nzInput.value = formatNum(scalarForm.normal.z);
+        nzInput.className = 'equation-input';
+        row2.appendChild(nzInput);
+
+        const closeParen2 = document.createElement('span');
+        closeParen2.textContent = ')';
+        closeParen2.style.fontSize = '0.85em';
+        row2.appendChild(closeParen2);
+
+        planeInfo.appendChild(row2);
+
+        const updateFromScalar = () => {
+            const anchor = {
+                x: parseFloat(axInput.value) || 0,
+                y: parseFloat(ayInput.value) || 0,
+                z: parseFloat(azInput.value) || 0
+            };
+            const normal = {
+                x: parseFloat(nxInput.value) || 0,
+                y: parseFloat(nyInput.value) || 0,
+                z: parseFloat(nzInput.value) || 0
+            };
+
+            const cartesian = this.scalarToCartesian(anchor, normal);
+            plane.a = cartesian.a;
+            plane.b = cartesian.b;
+            plane.c = cartesian.c;
+            plane.d = cartesian.d;
+            plane.currentA = plane.a;
+            plane.currentB = plane.b;
+            plane.currentC = plane.c;
+            plane.currentD = plane.d;
+            plane.originalA = plane.a;
+            plane.originalB = plane.b;
+            plane.originalC = plane.c;
+            plane.originalD = plane.d;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        };
+
+        [axInput, ayInput, azInput, nxInput, nyInput, nzInput].forEach(input => {
+            input.addEventListener('input', updateFromScalar);
+        });
+    }
+
+    renderDotForm(planeInfo, plane, formatNum) {
+        const equationRow = document.createElement('div');
+        equationRow.style.fontSize = '0.8em';
+        equationRow.style.opacity = '0.85';
+        equationRow.textContent = 'r · n = d';
+        planeInfo.appendChild(equationRow);
+
+        const row1 = document.createElement('div');
+        row1.style.display = 'flex';
+        row1.style.gap = '4px';
+        row1.style.alignItems = 'center';
+
+        const nLabel = document.createElement('span');
+        nLabel.textContent = 'n = (';
+        nLabel.style.fontSize = '0.85em';
+        nLabel.style.minWidth = '36px';
+        row1.appendChild(nLabel);
+
+        const nxInput = document.createElement('input');
+        nxInput.type = 'number';
+        nxInput.step = '0.1';
+        nxInput.value = formatNum(plane.a);
+        nxInput.className = 'equation-input';
+        row1.appendChild(nxInput);
+
+        const comma1 = document.createElement('span');
+        comma1.textContent = ',';
+        comma1.style.fontSize = '0.85em';
+        row1.appendChild(comma1);
+
+        const nyInput = document.createElement('input');
+        nyInput.type = 'number';
+        nyInput.step = '0.1';
+        nyInput.value = formatNum(plane.b);
+        nyInput.className = 'equation-input';
+        row1.appendChild(nyInput);
+
+        const comma2 = document.createElement('span');
+        comma2.textContent = ',';
+        comma2.style.fontSize = '0.85em';
+        row1.appendChild(comma2);
+
+        const nzInput = document.createElement('input');
+        nzInput.type = 'number';
+        nzInput.step = '0.1';
+        nzInput.value = formatNum(plane.c);
+        nzInput.className = 'equation-input';
+        row1.appendChild(nzInput);
+
+        const closeParen = document.createElement('span');
+        closeParen.textContent = ')';
+        closeParen.style.fontSize = '0.85em';
+        row1.appendChild(closeParen);
+
+        planeInfo.appendChild(row1);
+
+        const row2 = document.createElement('div');
+        row2.style.display = 'flex';
+        row2.style.gap = '4px';
+        row2.style.alignItems = 'center';
+
+        const dLabel = document.createElement('span');
+        dLabel.textContent = 'd =';
+        dLabel.style.fontSize = '0.85em';
+        dLabel.style.minWidth = '36px';
+        row2.appendChild(dLabel);
+
+        const dInput = document.createElement('input');
+        dInput.type = 'number';
+        dInput.step = '0.1';
+        dInput.value = formatNum(plane.d);
+        dInput.className = 'equation-input';
+        row2.appendChild(dInput);
+
+        planeInfo.appendChild(row2);
+
+        const updateFromDot = () => {
+            plane.a = parseFloat(nxInput.value) || 0;
+            plane.b = parseFloat(nyInput.value) || 0;
+            plane.c = parseFloat(nzInput.value) || 0;
+            plane.d = parseFloat(dInput.value) || 0;
+            plane.currentA = plane.a;
+            plane.currentB = plane.b;
+            plane.currentC = plane.c;
+            plane.currentD = plane.d;
+            plane.originalA = plane.a;
+            plane.originalB = plane.b;
+            plane.originalC = plane.c;
+            plane.originalD = plane.d;
+            this.renderPlane(plane);
+            this.updateIntersections();
+        };
+
+        [nxInput, nyInput, nzInput, dInput].forEach(input => {
+            input.addEventListener('input', updateFromDot);
+        });
+    }
+
     updateVectorArrow(vec) {
         // Remove old arrow
         this.scene.remove(vec.arrow);
@@ -3894,6 +4292,24 @@ class VectoramaApp {
         // d = n · r₀
         const d = a * r0.x + b * r0.y + c * r0.z;
         
+        return { a, b, c, d };
+    }
+
+    // Convert Cartesian form (ax+by+cz=d) to Scalar product form ((r-a)·n=0)
+    cartesianToScalar(a, b, c, d) {
+        const vectorForm = this.cartesianToVector(a, b, c, d);
+        return {
+            anchor: vectorForm.r0,
+            normal: { x: a, y: b, z: c }
+        };
+    }
+
+    // Convert Scalar product form ((r-a)·n=0) to Cartesian form (ax+by+cz=d)
+    scalarToCartesian(anchor, normal) {
+        const a = normal.x;
+        const b = normal.y;
+        const c = normal.z;
+        const d = (a * anchor.x) + (b * anchor.y) + (c * anchor.z);
         return { a, b, c, d };
     }
 
@@ -4944,7 +5360,8 @@ class VectoramaApp {
             currentDirection: { x: bx, y: by, z: bz },
             color: colorHex,
             visible: true,
-            mesh: null
+            mesh: null,
+            formPreference: 'parametric' // 'parametric', 'cross', or 'cartesian'
         };
         
         this.lines.push(line);
@@ -4974,7 +5391,7 @@ class VectoramaApp {
             color: colorHex,
             visible: true,
             mesh: null,
-            formPreference: 'cartesian' // 'cartesian' or 'vector'
+            formPreference: 'dot' // 'cartesian', 'vector', 'scalar', or 'dot'
         };
         
         this.planes.push(plane);
@@ -5064,7 +5481,8 @@ class VectoramaApp {
             this.scene.remove(plane.mesh);
         }
 
-        const geometry = new THREE.PlaneGeometry(20, 20);
+        const extent = Math.max(5, Math.min(20, this.toFiniteNumber(this.planeExtent, 10)));
+        const geometry = new THREE.PlaneGeometry(extent * 2, extent * 2);
         const material = new THREE.MeshBasicMaterial({ 
             color: new THREE.Color(plane.color),
             side: THREE.DoubleSide,
@@ -5560,7 +5978,7 @@ class VectoramaApp {
             transparent: true,
             depthWrite: false,
             depthTest: false,
-            side: THREE.DoubleSide
+            side: THREE.FrontSide
         });
         
         // Scale based on camera distance
@@ -5580,6 +5998,58 @@ class VectoramaApp {
         return new THREE.Color().setHSL(hue, 1.0, 0.5);
     }
 
+    orientPlaneIntersectionLabel(intersectionEntry) {
+        if (!intersectionEntry?.label || !intersectionEntry?.direction || !intersectionEntry?.midpoint) return;
+
+        const lineDir = intersectionEntry.direction.clone().normalize();
+        const midpoint = intersectionEntry.midpoint;
+        const toCamera = new THREE.Vector3().subVectors(this.camera.position, midpoint).normalize();
+
+        // Label normal always faces camera (prevents back-to-front mirroring)
+        let forward = toCamera.clone();
+
+        // Align text direction to line direction projected into the camera plane
+        let right = lineDir.clone().sub(forward.clone().multiplyScalar(lineDir.dot(forward)));
+        if (right.lengthSq() < 1e-8) {
+            right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+        }
+        right.normalize();
+
+        // Stabilize left-to-right text direction against camera right
+        const cameraRight = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0).normalize();
+        if (right.dot(cameraRight) < 0) {
+            right.negate();
+        }
+
+        let up = new THREE.Vector3().crossVectors(forward, right).normalize();
+
+        // Stabilize vertical orientation against camera up (prevents upside-down text)
+        const cameraUp = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1).normalize();
+        if (up.dot(cameraUp) < 0) {
+            up.negate();
+            right.negate();
+        }
+
+        right = new THREE.Vector3().crossVectors(up, forward).normalize();
+
+        if (right.lengthSq() < 1e-8 || up.lengthSq() < 1e-8 || forward.lengthSq() < 1e-8) {
+            return;
+        }
+
+        if (new THREE.Vector3().crossVectors(right, up).dot(forward) < 0) {
+            forward.negate();
+        }
+
+        const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
+        intersectionEntry.label.position.copy(midpoint)
+            .add(up.clone().multiplyScalar(labelOffset * 0.6))
+            .add(forward.clone().multiplyScalar(labelOffset * 0.4));
+
+        const rotMatrix = new THREE.Matrix4();
+        rotMatrix.makeBasis(right, up, forward);
+        intersectionEntry.label.quaternion.setFromRotationMatrix(rotMatrix);
+    }
+
     updateIntersectionVisualizationColorCycle() {
         const rainbow = this.getIntersectionRainbowColor();
 
@@ -5592,19 +6062,30 @@ class VectoramaApp {
             }
         });
 
-        this.planeIntersectionLines.forEach(({ line, label }) => {
+        this.planeIntersectionLines.forEach((entry) => {
+            const { line, label } = entry;
             if (line?.material?.color) {
                 line.material.color.copy(rainbow);
             }
             if (label?.material?.color) {
                 label.material.color.copy(rainbow);
             }
+
+            this.orientPlaneIntersectionLabel(entry);
         });
     }
 
     updateIntersections() {
         // Clear existing markers
         this.clearIntersections();
+
+        if (!this.intersectionsVisible) {
+            this.updateVectorPanel();
+            this.updateLinePanel();
+            this.updatePlanePanel();
+            this.updateAngleVisualization();
+            return;
+        }
         
         // Check all line-plane pairs (3D only)
         if (this.dimension === '3d') {
@@ -5715,52 +6196,17 @@ class VectoramaApp {
                 
                 // Create equation label oriented along the line
                 const label = this.createLineEquationLabel(point, direction);
-                
-                // Position label at midpoint
-                label.position.copy(midpoint);
-                
-                // Orient label so text runs along the line
-                // Calculate perpendicular offset direction (towards camera)
-                const cameraDir = new THREE.Vector3().subVectors(this.camera.position, midpoint).normalize();
-                
-                // Ensure direction is normalized
-                const normalizedDir = dir.clone().normalize();
-                
-                // Calculate perpendicular vector (cross with camera direction)
-                const perpendicular = new THREE.Vector3().crossVectors(normalizedDir, cameraDir);
-                
-                // If perpendicular is too small, use a different approach
-                if (perpendicular.length() < 0.1) {
-                    // Use world up as fallback
-                    const worldUp = new THREE.Vector3(0, 1, 0);
-                    perpendicular.crossVectors(normalizedDir, worldUp);
-                    if (perpendicular.length() < 0.1) {
-                        perpendicular.set(1, 0, 0); // Ultimate fallback
-                    }
-                }
-                perpendicular.normalize();
-                
-                // Calculate outward direction (normal to text plane)
-                const outward = new THREE.Vector3().crossVectors(perpendicular, normalizedDir).normalize();
-                
-                // Offset the label perpendicular to the line (towards camera)
-                const labelOffset = this.camera.position.distanceTo(this.controls.target) * 0.15;
-                label.position.add(outward.multiplyScalar(labelOffset));
-                
-                // Orient the label: text should run along the line direction
-                // For PlaneGeometry, we need to rotate so the text aligns with the line
-                // The text plane's local X-axis should align with the line direction
-                const rightVector = normalizedDir.clone();  // Text runs along line
-                const upVector = perpendicular.clone();     // Text height direction
-                const forwardVector = outward.clone();      // Normal to text plane
-                
-                // Create rotation matrix with proper basis vectors
-                const rotMatrix = new THREE.Matrix4();
-                rotMatrix.makeBasis(rightVector, upVector, forwardVector);
-                label.quaternion.setFromRotationMatrix(rotMatrix);
-                
+
+                const intersectionEntry = {
+                    line: lineMesh,
+                    label,
+                    direction: dir.clone().normalize(),
+                    midpoint: midpoint.clone()
+                };
+
                 // Store line and label
-                this.planeIntersectionLines.push({ line: lineMesh, label });
+                this.planeIntersectionLines.push(intersectionEntry);
+                this.orientPlaneIntersectionLabel(intersectionEntry);
                 this.scene.add(lineMesh);
                 this.scene.add(label);
             }
