@@ -207,16 +207,20 @@ body {
     -webkit-tap-highlight-color: transparent; /* Removes tap highlight on mobile */
 }
 
-.panel-toggle-btn:hover {
-    background: rgba(74, 144, 226, 0.9);
+@media (hover: hover) {
+    .panel-toggle-btn:hover {
+        background: rgba(74, 144, 226, 0.9);
+    }
 }
 
 .panel-toggle-btn.active {
     background: rgba(231, 76, 60, 0.9);
 }
 
-.panel-toggle-btn.active:hover {
-    background: rgba(192, 57, 43, 0.95);
+@media (hover: hover) {
+    .panel-toggle-btn.active:hover {
+        background: rgba(192, 57, 43, 0.95);
+    }
 }
 
 .panel-toggle-btn span {
@@ -334,8 +338,10 @@ body {
     transition: background 0.2s;
 }
 
-.top-btn:hover {
-    background: #354d6b;
+@media (hover: hover) {
+    .top-btn:hover {
+        background: #354d6b;
+    }
 }
 
 .dim-option {
@@ -449,8 +455,10 @@ body {
     transition: background 0.2s;
 }
 
-.add-button:hover {
-    background: #354d6b;
+@media (hover: hover) {
+    .add-button:hover {
+        background: #354d6b;
+    }
 }
 
 .add-dropdown {
@@ -482,8 +490,10 @@ body {
     border-bottom: none;
 }
 
-.add-dropdown .dropdown-item:hover {
-    background: #354d6b;
+@media (hover: hover) {
+    .add-dropdown .dropdown-item:hover {
+        background: #354d6b;
+    }
 }
 
 .add-dropdown .dropdown-item strong {
@@ -529,9 +539,11 @@ body {
     letter-spacing: 0.5px;
 }
 
-.app-mode-btn:hover {
-    filter: brightness(1.15);
-    transform: translateY(-1px);
+@media (hover: hover) {
+    .app-mode-btn:hover {
+        filter: brightness(1.15);
+        transform: translateY(-1px);
+    }
 }
 
 .app-mode-btn.active {
@@ -594,8 +606,10 @@ body {
     transition: all 0.3s;
 }
 
-.mode-btn:hover {
-    filter: brightness(1.15);
+@media (hover: hover) {
+    .mode-btn:hover {
+        filter: brightness(1.15);
+    }
 }
 
 .mode-btn.active {
@@ -701,10 +715,12 @@ body {
     transition: all 0.2s;
 }
 
-.preset-btn:hover {
-    background: var(--accent-color);
-    color: white;
-    border-color: var(--accent-color);
+@media (hover: hover) {
+    .preset-btn:hover {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
 }
 
 /* Geometry Mode */
@@ -726,8 +742,10 @@ body {
     font-size: 13px;
 }
 
-.geometry-type-btn:hover {
-    filter: brightness(1.15);
+@media (hover: hover) {
+    .geometry-type-btn:hover {
+        filter: brightness(1.15);
+    }
 }
 
 .geometry-type-btn.active {
@@ -809,9 +827,11 @@ body {
     color: white;
 }
 
-.primary-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+@media (hover: hover) {
+    .primary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+    }
 }
 
 .apply-transformation-btn {
@@ -831,8 +851,10 @@ body {
     justify-content: center;
 }
 
-.apply-transformation-btn:hover {
-    background: #354d6b;
+@media (hover: hover) {
+    .apply-transformation-btn:hover {
+        background: #354d6b;
+    }
 }
 
 .secondary-btn {
@@ -840,8 +862,10 @@ body {
     color: var(--text-primary);
 }
 
-.secondary-btn:hover {
-    filter: brightness(1.15);
+@media (hover: hover) {
+    .secondary-btn:hover {
+        filter: brightness(1.15);
+    }
 }
 
 .slider-control {
@@ -900,8 +924,10 @@ body {
     transition: background 0.2s ease;
 }
 
-.object-group-header:hover {
-    background: rgba(255, 255, 255, 0.12);
+@media (hover: hover) {
+    .object-group-header:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
 }
 
 .group-arrow {
@@ -939,9 +965,11 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.group-add-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .group-add-btn:hover {
+        filter: brightness(1.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .group-add-btn:active {
@@ -1018,9 +1046,11 @@ body {
     transition: all 0.2s ease;
 }
 
-.matrix-item .color-indicator:hover {
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.1);
+@media (hover: hover) {
+    .matrix-item .color-indicator:hover {
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: scale(1.1);
+    }
 }
 
 .matrix-item .matrix-apply-btn,
@@ -1041,11 +1071,13 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.matrix-item .matrix-apply-btn:hover,
-.matrix-item .matrix-info-btn:hover,
-.vector-item .matrix-info-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .matrix-item .matrix-apply-btn:hover,
+    .matrix-item .matrix-info-btn:hover,
+    .vector-item .matrix-info-btn:hover {
+        filter: brightness(1.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .matrix-item .matrix-apply-btn {
@@ -1089,9 +1121,11 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.matrix-item .remove-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .matrix-item .remove-btn:hover {
+        filter: brightness(1.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .matrix-item .remove-btn:active {
@@ -1186,9 +1220,11 @@ body {
     position: relative;
 }
 
-.vector-item .color-indicator:hover {
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.1);
+@media (hover: hover) {
+    .vector-item .color-indicator:hover {
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: scale(1.1);
+    }
 }
 
 .vector-item .color-indicator:active {
@@ -1214,9 +1250,11 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.vector-item .remove-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .vector-item .remove-btn:hover {
+        filter: brightness(1.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .vector-item .remove-btn:active {
@@ -1242,9 +1280,11 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.vector-item .form-toggle-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .vector-item .form-toggle-btn:hover {
+        filter: brightness(1.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 .vector-coordinates {
