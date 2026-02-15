@@ -130,6 +130,7 @@ class VectoramaApp {
         this.eigenvaluePanelMatrixId = null; // Track which matrix's info is showing in eigenvalue panel
         this.lineInfoPanelId = null; // Track which line's info is showing
         this.planeInfoPanelId = null; // Track which plane's info is showing
+        this.vectorInfoPanelId = null; // Track which vector's info is showing
         
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -1832,6 +1833,30 @@ class VectoramaApp {
         return String(number).split('').map(char => map[char] || char).join('');
     }
 
+    formatIndexedLabelWithSubscript(label) {
+        if (!label) return '';
+        const match = String(label).match(/^([A-Za-z]+)(\d+)$/);
+        if (!match) return String(label);
+        return `${match[1]}${this.toSubscriptNumber(match[2])}`;
+    }
+
+    formatVectorComponents(vector3) {
+        const components = this.dimension === '3d'
+            ? [vector3.x, vector3.y, vector3.z]
+            : [vector3.x, vector3.y];
+        return `(${components.map(value => value.toFixed(3)).join(', ')})`;
+    }
+
+    calculateVectorAngle(vector1, vector2) {
+        const v1 = this.getVectorPointVector(vector1);
+        const v2 = this.getVectorPointVector(vector2);
+        const mag1 = v1.length();
+        const mag2 = v2.length();
+        if (mag1 < 1e-10 || mag2 < 1e-10) return null;
+        const dot = v1.dot(v2) / (mag1 * mag2);
+        return Math.acos(Math.min(1, Math.max(-1, dot)));
+    }
+
     createVectorLabelSprite(vectorId) {
         const labelText = `V${this.toSubscriptNumber(vectorId)}`;
         const canvas = document.createElement('canvas');
@@ -2053,6 +2078,7 @@ class VectoramaApp {
         this.renderCollapsibleGroup(container, 'vectors', 'Vectors', this.vectors, this.renderVectorItem);
         
         // Update info panels if they're open
+        this.updateVectorPanel();
         this.updateLinePanel();
         this.updatePlanePanel();
         this.updateAngleVisualization();
@@ -2251,7 +2277,7 @@ class VectoramaApp {
 
         const vectorName = document.createElement('span');
         const displayName = vec.name || `V${vec.id}`;
-        vectorName.textContent = displayName;
+        vectorName.textContent = this.formatIndexedLabelWithSubscript(displayName);
         vectorName.style.fontWeight = 'bold';
         vectorName.style.fontSize = '0.85em';
         vectorName.style.minWidth = '24px';
@@ -2329,6 +2355,13 @@ class VectoramaApp {
             this.toggleVectorVisibility(vectorId);
         });
         controls.appendChild(colorIndicator);
+
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'matrix-info-btn';
+        infoBtn.title = 'Show vector information';
+        infoBtn.textContent = 'i';
+        infoBtn.addEventListener('click', () => this.showVectorInfo(vec.id));
+        controls.appendChild(infoBtn);
 
         // Remove button
         const removeBtn = document.createElement('button');
@@ -2983,6 +3016,16 @@ class VectoramaApp {
             
             this.vectors.splice(index, 1);
 
+            if (this.vectorInfoPanelId === id) {
+                this.vectorInfoPanelId = null;
+                document.getElementById('vector-info-panel').style.display = 'none';
+            }
+
+            if (this.angleVisualizationState && this.angleVisualizationState.vectorId === id) {
+                this.angleVisualizationState = null;
+                this.clearAngleVisualization();
+            }
+
             // If any single preset vertex is deleted, revert to normal vectors (no joined edges)
             if (removedPresetVertex) {
                 this.clearPresetEdges();
@@ -3159,8 +3202,10 @@ class VectoramaApp {
 
     showMatrixInfo(id) {
         // Hide other info panels
+        document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('line-info-panel').style.display = 'none';
         document.getElementById('plane-info-panel').style.display = 'none';
+        this.vectorInfoPanelId = null;
         this.lineInfoPanelId = null;
         this.planeInfoPanelId = null;
         this.angleVisualizationState = null;
@@ -3188,8 +3233,10 @@ class VectoramaApp {
     showLineInfo(id) {
         // Hide other info panels
         document.getElementById('eigenvalue-panel').style.display = 'none';
+        document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('plane-info-panel').style.display = 'none';
         this.eigenvaluePanelMatrixId = null;
+        this.vectorInfoPanelId = null;
         this.planeInfoPanelId = null;
         
         // Clear invariant spaces when switching away from matrix panel
@@ -3216,8 +3263,10 @@ class VectoramaApp {
     showPlaneInfo(id) {
         // Hide other info panels
         document.getElementById('eigenvalue-panel').style.display = 'none';
+        document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('line-info-panel').style.display = 'none';
         this.eigenvaluePanelMatrixId = null;
+        this.vectorInfoPanelId = null;
         this.lineInfoPanelId = null;
         
         // Clear invariant spaces when switching away from matrix panel
@@ -3239,6 +3288,33 @@ class VectoramaApp {
         
         // Update the plane info panel
         this.updatePlanePanel();
+    }
+
+    showVectorInfo(id) {
+        // Hide other info panels
+        document.getElementById('eigenvalue-panel').style.display = 'none';
+        document.getElementById('line-info-panel').style.display = 'none';
+        document.getElementById('plane-info-panel').style.display = 'none';
+        this.eigenvaluePanelMatrixId = null;
+        this.lineInfoPanelId = null;
+        this.planeInfoPanelId = null;
+
+        // Clear invariant spaces when switching away from matrix panel
+        this.invariantDisplayMode = 'off';
+        this.clearInvariantSpaces();
+
+        // Toggle vector info panel for this vector
+        if (this.vectorInfoPanelId === id) {
+            this.vectorInfoPanelId = null;
+        } else {
+            this.vectorInfoPanelId = id;
+        }
+
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
+
+        // Update the vector info panel
+        this.updateVectorPanel();
     }
 
 
@@ -4968,6 +5044,7 @@ class VectoramaApp {
         }
         
         // Update info panels if they're open
+        this.updateVectorPanel();
         this.updateLinePanel();
         this.updatePlanePanel();
         this.updateAngleVisualization();
@@ -6457,6 +6534,186 @@ class VectoramaApp {
         }
     }
 
+    updateVectorPanel() {
+        const panel = document.getElementById('vector-info-panel');
+        const contentDiv = document.getElementById('vector-info-content');
+        const headerSpan = document.getElementById('vector-info-header');
+
+        // Hide panel if no vector is specified
+        if (!this.vectorInfoPanelId) {
+            panel.style.display = 'none';
+            return;
+        }
+
+        // Get the vector object
+        const vector = this.vectors.find(v => v.id === this.vectorInfoPanelId);
+
+        // If vector doesn't exist (was deleted), hide panel
+        if (!vector) {
+            panel.style.display = 'none';
+            this.vectorInfoPanelId = null;
+            return;
+        }
+
+        const formatAngle = (radians) => {
+            const degrees = radians * (180 / Math.PI);
+            return `${degrees.toFixed(1)}°`;
+        };
+
+        // Update header with vector name
+        headerSpan.textContent = `${this.formatIndexedLabelWithSubscript(vector.name || `V${vector.id}`)}: Information`;
+
+        // Show panel and build content
+        panel.style.display = 'block';
+        contentDiv.innerHTML = '';
+
+        const vectorValue = this.getVectorPointVector(vector);
+        const magnitude = vectorValue.length();
+
+        const basicsSection = document.createElement('div');
+        basicsSection.style.padding = '8px';
+        basicsSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+
+        const magnitudeRow = document.createElement('div');
+        magnitudeRow.style.fontSize = '12px';
+        magnitudeRow.style.marginBottom = '6px';
+        magnitudeRow.textContent = `Magnitude: ${magnitude.toFixed(3)}`;
+        basicsSection.appendChild(magnitudeRow);
+
+        const unitRow = document.createElement('div');
+        unitRow.style.fontSize = '12px';
+        if (magnitude < 1e-10) {
+            unitRow.textContent = 'Unit vector: undefined (zero vector)';
+        } else {
+            const unit = vectorValue.clone().multiplyScalar(1 / magnitude);
+            unitRow.textContent = `Unit vector: ${this.formatVectorComponents(unit)}`;
+        }
+        basicsSection.appendChild(unitRow);
+
+        contentDiv.appendChild(basicsSection);
+
+        const otherVectors = this.vectors.filter(v => v.id !== vector.id && v.visible);
+        if (otherVectors.length > 0) {
+            const relationSection = document.createElement('div');
+            relationSection.style.padding = '8px';
+
+            const relationLabel = document.createElement('div');
+            relationLabel.textContent = 'Compare with vector:';
+            relationLabel.style.fontSize = '11px';
+            relationLabel.style.marginBottom = '6px';
+            relationLabel.style.opacity = '0.8';
+            relationSection.appendChild(relationLabel);
+
+            const relationSelect = document.createElement('select');
+            relationSelect.style.width = '100%';
+            relationSelect.style.padding = '4px';
+            relationSelect.style.fontSize = '11px';
+            relationSelect.style.background = '#2A3F5A';
+            relationSelect.style.color = 'white';
+            relationSelect.style.border = '1px solid #555';
+            relationSelect.style.borderRadius = '3px';
+            relationSelect.style.cursor = 'pointer';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select vector --';
+            relationSelect.appendChild(defaultOption);
+
+            otherVectors.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = this.formatIndexedLabelWithSubscript(v.name || `V${v.id}`);
+                relationSelect.appendChild(option);
+            });
+
+            const savedSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'vector-vector' &&
+                this.angleVisualizationState.vectorId === vector.id
+                ? this.angleVisualizationState.otherVectorId
+                : null;
+
+            if (savedSelection && otherVectors.some(v => v.id === savedSelection)) {
+                relationSelect.value = String(savedSelection);
+            }
+
+            relationSection.appendChild(relationSelect);
+
+            const relationResult = document.createElement('div');
+            relationResult.style.marginTop = '6px';
+            relationResult.style.display = 'none';
+            relationSection.appendChild(relationResult);
+
+            const updateRelationResult = (otherVectorId) => {
+                if (!otherVectorId) {
+                    relationResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
+                    return;
+                }
+
+                const otherVector = this.vectors.find(v => v.id === otherVectorId);
+                if (!otherVector) return;
+
+                const v1 = this.getVectorPointVector(vector);
+                const v2 = this.getVectorPointVector(otherVector);
+                const dot = v1.dot(v2);
+                const angle = this.calculateVectorAngle(vector, otherVector);
+                const v2LengthSq = v2.lengthSq();
+
+                let projectionText = 'Projection: undefined';
+                if (v2LengthSq > 1e-10) {
+                    const projection = v2.clone().multiplyScalar(dot / v2LengthSq);
+                    projectionText = `Projection on ${this.formatIndexedLabelWithSubscript(otherVector.name || `V${otherVector.id}`)}: ${this.formatVectorComponents(projection)}`;
+                }
+
+                relationResult.innerHTML = '';
+
+                const dotRow = document.createElement('div');
+                dotRow.style.fontSize = '12px';
+                dotRow.style.marginBottom = '4px';
+                dotRow.textContent = `Dot product: ${dot.toFixed(3)}`;
+                relationResult.appendChild(dotRow);
+
+                const angleRow = document.createElement('div');
+                angleRow.style.fontSize = '12px';
+                angleRow.style.marginBottom = '4px';
+                angleRow.textContent = `Angle: ${angle === null ? 'undefined' : formatAngle(angle)}`;
+                relationResult.appendChild(angleRow);
+
+                const projectionRow = document.createElement('div');
+                projectionRow.style.fontSize = '12px';
+                projectionRow.textContent = projectionText;
+                relationResult.appendChild(projectionRow);
+
+                relationResult.style.display = 'block';
+                this.angleVisualizationState = {
+                    type: 'vector-vector',
+                    vectorId: vector.id,
+                    otherVectorId: otherVector.id
+                };
+                this.clearAngleVisualization();
+            };
+
+            relationSelect.addEventListener('change', (e) => {
+                const selectedVectorId = e.target.value ? parseInt(e.target.value) : null;
+                updateRelationResult(selectedVectorId);
+            });
+
+            if (relationSelect.value) {
+                updateRelationResult(parseInt(relationSelect.value));
+            }
+
+            contentDiv.appendChild(relationSection);
+        } else {
+            const noVectorsMsg = document.createElement('div');
+            noVectorsMsg.style.padding = '8px';
+            noVectorsMsg.style.fontStyle = 'italic';
+            noVectorsMsg.style.opacity = '0.7';
+            noVectorsMsg.textContent = 'Add another vector to compare angle, dot product, and projection';
+            contentDiv.appendChild(noVectorsMsg);
+        }
+    }
+
     updateLinePanel() {
         const panel = document.getElementById('line-info-panel');
         const contentDiv = document.getElementById('line-info-content');
@@ -6511,9 +6768,12 @@ class VectoramaApp {
         let angleLineBadgeRef = null;
         let distanceLineSelectRef = null;
         let distanceLineResultRef = null;
+        let distancePointSelectRef = null;
+        let distancePointResultRef = null;
         
         // Get all visible planes
         const visiblePlanes = this.planes.filter(p => p.visible);
+        const visibleVectors = this.vectors.filter(v => v.visible);
         
         // Angle with other lines section
         if (otherLines.length > 0) {
@@ -6570,6 +6830,12 @@ class VectoramaApp {
                     }
                     if (distanceLineResultRef) {
                         distanceLineResultRef.style.display = 'none';
+                    }
+                    if (distancePointSelectRef) {
+                        distancePointSelectRef.value = '';
+                    }
+                    if (distancePointResultRef) {
+                        distancePointResultRef.style.display = 'none';
                     }
 
                     const otherLine = this.lines.find(l => l.id === parseInt(e.target.value));
@@ -6734,6 +7000,12 @@ class VectoramaApp {
                 if (angleLineBadgeRef) {
                     angleLineBadgeRef.style.display = 'none';
                 }
+                if (distancePointSelectRef) {
+                    distancePointSelectRef.value = '';
+                }
+                if (distancePointResultRef) {
+                    distancePointResultRef.style.display = 'none';
+                }
 
                 const otherLine = this.lines.find(l => l.id === selectedLineId);
                 if (!otherLine) return;
@@ -6797,6 +7069,139 @@ class VectoramaApp {
             }
 
             contentDiv.appendChild(distanceSection);
+        }
+
+        // Perpendicular distance to points section
+        if (visibleVectors.length > 0) {
+            const pointDistanceSection = document.createElement('div');
+            pointDistanceSection.style.padding = '8px';
+            pointDistanceSection.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+
+            const pointDistanceLabel = document.createElement('div');
+            pointDistanceLabel.textContent = 'Distance to point:';
+            pointDistanceLabel.style.fontSize = '11px';
+            pointDistanceLabel.style.marginBottom = '6px';
+            pointDistanceLabel.style.opacity = '0.8';
+            pointDistanceSection.appendChild(pointDistanceLabel);
+
+            const pointDistanceSelect = document.createElement('select');
+            pointDistanceSelect.style.width = '100%';
+            pointDistanceSelect.style.padding = '4px';
+            pointDistanceSelect.style.fontSize = '11px';
+            pointDistanceSelect.style.background = '#2A3F5A';
+            pointDistanceSelect.style.color = 'white';
+            pointDistanceSelect.style.border = '1px solid #555';
+            pointDistanceSelect.style.borderRadius = '3px';
+            pointDistanceSelect.style.cursor = 'pointer';
+
+            const pointDistanceDefaultOption = document.createElement('option');
+            pointDistanceDefaultOption.value = '';
+            pointDistanceDefaultOption.textContent = '-- Select point --';
+            pointDistanceSelect.appendChild(pointDistanceDefaultOption);
+
+            visibleVectors.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = this.formatIndexedLabelWithSubscript(v.name);
+                pointDistanceSelect.appendChild(option);
+            });
+
+            const savedPointDistanceSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'line-point-distance' &&
+                this.angleVisualizationState.lineId === line.id
+                ? this.angleVisualizationState.vectorId
+                : null;
+
+            if (savedPointDistanceSelection && visibleVectors.some(v => v.id === savedPointDistanceSelection)) {
+                pointDistanceSelect.value = String(savedPointDistanceSelection);
+            }
+
+            const applyPointDistanceSelection = (selectedVectorId) => {
+                if (!selectedVectorId) {
+                    pointDistanceResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
+                    return;
+                }
+
+                // Reset other line relation controls when point distance selection is made
+                if (angleLineSelectRef) {
+                    angleLineSelectRef.value = '';
+                }
+                if (angleLineResultRef) {
+                    angleLineResultRef.style.display = 'none';
+                }
+                if (angleLineBadgeRef) {
+                    angleLineBadgeRef.style.display = 'none';
+                }
+                if (distanceLineSelectRef) {
+                    distanceLineSelectRef.value = '';
+                }
+                if (distanceLineResultRef) {
+                    distanceLineResultRef.style.display = 'none';
+                }
+
+                const vector = this.vectors.find(v => v.id === selectedVectorId);
+                if (!vector) return;
+
+                const distanceData = this.calculatePointToLineDistance(vector, line);
+                if (!distanceData) return;
+
+                pointDistanceResult.textContent = formatDistance(distanceData.distance);
+                pointDistanceResult.style.display = 'block';
+                this.angleVisualizationState = {
+                    type: 'line-point-distance',
+                    lineId: line.id,
+                    vectorId: vector.id
+                };
+                this.updateAngleVisualization();
+            };
+
+            pointDistanceSelect.addEventListener('change', (e) => {
+                const selectedVectorId = e.target.value ? parseInt(e.target.value) : null;
+                applyPointDistanceSelection(selectedVectorId);
+            });
+
+            pointDistanceSelect.addEventListener('click', () => {
+                if (!pointDistanceSelect.value) return;
+
+                const selectedVectorId = parseInt(pointDistanceSelect.value);
+                const isAlreadyPointDistanceMode = this.angleVisualizationState &&
+                    this.angleVisualizationState.type === 'line-point-distance' &&
+                    this.angleVisualizationState.lineId === line.id &&
+                    this.angleVisualizationState.vectorId === selectedVectorId;
+
+                if (!isAlreadyPointDistanceMode) {
+                    applyPointDistanceSelection(selectedVectorId);
+                }
+            });
+
+            pointDistanceSection.appendChild(pointDistanceSelect);
+
+            const pointDistanceResult = document.createElement('div');
+            pointDistanceResult.style.marginTop = '6px';
+            pointDistanceResult.style.fontSize = '13px';
+            pointDistanceResult.style.fontWeight = 'bold';
+            pointDistanceResult.style.color = '#64B5F6';
+            pointDistanceResult.style.display = 'none';
+            pointDistanceSection.appendChild(pointDistanceResult);
+
+            distancePointSelectRef = pointDistanceSelect;
+            distancePointResultRef = pointDistanceResult;
+
+            if (pointDistanceSelect.value) {
+                const selectedId = parseInt(pointDistanceSelect.value);
+                const selectedVector = this.vectors.find(v => v.id === selectedId);
+                if (selectedVector) {
+                    const distanceData = this.calculatePointToLineDistance(selectedVector, line);
+                    if (distanceData) {
+                        pointDistanceResult.textContent = formatDistance(distanceData.distance);
+                        pointDistanceResult.style.display = 'block';
+                    }
+                }
+            }
+
+            contentDiv.appendChild(pointDistanceSection);
         }
         
         // Angle with planes section (only in 3D)
@@ -6891,14 +7296,14 @@ class VectoramaApp {
         }
         
         // No objects message
-        if (otherLines.length === 0 && (this.dimension === '2d' || visiblePlanes.length === 0)) {
+        if (otherLines.length === 0 && visibleVectors.length === 0 && (this.dimension === '2d' || visiblePlanes.length === 0)) {
             const noObjectsMsg = document.createElement('div');
             noObjectsMsg.style.padding = '8px';
             noObjectsMsg.style.fontStyle = 'italic';
             noObjectsMsg.style.opacity = '0.7';
             noObjectsMsg.textContent = this.dimension === '3d' ? 
-                'Add other lines or planes to calculate angles and distances' : 
-                'Add other lines to calculate angles and distances';
+                'Add other lines, planes, or vectors to calculate angles and distances' : 
+                'Add other lines or vectors to calculate angles and distances';
             contentDiv.appendChild(noObjectsMsg);
         }
     }
@@ -6943,12 +7348,17 @@ class VectoramaApp {
             const degrees = radians * (180 / Math.PI);
             return degrees.toFixed(1) + '°';
         };
+
+        const formatDistance = (distance) => {
+            return distance.toFixed(3);
+        };
         
         // Get other planes (excluding current one)
         const otherPlanes = this.planes.filter(p => p.id !== plane.id && p.visible);
         
         // Get all visible lines
         const visibleLines = this.lines.filter(l => l.visible);
+        const visibleVectors = this.vectors.filter(v => v.visible);
         
         // Angle with other planes section
         if (otherPlanes.length > 0) {
@@ -7132,14 +7542,106 @@ class VectoramaApp {
             
             contentDiv.appendChild(lineSection);
         }
+
+        // Perpendicular distance to points section
+        if (visibleVectors.length > 0) {
+            const pointDistanceSection = document.createElement('div');
+            pointDistanceSection.style.padding = '8px';
+
+            const pointDistanceLabel = document.createElement('div');
+            pointDistanceLabel.textContent = 'Distance to point:';
+            pointDistanceLabel.style.fontSize = '11px';
+            pointDistanceLabel.style.marginBottom = '6px';
+            pointDistanceLabel.style.opacity = '0.8';
+            pointDistanceSection.appendChild(pointDistanceLabel);
+
+            const pointDistanceSelect = document.createElement('select');
+            pointDistanceSelect.style.width = '100%';
+            pointDistanceSelect.style.padding = '4px';
+            pointDistanceSelect.style.fontSize = '11px';
+            pointDistanceSelect.style.background = '#2A3F5A';
+            pointDistanceSelect.style.color = 'white';
+            pointDistanceSelect.style.border = '1px solid #555';
+            pointDistanceSelect.style.borderRadius = '3px';
+            pointDistanceSelect.style.cursor = 'pointer';
+
+            const pointDistanceDefaultOption = document.createElement('option');
+            pointDistanceDefaultOption.value = '';
+            pointDistanceDefaultOption.textContent = '-- Select point --';
+            pointDistanceSelect.appendChild(pointDistanceDefaultOption);
+
+            visibleVectors.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = this.formatIndexedLabelWithSubscript(v.name);
+                pointDistanceSelect.appendChild(option);
+            });
+
+            const savedPointDistanceSelection = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'plane-point-distance' &&
+                this.angleVisualizationState.planeId === plane.id
+                ? this.angleVisualizationState.vectorId
+                : null;
+
+            if (savedPointDistanceSelection && visibleVectors.some(v => v.id === savedPointDistanceSelection)) {
+                pointDistanceSelect.value = String(savedPointDistanceSelection);
+            }
+
+            pointDistanceSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const selectedVector = this.vectors.find(v => v.id === parseInt(e.target.value));
+                    if (selectedVector) {
+                        const distanceData = this.calculatePointToPlaneDistance(selectedVector, plane);
+                        if (!distanceData) return;
+
+                        pointDistanceResult.textContent = formatDistance(distanceData.distance);
+                        pointDistanceResult.style.display = 'block';
+                        this.angleVisualizationState = {
+                            type: 'plane-point-distance',
+                            planeId: plane.id,
+                            vectorId: selectedVector.id
+                        };
+                        this.updateAngleVisualization();
+                    }
+                } else {
+                    pointDistanceResult.style.display = 'none';
+                    this.angleVisualizationState = null;
+                    this.clearAngleVisualization();
+                }
+            });
+
+            pointDistanceSection.appendChild(pointDistanceSelect);
+
+            const pointDistanceResult = document.createElement('div');
+            pointDistanceResult.style.marginTop = '6px';
+            pointDistanceResult.style.fontSize = '13px';
+            pointDistanceResult.style.fontWeight = 'bold';
+            pointDistanceResult.style.color = '#64B5F6';
+            pointDistanceResult.style.display = 'none';
+            pointDistanceSection.appendChild(pointDistanceResult);
+
+            if (pointDistanceSelect.value) {
+                const selectedId = parseInt(pointDistanceSelect.value);
+                const selectedVector = this.vectors.find(v => v.id === selectedId);
+                if (selectedVector) {
+                    const distanceData = this.calculatePointToPlaneDistance(selectedVector, plane);
+                    if (distanceData) {
+                        pointDistanceResult.textContent = formatDistance(distanceData.distance);
+                        pointDistanceResult.style.display = 'block';
+                    }
+                }
+            }
+
+            contentDiv.appendChild(pointDistanceSection);
+        }
         
         // No objects message
-        if (otherPlanes.length === 0 && visibleLines.length === 0) {
+        if (otherPlanes.length === 0 && visibleLines.length === 0 && visibleVectors.length === 0) {
             const noObjectsMsg = document.createElement('div');
             noObjectsMsg.style.padding = '8px';
             noObjectsMsg.style.fontStyle = 'italic';
             noObjectsMsg.style.opacity = '0.7';
-            noObjectsMsg.textContent = 'Add other planes or lines to calculate angles';
+            noObjectsMsg.textContent = 'Add other planes, lines, or vectors to calculate angles and distances';
             contentDiv.appendChild(noObjectsMsg);
         }
     }
@@ -7230,6 +7732,53 @@ class VectoramaApp {
             pointOnLine1: closestPointOnLine1,
             pointOnLine2: closestPointOnLine2,
             distance: connector.length()
+        };
+    }
+
+    getVectorPointVector(vector) {
+        const currentEnd = vector.currentEnd || vector.originalEnd;
+        return new THREE.Vector3(currentEnd.x, currentEnd.y, currentEnd.z);
+    }
+
+    calculatePointToLineDistance(vector, line) {
+        const point = this.getVectorPointVector(vector);
+        const linePoint = this.getLinePointVector(line);
+        const lineDirection = this.getLineDirectionVector(line);
+
+        if (!point || !linePoint || !lineDirection) return null;
+
+        const toPoint = point.clone().sub(linePoint);
+        const projectionLength = toPoint.dot(lineDirection);
+        const pointOnLine = linePoint.clone().add(lineDirection.clone().multiplyScalar(projectionLength));
+        const connector = point.clone().sub(pointOnLine);
+
+        return {
+            point,
+            pointOnLine,
+            distance: connector.length()
+        };
+    }
+
+    calculatePointToPlaneDistance(vector, plane) {
+        const point = this.getVectorPointVector(vector);
+        const a = plane.currentA !== undefined ? plane.currentA : plane.a;
+        const b = plane.currentB !== undefined ? plane.currentB : plane.b;
+        const c = plane.currentC !== undefined ? plane.currentC : plane.c;
+        const d = plane.currentD !== undefined ? plane.currentD : plane.d;
+
+        const normal = new THREE.Vector3(a, b, c);
+        const normalLengthSq = normal.lengthSq();
+        if (normalLengthSq < 1e-10) return null;
+
+        const signedDistance = (normal.dot(point) - d) / Math.sqrt(normalLengthSq);
+        const normalUnit = normal.clone().normalize();
+        const pointOnPlane = point.clone().sub(normalUnit.clone().multiplyScalar(signedDistance));
+
+        return {
+            point,
+            pointOnPlane,
+            distance: Math.abs(signedDistance),
+            normal: normalUnit
         };
     }
 
@@ -7522,6 +8071,176 @@ class VectoramaApp {
             }
 
             const midpoint = pointOnLine1.clone().add(pointOnLine2).multiplyScalar(0.5);
+            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
+            const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
+            if (offsetDirection.lengthSq() < 1e-8) {
+                offsetDirection.set(0, 1, 0);
+            } else {
+                offsetDirection.normalize();
+            }
+            label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
+            overlayGroup.add(label);
+            cycleMaterials.push(label.material);
+
+            overlayGroup.userData.cycleMaterials = cycleMaterials;
+            this.angleVisualization = overlayGroup;
+            this.scene.add(this.angleVisualization);
+            return;
+        }
+
+        if (state.type === 'line-point-distance') {
+            const line = this.lines.find(l => l.id === state.lineId && l.visible);
+            const vector = this.vectors.find(v => v.id === state.vectorId && v.visible);
+            if (!line || !vector) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const distanceData = this.calculatePointToLineDistance(vector, line);
+            if (!distanceData) return;
+
+            const { point, pointOnLine, distance } = distanceData;
+            const lineDirection = this.getLineDirectionVector(line);
+            if (!lineDirection) return;
+
+            const connectorDirection = point.clone().sub(pointOnLine);
+            if (connectorDirection.lengthSq() < 1e-12) return;
+            connectorDirection.normalize();
+
+            const connectorGeometry = new THREE.BufferGeometry().setFromPoints([pointOnLine.clone(), point.clone()]);
+            const connectorMaterial = new THREE.LineBasicMaterial({
+                color: new THREE.Color(overlayColor),
+                transparent: true,
+                opacity: 0.95,
+                depthTest: false,
+                depthWrite: false
+            });
+            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
+            connectorLine.renderOrder = 1003;
+            overlayGroup.add(connectorLine);
+            cycleMaterials.push(connectorMaterial);
+
+            const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
+            const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
+            const markerMaterial1 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: false });
+            const markerMaterial2 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: false });
+            const marker1 = new THREE.Mesh(markerGeometry, markerMaterial1);
+            const marker2 = new THREE.Mesh(markerGeometry, markerMaterial2);
+            marker1.position.copy(pointOnLine);
+            marker2.position.copy(point);
+            marker1.renderOrder = 1004;
+            marker2.renderOrder = 1004;
+            overlayGroup.add(marker1);
+            overlayGroup.add(marker2);
+            cycleMaterials.push(markerMaterial1, markerMaterial2);
+
+            const rightAngleSize = Math.min(
+                Math.max(0.08, radius * 0.15),
+                Math.max(0.05, distance * 0.35)
+            );
+
+            const rightAngle = this.createRightAngleMarker(
+                pointOnLine,
+                lineDirection,
+                connectorDirection,
+                rightAngleSize,
+                overlayColor
+            );
+
+            if (rightAngle) {
+                overlayGroup.add(rightAngle);
+                cycleMaterials.push(rightAngle.material);
+            }
+
+            const midpoint = pointOnLine.clone().add(point).multiplyScalar(0.5);
+            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
+            const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
+            if (offsetDirection.lengthSq() < 1e-8) {
+                offsetDirection.set(0, 1, 0);
+            } else {
+                offsetDirection.normalize();
+            }
+            label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
+            overlayGroup.add(label);
+            cycleMaterials.push(label.material);
+
+            overlayGroup.userData.cycleMaterials = cycleMaterials;
+            this.angleVisualization = overlayGroup;
+            this.scene.add(this.angleVisualization);
+            return;
+        }
+
+        if (state.type === 'plane-point-distance') {
+            const plane = this.planes.find(p => p.id === state.planeId && p.visible);
+            const vector = this.vectors.find(v => v.id === state.vectorId && v.visible);
+            if (!plane || !vector) {
+                this.angleVisualizationState = null;
+                return;
+            }
+
+            const distanceData = this.calculatePointToPlaneDistance(vector, plane);
+            if (!distanceData) return;
+
+            const { point, pointOnPlane, distance, normal } = distanceData;
+            const connectorDirection = point.clone().sub(pointOnPlane);
+            if (connectorDirection.lengthSq() < 1e-12) return;
+            connectorDirection.normalize();
+
+            const connectorGeometry = new THREE.BufferGeometry().setFromPoints([pointOnPlane.clone(), point.clone()]);
+            const connectorMaterial = new THREE.LineBasicMaterial({
+                color: new THREE.Color(overlayColor),
+                transparent: true,
+                opacity: 0.95,
+                depthTest: false,
+                depthWrite: false
+            });
+            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
+            connectorLine.renderOrder = 1003;
+            overlayGroup.add(connectorLine);
+            cycleMaterials.push(connectorMaterial);
+
+            const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
+            const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
+            const markerMaterial1 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: false });
+            const markerMaterial2 = new THREE.MeshBasicMaterial({ color: new THREE.Color(overlayColor), depthWrite: false, depthTest: false });
+            const marker1 = new THREE.Mesh(markerGeometry, markerMaterial1);
+            const marker2 = new THREE.Mesh(markerGeometry, markerMaterial2);
+            marker1.position.copy(pointOnPlane);
+            marker2.position.copy(point);
+            marker1.renderOrder = 1004;
+            marker2.renderOrder = 1004;
+            overlayGroup.add(marker1);
+            overlayGroup.add(marker2);
+            cycleMaterials.push(markerMaterial1, markerMaterial2);
+
+            const viewDirection = this.camera.position.clone().sub(pointOnPlane);
+            const inPlaneDirection = viewDirection.sub(normal.clone().multiplyScalar(viewDirection.dot(normal)));
+            if (inPlaneDirection.lengthSq() < 1e-10) {
+                const fallbackAxis = Math.abs(normal.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+                inPlaneDirection.copy(new THREE.Vector3().crossVectors(normal, fallbackAxis));
+            }
+
+            const rightAngleSize = Math.min(
+                Math.max(0.08, radius * 0.15),
+                Math.max(0.05, distance * 0.35)
+            );
+
+            const rightAngle = this.createRightAngleMarker(
+                pointOnPlane,
+                inPlaneDirection,
+                connectorDirection,
+                rightAngleSize,
+                overlayColor
+            );
+
+            if (rightAngle) {
+                overlayGroup.add(rightAngle);
+                cycleMaterials.push(rightAngle.material);
+            }
+
+            const midpoint = pointOnPlane.clone().add(point).multiplyScalar(0.5);
             const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
             const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
             const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
