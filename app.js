@@ -1209,7 +1209,50 @@ class VectoramaApp {
         }, { passive: true });
         
         // Top button row - Reset axes
-        document.getElementById('reset-axes-btn').addEventListener('click', () => this.resetView());
+        document.getElementById('reset-axes-btn').addEventListener('click', () => {
+            this.closePanelOnMobile();
+            this.resetView();
+        });
+
+        const closeEigenvaluePanelBtn = document.getElementById('close-eigenvalue-panel-btn');
+        if (closeEigenvaluePanelBtn) {
+            closeEigenvaluePanelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.eigenvaluePanelMatrixId) {
+                    this.showMatrixInfo(this.eigenvaluePanelMatrixId);
+                }
+            });
+        }
+
+        const closeVectorInfoPanelBtn = document.getElementById('close-vector-info-panel-btn');
+        if (closeVectorInfoPanelBtn) {
+            closeVectorInfoPanelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.vectorInfoPanelId) {
+                    this.showVectorInfo(this.vectorInfoPanelId);
+                }
+            });
+        }
+
+        const closeLineInfoPanelBtn = document.getElementById('close-line-info-panel-btn');
+        if (closeLineInfoPanelBtn) {
+            closeLineInfoPanelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.lineInfoPanelId) {
+                    this.showLineInfo(this.lineInfoPanelId);
+                }
+            });
+        }
+
+        const closePlaneInfoPanelBtn = document.getElementById('close-plane-info-panel-btn');
+        if (closePlaneInfoPanelBtn) {
+            closePlaneInfoPanelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.planeInfoPanelId) {
+                    this.showPlaneInfo(this.planeInfoPanelId);
+                }
+            });
+        }
         
         // Top button row - Add button opens dropdown
         document.getElementById('add-btn').addEventListener('click', (e) => {
@@ -5167,24 +5210,34 @@ class VectoramaApp {
         return this.matrices.find(m => m.id === id);
     }
 
+    closePanelOnMobile() {
+        if (window.innerWidth >= 768 || !this.panelOpen) {
+            return;
+        }
+
+        const controlPanel = document.querySelector('.control-panel');
+        const panelToggleBtn = document.getElementById('panel-toggle-btn');
+
+        if (!controlPanel || !panelToggleBtn) {
+            return;
+        }
+
+        this.panelOpen = false;
+        controlPanel.classList.add('closed');
+        panelToggleBtn.classList.remove('active');
+
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                this.onPanelResize();
+            });
+        }, 300);
+    }
+
     animateTransformation(matrixId = null) {
         if (this.isAnimating || (this.vectors.length === 0 && this.lines.length === 0 && this.planes.length === 0)) return;
         
         // Auto-close panel on mobile/narrow screens to see the animation
-        if (window.innerWidth < 768 && this.panelOpen) {
-            const controlPanel = document.querySelector('.control-panel');
-            const panelToggleBtn = document.getElementById('panel-toggle-btn');
-            this.panelOpen = false;
-            controlPanel.classList.add('closed');
-            panelToggleBtn.classList.remove('active');
-            
-            // Trigger lightweight resize after panel animation completes
-            setTimeout(() => {
-                requestAnimationFrame(() => {
-                    this.onPanelResize();
-                });
-            }, 300);
-        }
+        this.closePanelOnMobile();
         
         // Clear any existing visualizations before starting
         this.updateVectorDisplay();
