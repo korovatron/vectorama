@@ -1840,11 +1840,23 @@ class VectoramaApp {
         return `${match[1]}${this.toSubscriptNumber(match[2])}`;
     }
 
+    formatDisplayNumber(value, maxDecimals = 3) {
+        if (!Number.isFinite(value)) return String(value);
+        if (Math.abs(value) < 1e-10) return '0';
+        const rounded = Number(value.toFixed(maxDecimals));
+        return Object.is(rounded, -0) ? '0' : String(rounded);
+    }
+
+    formatDisplayAngle(radians, maxDecimals = 1) {
+        const degrees = radians * (180 / Math.PI);
+        return `${this.formatDisplayNumber(degrees, maxDecimals)}°`;
+    }
+
     formatVectorComponents(vector3) {
         const components = this.dimension === '3d'
             ? [vector3.x, vector3.y, vector3.z]
             : [vector3.x, vector3.y];
-        return `(${components.map(value => value.toFixed(3)).join(', ')})`;
+        return `(${components.map(value => this.formatDisplayNumber(value, 3)).join(', ')})`;
     }
 
     calculateVectorAngle(vector1, vector2) {
@@ -1858,7 +1870,7 @@ class VectoramaApp {
     }
 
     createVectorLabelSprite(vectorId) {
-        const labelText = `V${this.toSubscriptNumber(vectorId)}`;
+        const labelText = `V${vectorId}`;
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 128;
@@ -2277,7 +2289,7 @@ class VectoramaApp {
 
         const vectorName = document.createElement('span');
         const displayName = vec.name || `V${vec.id}`;
-        vectorName.textContent = this.formatIndexedLabelWithSubscript(displayName);
+        vectorName.textContent = displayName;
         vectorName.style.fontWeight = 'bold';
         vectorName.style.fontSize = '0.85em';
         vectorName.style.minWidth = '24px';
@@ -6306,7 +6318,7 @@ class VectoramaApp {
             if (Math.abs(val - nearestInt) < 0.0001) {
                 return nearestInt.toString();
             }
-            return val.toFixed(3);
+            return this.formatDisplayNumber(val, 3);
         };
         
         // Display all eigenvalues first
@@ -6556,12 +6568,11 @@ class VectoramaApp {
         }
 
         const formatAngle = (radians) => {
-            const degrees = radians * (180 / Math.PI);
-            return `${degrees.toFixed(1)}°`;
+            return this.formatDisplayAngle(radians, 1);
         };
 
         // Update header with vector name
-        headerSpan.textContent = `${this.formatIndexedLabelWithSubscript(vector.name || `V${vector.id}`)}: Information`;
+        headerSpan.textContent = `${vector.name || `V${vector.id}`}: Information`;
 
         // Show panel and build content
         panel.style.display = 'block';
@@ -6577,7 +6588,7 @@ class VectoramaApp {
         const magnitudeRow = document.createElement('div');
         magnitudeRow.style.fontSize = '12px';
         magnitudeRow.style.marginBottom = '6px';
-        magnitudeRow.textContent = `Magnitude: ${magnitude.toFixed(3)}`;
+        magnitudeRow.textContent = `Magnitude: ${this.formatDisplayNumber(magnitude, 3)}`;
         basicsSection.appendChild(magnitudeRow);
 
         const unitRow = document.createElement('div');
@@ -6622,7 +6633,7 @@ class VectoramaApp {
             otherVectors.forEach(v => {
                 const option = document.createElement('option');
                 option.value = v.id;
-                option.textContent = this.formatIndexedLabelWithSubscript(v.name || `V${v.id}`);
+                option.textContent = v.name || `V${v.id}`;
                 relationSelect.appendChild(option);
             });
 
@@ -6663,7 +6674,7 @@ class VectoramaApp {
                 let projectionText = 'Projection: undefined';
                 if (v2LengthSq > 1e-10) {
                     const projection = v2.clone().multiplyScalar(dot / v2LengthSq);
-                    projectionText = `Projection on ${this.formatIndexedLabelWithSubscript(otherVector.name || `V${otherVector.id}`)}: ${this.formatVectorComponents(projection)}`;
+                    projectionText = `Projection on ${otherVector.name || `V${otherVector.id}`}: ${this.formatVectorComponents(projection)}`;
                 }
 
                 relationResult.innerHTML = '';
@@ -6671,7 +6682,7 @@ class VectoramaApp {
                 const dotRow = document.createElement('div');
                 dotRow.style.fontSize = '12px';
                 dotRow.style.marginBottom = '4px';
-                dotRow.textContent = `Dot product: ${dot.toFixed(3)}`;
+                dotRow.textContent = `Dot product: ${this.formatDisplayNumber(dot, 3)}`;
                 relationResult.appendChild(dotRow);
 
                 const angleRow = document.createElement('div');
@@ -6751,12 +6762,11 @@ class VectoramaApp {
         
         // Helper function to format angles
         const formatAngle = (radians) => {
-            const degrees = radians * (180 / Math.PI);
-            return degrees.toFixed(1) + '°';
+            return this.formatDisplayAngle(radians, 1);
         };
 
         const formatDistance = (distance) => {
-            return distance.toFixed(3);
+            return this.formatDisplayNumber(distance, 3);
         };
         
         // Get other lines (excluding current one)
@@ -7102,7 +7112,7 @@ class VectoramaApp {
             visibleVectors.forEach(v => {
                 const option = document.createElement('option');
                 option.value = v.id;
-                option.textContent = this.formatIndexedLabelWithSubscript(v.name);
+                option.textContent = v.name;
                 pointDistanceSelect.appendChild(option);
             });
 
@@ -7345,12 +7355,11 @@ class VectoramaApp {
         
         // Helper function to format angles
         const formatAngle = (radians) => {
-            const degrees = radians * (180 / Math.PI);
-            return degrees.toFixed(1) + '°';
+            return this.formatDisplayAngle(radians, 1);
         };
 
         const formatDistance = (distance) => {
-            return distance.toFixed(3);
+            return this.formatDisplayNumber(distance, 3);
         };
         
         // Get other planes (excluding current one)
@@ -7573,7 +7582,7 @@ class VectoramaApp {
             visibleVectors.forEach(v => {
                 const option = document.createElement('option');
                 option.value = v.id;
-                option.textContent = this.formatIndexedLabelWithSubscript(v.name);
+                option.textContent = v.name;
                 pointDistanceSelect.appendChild(option);
             });
 
@@ -8071,7 +8080,7 @@ class VectoramaApp {
             }
 
             const midpoint = pointOnLine1.clone().add(pointOnLine2).multiplyScalar(0.5);
-            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const label = this.createAngleTextLabel(`d = ${this.formatDisplayNumber(distance, 3)}`, overlayColor);
             const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
             const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
             if (offsetDirection.lengthSq() < 1e-8) {
@@ -8154,7 +8163,7 @@ class VectoramaApp {
             }
 
             const midpoint = pointOnLine.clone().add(point).multiplyScalar(0.5);
-            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const label = this.createAngleTextLabel(`d = ${this.formatDisplayNumber(distance, 3)}`, overlayColor);
             const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
             const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
             if (offsetDirection.lengthSq() < 1e-8) {
@@ -8241,7 +8250,7 @@ class VectoramaApp {
             }
 
             const midpoint = pointOnPlane.clone().add(point).multiplyScalar(0.5);
-            const label = this.createAngleTextLabel(`d = ${distance.toFixed(3)}`, overlayColor);
+            const label = this.createAngleTextLabel(`d = ${this.formatDisplayNumber(distance, 3)}`, overlayColor);
             const cameraDirection = this.camera.position.clone().sub(midpoint).normalize();
             const offsetDirection = new THREE.Vector3().crossVectors(connectorDirection, cameraDirection);
             if (offsetDirection.lengthSq() < 1e-8) {
@@ -8396,7 +8405,7 @@ class VectoramaApp {
             labelDirection = ray1Direction.clone().applyAxisAngle(axis.normalize(), angle * 0.5).normalize();
         }
 
-        const label = this.createAngleTextLabel(`${(angle * 180 / Math.PI).toFixed(1)}°`, overlayColor);
+        const label = this.createAngleTextLabel(this.formatDisplayAngle(angle, 1), overlayColor);
         label.position.copy(origin).add(labelDirection.multiplyScalar(radius * 1.3));
         overlayGroup.add(label);
         cycleMaterials.push(label.material);
