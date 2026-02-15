@@ -883,6 +883,7 @@ class VectoramaApp {
             const vector3D = {
                 arrow: null,
                 pointSphere: null,
+                name: `V${cubeVectors.length + 1}`,
                 originalEnd: new THREE.Vector3(coords[0], coords[1], coords[2]),
                 currentEnd: new THREE.Vector3(coords[0], coords[1], coords[2]),
                 color: new THREE.Color(colorHex),
@@ -1303,6 +1304,7 @@ class VectoramaApp {
         this.vectors.forEach(vec => {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            if (vec.labelSprite) this.scene.remove(vec.labelSprite);
         });
         this.lines.forEach(line => {
             if (line.mesh) this.scene.remove(line.mesh);
@@ -1754,13 +1756,17 @@ class VectoramaApp {
         pointSphere.position.copy(new THREE.Vector3(x, y, z));
         pointSphere.renderOrder = 1; // Render after axes
 
+        const vectorId = this.nextVectorId++;
+        const vectorName = this.getNextIndexedName('V', this.vectors);
+
         const vector = {
             arrow: arrow,
             pointSphere: pointSphere,
+            name: vectorName,
             originalEnd: new THREE.Vector3(x, y, z),
             currentEnd: new THREE.Vector3(x, y, z),
             color: color,
-            id: this.nextVectorId++,
+            id: vectorId,
             visible: true
         };
 
@@ -1785,6 +1791,7 @@ class VectoramaApp {
         this.vectors.forEach(vec => {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            if (vec.labelSprite) this.scene.remove(vec.labelSprite);
         });
 
         // Clear preset face meshes
@@ -1814,6 +1821,95 @@ class VectoramaApp {
 
         this.renderPresetFaces();
         this.renderPresetEdges();
+    }
+
+    toSubscriptNumber(number) {
+        const map = {
+            '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+            '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+            '-': '₋'
+        };
+        return String(number).split('').map(char => map[char] || char).join('');
+    }
+
+    createVectorLabelSprite(vectorId) {
+        const labelText = `V${this.toSubscriptNumber(vectorId)}`;
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+
+        if (!context) return null;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const isLight = currentTheme === 'light';
+        const textColor = isLight ? '#222222' : '#FFFFFF';
+        const outlineColor = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)';
+
+        context.font = 'bold 48px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.lineWidth = 8;
+        context.strokeStyle = outlineColor;
+        context.strokeText(labelText, canvas.width / 2, canvas.height / 2);
+        context.fillStyle = textColor;
+        context.fillText(labelText, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const sprite = new THREE.Sprite(material);
+        sprite.renderOrder = 1005;
+        return sprite;
+    }
+
+    updateVectorLabelTransforms() {
+        this.vectors.forEach(vec => {
+            if (!vec.labelSprite) return;
+            if (!vec.visible) {
+                this.scene.remove(vec.labelSprite);
+                return;
+            }
+
+            const tip = vec.currentEnd.clone();
+            const distanceToCamera = Math.max(0.01, this.camera.position.distanceTo(tip));
+            const labelScale = distanceToCamera * 0.08;
+            const direction = tip.clone().normalize();
+            const hasDirection = direction.lengthSq() > 1e-10;
+            const alongVectorOffset = hasDirection ? direction.multiplyScalar(labelScale * 0.25) : new THREE.Vector3(0, 0, 0);
+
+            // Small camera-facing offset to keep label clear of arrowhead/sphere
+            const toCamera = this.camera.position.clone().sub(tip);
+            let cameraOffset = new THREE.Vector3();
+            if (toCamera.lengthSq() > 1e-10) {
+                cameraOffset = toCamera.normalize().multiplyScalar(labelScale * 0.15);
+            }
+
+            vec.labelSprite.position.copy(tip.clone().add(alongVectorOffset).add(cameraOffset));
+            vec.labelSprite.scale.set(labelScale * 1.4, labelScale * 0.7, 1);
+        });
+    }
+
+    disposeVectorLabel(vec) {
+        if (!vec.labelSprite) return;
+
+        this.scene.remove(vec.labelSprite);
+        if (vec.labelSprite.material) {
+            if (vec.labelSprite.material.map) {
+                vec.labelSprite.material.map.dispose();
+            }
+            vec.labelSprite.material.dispose();
+        }
+        vec.labelSprite = null;
     }
 
     renderPresetFaces() {
@@ -2152,6 +2248,20 @@ class VectoramaApp {
         // Coordinates container
         const coordsDiv = document.createElement('div');
         coordsDiv.className = 'vector-coordinates';
+
+        const vectorName = document.createElement('span');
+        const displayName = vec.name || `V${vec.id}`;
+        vectorName.textContent = displayName;
+        vectorName.style.fontWeight = 'bold';
+        vectorName.style.fontSize = '0.85em';
+        vectorName.style.minWidth = '24px';
+        vectorName.style.display = 'inline-block';
+        vectorName.style.lineHeight = '1';
+        vectorName.style.alignSelf = 'center';
+        vectorName.style.verticalAlign = 'middle';
+        vectorName.style.marginRight = '4px';
+        vectorName.style.opacity = '0.9';
+        coordsDiv.appendChild(vectorName);
 
         // Create input for x (i component)
         const xDiv = document.createElement('div');
@@ -2869,6 +2979,7 @@ class VectoramaApp {
             // Remove all visualizations
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            this.disposeVectorLabel(vec);
             
             this.vectors.splice(index, 1);
 
@@ -3135,6 +3246,7 @@ class VectoramaApp {
         this.vectors.forEach(vec => {
             if (vec.arrow) this.scene.remove(vec.arrow);
             if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            this.disposeVectorLabel(vec);
         });
         this.clearPresetEdges();
         this.vectors = [];
@@ -3966,13 +4078,36 @@ class VectoramaApp {
     }
 
     // Line and Plane Functions
+    getNextIndexedName(prefix, items) {
+        const usedNumbers = new Set();
+        const pattern = new RegExp(`^${prefix}(\\d+)$`);
+
+        items.forEach(item => {
+            if (!item || typeof item.name !== 'string') return;
+            const match = item.name.match(pattern);
+            if (!match) return;
+
+            const number = parseInt(match[1], 10);
+            if (!Number.isNaN(number) && number > 0) {
+                usedNumbers.add(number);
+            }
+        });
+
+        let candidate = 1;
+        while (usedNumbers.has(candidate)) {
+            candidate++;
+        }
+
+        return `${prefix}${candidate}`;
+    }
+
     addLine(ax = 0, ay = 1, az = 0, bx = 1, by = 0, bz = 0) {
         const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
         this.colorIndex++;
         
         const line = {
             id: this.nextLineId++,
-            name: `L${this.lines.length + 1}`,
+            name: this.getNextIndexedName('L', this.lines),
             point: { x: ax, y: ay, z: az },
             direction: { x: bx, y: by, z: bz },
             originalPoint: { x: ax, y: ay, z: az },
@@ -4003,7 +4138,7 @@ class VectoramaApp {
         
         const plane = {
             id: this.nextPlaneId++,
-            name: `P${this.planes.length + 1}`,
+            name: this.getNextIndexedName('P', this.planes),
             a, b, c, d,
             originalA: a, originalB: b, originalC: c, originalD: d,
             currentA: a, currentB: b, currentC: c, currentD: d,
@@ -7646,7 +7781,7 @@ class VectoramaApp {
             this.updatePointSphereScales();
             this.updateVectorThickness();
         }
-        
+
         this.updateInvariantSpaceColors();
         this.updateAngleVisualizationColorCycle();
         this.updateIntersectionVisualizationColorCycle();
