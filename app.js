@@ -376,8 +376,8 @@ class VectoramaApp {
             // Get theme-appropriate colors for axis labels
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const isLight = currentTheme === 'light';
-            const xColor = isLight ? '#cc0000' : '#ff3333'; // Darker red in light mode
-            const yColor = isLight ? '#009900' : '#33ff33'; // Darker green in light mode
+            const xColor = isLight ? '#cc0000' : '#ff0000'; // Pure red in dark mode (with outline for readability)
+            const yColor = isLight ? '#009900' : '#00ff00'; // Pure green in dark mode
             
             for (let i = -range; i <= range; i++) {
                 if (i === 0) continue; // Skip origin
@@ -444,9 +444,9 @@ class VectoramaApp {
             // Get theme-appropriate colors for axis labels
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const isLight = currentTheme === 'light';
-            const xColor = isLight ? '#cc0000' : '#ff3333'; // Darker red in light mode
-            const yColor = isLight ? '#009900' : '#33ff33'; // Darker green in light mode
-            const zColor = isLight ? '#0000cc' : '#3333ff'; // Darker blue in light mode
+            const xColor = isLight ? '#cc0000' : '#ff0000'; // Pure red in dark mode (with outline for readability)
+            const yColor = isLight ? '#009900' : '#00ff00'; // Pure green in dark mode
+            const zColor = isLight ? '#0000cc' : '#0000ff'; // Pure blue in dark mode
             
             for (let i = -range; i <= range; i++) {
                 if (i === 0) continue; // Skip origin
@@ -663,15 +663,27 @@ class VectoramaApp {
         canvas.width = 256;
         canvas.height = 128;
         const context = canvas.getContext('2d');
+
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const isLight = currentTheme === 'light';
         
         // Keep background transparent (don't fill with white)
         context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw text
-        context.fillStyle = color;
+
+        // Text setup
         context.font = 'bold 80px Arial';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
+        
+        // Draw text
+        if (!isLight) {
+            context.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+            context.lineWidth = 8;
+            context.lineJoin = 'round';
+            context.lineCap = 'round';
+            context.strokeText(formattedValue, 128, 64);
+        }
+        context.fillStyle = color;
         context.fillText(formattedValue, 128, 64);
         
         // Create sprite from canvas
