@@ -488,6 +488,14 @@ body {
     transition: background 0.2s;
 }
 
+.add-plus-icon {
+    display: block;
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
 @media (hover: hover) {
     .add-button:hover {
         background: #354d6b;
@@ -981,6 +989,8 @@ body {
 .group-add-btn {
     width: 20px;
     height: 20px;
+    -webkit-appearance: none;
+    appearance: none;
     background: #2A3F5A;
     border: 1px solid #555;
     color: var(--text-primary);
@@ -996,6 +1006,12 @@ body {
     transition: all 0.2s ease;
     flex-shrink: 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.group-add-icon {
+    display: block;
+    width: 10px;
+    height: 10px;
 }
 
 @media (hover: hover) {

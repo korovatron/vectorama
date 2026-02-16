@@ -3179,7 +3179,7 @@ class VectoramaApp {
         // Add button for quick item creation
         const addBtn = document.createElement('button');
         addBtn.className = 'group-add-btn';
-        addBtn.textContent = '+\uFE0E'; // \uFE0E forces text rendering on iOS
+        addBtn.innerHTML = '<svg class="group-add-icon" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><line x1="5" y1="1.5" x2="5" y2="8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line></svg>';
         addBtn.title = `Add ${groupName.slice(0, -1)}`; // Remove 's' from plural
         addBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent header click (collapse/expand)
