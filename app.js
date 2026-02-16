@@ -205,7 +205,7 @@ class VectoramaApp {
         this.presetFaceMeshes = this.presetFaceMeshes2D;
         
         // Debug performance tracking
-        this.debugEnabled = false; // Set to true to enable debug panel
+        this.debugEnabled = true; // Set to true to enable debug panel
         this.frameCount = 0;
         this.lastFrameTime = performance.now();
         this.fps = 0;
