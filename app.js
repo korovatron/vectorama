@@ -13,6 +13,7 @@ const introTaglineText = titleTagline ? titleTagline.dataset.introTagline : '';
 let titleSequenceRunId = 0;
 let titleSequenceTimeouts = [];
 let titleSequenceAnimation = null;
+let startAppInitTimeoutId = null;
 
 let appInitialized = false;
 
@@ -125,13 +126,30 @@ function startApp() {
 
     // Initialize the app only after the container is visible
     if (!appInitialized) {
-        const app = new VectoramaApp();
-        window.vectoramaApp = app;
-        appInitialized = true;
+        if (startAppInitTimeoutId !== null) {
+            clearTimeout(startAppInitTimeoutId);
+        }
+
+        startAppInitTimeoutId = setTimeout(() => {
+            startAppInitTimeoutId = null;
+
+            if (appInitialized || mainApp.style.display === 'none') {
+                return;
+            }
+
+            const app = new VectoramaApp();
+            window.vectoramaApp = app;
+            appInitialized = true;
+        }, 0);
     }
 }
 
 function returnToTitleScreen() {
+    if (startAppInitTimeoutId !== null) {
+        clearTimeout(startAppInitTimeoutId);
+        startAppInitTimeoutId = null;
+    }
+
     titleScreen.classList.remove('hidden');
     mainApp.style.display = 'none';
     appInitialized = false;
@@ -333,6 +351,9 @@ class VectoramaApp {
         this.lastAnalyticsEvent = 0;
         this.lastPanelEvent = 0;
         this.analyticsThrottleMs = 30000; // Send event max once per 30 seconds
+        this.isDestroyed = false;
+        this.animationFrameId = null;
+        this.eventAbortController = new AbortController();
         
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
@@ -448,8 +469,11 @@ class VectoramaApp {
         this.resizeObserver.observe(this.canvas);
         
         // Also add window resize listener
-        window.addEventListener('resize', () => {
+        this.windowResizeHandler = () => {
             this.onWindowResize();
+        };
+        window.addEventListener('resize', this.windowResizeHandler, {
+            signal: this.eventAbortController.signal
         });
     }
 
@@ -1246,6 +1270,11 @@ class VectoramaApp {
     }
 
     initEventListeners() {
+        const withSignal = (options = {}) => ({
+            ...options,
+            signal: this.eventAbortController.signal
+        });
+
         // Panel toggle button
         const panelToggleBtn = document.getElementById('panel-toggle-btn');
         const controlPanel = document.querySelector('.control-panel');
@@ -1263,11 +1292,11 @@ class VectoramaApp {
                 }
             };
             
-            controlPanel.addEventListener('click', () => trackPanelInteraction(), { passive: true });
+            controlPanel.addEventListener('click', () => trackPanelInteraction(), withSignal({ passive: true }));
             controlPanel.addEventListener('touchstart', (e) => {
                 trackPanelInteraction();
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
-            }, { passive: true });
+            }, withSignal({ passive: true }));
             
             controlPanel.addEventListener('touchmove', (e) => {
                 // If panel is not scrollable (no overflow), prevent default to stop rubber banding
@@ -1276,14 +1305,14 @@ class VectoramaApp {
                     e.preventDefault();
                 }
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
-            }, { passive: false }); // Non-passive to allow preventDefault
+            }, withSignal({ passive: false })); // Non-passive to allow preventDefault
             
             controlPanel.addEventListener('touchend', (e) => {
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
-            }, { passive: true });
+            }, withSignal({ passive: true }));
         }
         
-        panelToggleBtn.addEventListener('click', () => {
+        panelToggleBtn.onclick = () => {
             this.panelOpen = !this.panelOpen;
             controlPanel.classList.toggle('closed');
             panelToggleBtn.classList.toggle('active');
@@ -1295,7 +1324,7 @@ class VectoramaApp {
                     this.onPanelResize();
                 });
             }, 300);
-        });
+        };
         
         // Auto-close panel on canvas tap for narrow touch devices (phones in portrait)
         this.canvas.addEventListener('touchstart', (e) => {
@@ -1317,13 +1346,13 @@ class VectoramaApp {
                     });
                 }, 300);
             }
-        }, { passive: true });
+        }, withSignal({ passive: true }));
         
         // Top button row - Reset axes
         document.getElementById('reset-axes-btn').addEventListener('click', () => {
             this.closePanelOnMobile();
             this.resetView();
-        });
+        }, withSignal());
 
         const closeEigenvaluePanelBtn = document.getElementById('close-eigenvalue-panel-btn');
         if (closeEigenvaluePanelBtn) {
@@ -1332,7 +1361,7 @@ class VectoramaApp {
                 if (this.eigenvaluePanelMatrixId) {
                     this.showMatrixInfo(this.eigenvaluePanelMatrixId);
                 }
-            });
+            }, withSignal());
         }
 
         const closeVectorInfoPanelBtn = document.getElementById('close-vector-info-panel-btn');
@@ -1342,7 +1371,7 @@ class VectoramaApp {
                 if (this.vectorInfoPanelId) {
                     this.showVectorInfo(this.vectorInfoPanelId);
                 }
-            });
+            }, withSignal());
         }
 
         const closeLineInfoPanelBtn = document.getElementById('close-line-info-panel-btn');
@@ -1352,7 +1381,7 @@ class VectoramaApp {
                 if (this.lineInfoPanelId) {
                     this.showLineInfo(this.lineInfoPanelId);
                 }
-            });
+            }, withSignal());
         }
 
         const closePlaneInfoPanelBtn = document.getElementById('close-plane-info-panel-btn');
@@ -1362,7 +1391,7 @@ class VectoramaApp {
                 if (this.planeInfoPanelId) {
                     this.showPlaneInfo(this.planeInfoPanelId);
                 }
-            });
+            }, withSignal());
         }
         
         // Top button row - Add button opens dropdown
@@ -1370,7 +1399,7 @@ class VectoramaApp {
             e.stopPropagation();
             const dropdown = document.getElementById('add-dropdown');
             dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        });
+        }, withSignal());
         
         // Add dropdown - item click handler
         document.querySelectorAll('#add-dropdown .dropdown-item').forEach(item => {
@@ -1404,21 +1433,21 @@ class VectoramaApp {
                 
                 // Close dropdown
                 document.getElementById('add-dropdown').style.display = 'none';
-            });
+            }, withSignal());
         });
         
         // Close dropdown when clicking outside
         document.addEventListener('click', () => {
             document.getElementById('add-dropdown').style.display = 'none';
-        });
+        }, withSignal());
         
         // Second button row - Grid toggle
-        document.getElementById('grid-toggle-btn').addEventListener('click', () => this.toggleGrid());
+        document.getElementById('grid-toggle-btn').addEventListener('click', () => this.toggleGrid(), withSignal());
 
         // Bottom row - Intersections toggle
         const intersectionToggleBtn = document.getElementById('intersection-toggle-btn');
         if (intersectionToggleBtn) {
-            intersectionToggleBtn.addEventListener('click', () => this.toggleIntersections());
+            intersectionToggleBtn.addEventListener('click', () => this.toggleIntersections(), withSignal());
         }
 
         const returnToTitleButton = document.getElementById('return-to-title');
@@ -1446,15 +1475,15 @@ class VectoramaApp {
         }
         
         // Second button row - Dimension toggle
-        document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension());
+        document.getElementById('dimension-toggle-btn').addEventListener('click', () => this.toggleDimension(), withSignal());
         
         // Third button row - Vector display mode toggle
-        document.getElementById('vector-display-toggle-btn').addEventListener('click', () => this.toggleVectorDisplayMode());
+        document.getElementById('vector-display-toggle-btn').addEventListener('click', () => this.toggleVectorDisplayMode(), withSignal());
 
         // Bottom row - Vector size mode toggle
         const vectorSizeToggleBtn = document.getElementById('vector-size-toggle-btn');
         if (vectorSizeToggleBtn) {
-            vectorSizeToggleBtn.addEventListener('click', () => this.toggleVectorSizeMode());
+            vectorSizeToggleBtn.addEventListener('click', () => this.toggleVectorSizeMode(), withSignal());
             this.updateVectorSizeModeUI();
             this.updateInfoPanelsSizeModeUI();
         }
@@ -1469,14 +1498,14 @@ class VectoramaApp {
                 this.planes.forEach(plane => this.renderPlane(plane));
                 this.updateIntersections();
                 this.scheduleStateSave();
-            });
+            }, withSignal());
         }
 
         // Canvas drag to add vectors
-        this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
-        this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e));
+        this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e), withSignal());
+        this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e), withSignal());
+        this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e), withSignal());
+        this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e), withSignal());
         
         // Keyboard zoom and pan controls
         document.addEventListener('keydown', (e) => {
@@ -1513,10 +1542,10 @@ class VectoramaApp {
                     this.panCamera(panAmount, 0, 0);
                 }
             }
-        });
+        }, withSignal());
         
         // Prevent context menu on right click
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault(), withSignal());
 
         // Matrix input changes
         this.addMatrixInputListeners();
@@ -1565,8 +1594,56 @@ class VectoramaApp {
             input.addEventListener('input', () => {
                 // Update invariant space visualization when matrix changes
                 this.visualizeInvariantSpaces();
+            }, {
+                signal: this.eventAbortController.signal
             });
         });
+    }
+
+    cleanup() {
+        if (this.isDestroyed) {
+            return;
+        }
+
+        this.isDestroyed = true;
+
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
+        if (this.eventAbortController) {
+            this.eventAbortController.abort();
+        }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        if (this.stateSaveTimeout) {
+            clearTimeout(this.stateSaveTimeout);
+            this.stateSaveTimeout = null;
+        }
+
+        if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = null;
+        }
+
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+            this.updateTimeout = null;
+        }
+
+        this.toggleShortcutsOverlay(false);
+
+        if (this.controls) {
+            this.controls.dispose();
+        }
+
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
     }
 
     updateDropdownVisibility() {
@@ -10034,7 +10111,11 @@ class VectoramaApp {
     }
 
     animate() {
-        requestAnimationFrame(() => this.animate());
+        if (this.isDestroyed) {
+            return;
+        }
+
+        this.animationFrameId = requestAnimationFrame(() => this.animate());
 
         if (this.viewResetAnimation) {
             const now = performance.now();
@@ -10086,7 +10167,9 @@ class VectoramaApp {
         this.updateAngleVisualizationColorCycle();
         this.updateIntersectionVisualizationColorCycle();
         this.updateDebugPanel();
-        this.renderer.render(this.scene, this.camera);
+        if (!this.isDestroyed && this.renderer) {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 }
 
