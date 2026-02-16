@@ -2127,8 +2127,8 @@ class VectoramaApp {
         gridToggleButton.style.background = this.gridVisible ? '#2A3F5A' : '#1a2a3f';
         gridToggleButton.style.opacity = this.gridVisible ? '1' : '0.6';
         gridToggleButton.title = this.gridVisible
-            ? 'Grid enabled (click to disable)'
-            : 'Grid disabled (click to enable)';
+            ? 'Grid + Axis Labels enabled (click to disable)'
+            : 'Grid + Axis Labels disabled (click to enable)';
 
         if (gridIcon) {
             if (this.gridVisible) {
