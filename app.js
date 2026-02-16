@@ -280,9 +280,14 @@ class VectoramaApp {
         this.camera.lookAt(0, 0, 0);
 
         // Detect device type before creating renderer
-        const isMobilePhone = /iPhone|Android/.test(navigator.userAgent) && 
-                             !/iPad|tablet/i.test(navigator.userAgent);
-        const isTablet = /iPad|tablet/i.test(navigator.userAgent);
+        const userAgent = navigator.userAgent || '';
+        const isIPhoneOrIPod = /iPhone|iPod/.test(userAgent);
+        const isAndroid = /Android/.test(userAgent);
+        const isiPadOSDesktopUA = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        const isIPad = /iPad/.test(userAgent) || isiPadOSDesktopUA;
+        const isAndroidTablet = isAndroid && !/Mobile/.test(userAgent);
+        const isTablet = isIPad || /tablet/i.test(userAgent) || isAndroidTablet;
+        const isMobilePhone = (isIPhoneOrIPod || (isAndroid && /Mobile/.test(userAgent))) && !isTablet;
         
         // Renderer - keep antialiasing and depth buffer for stability
         this.renderer = new THREE.WebGLRenderer({ 
@@ -3263,9 +3268,9 @@ class VectoramaApp {
         
         const nameSpan = document.createElement('div');
         nameSpan.className = 'matrix-name';
-        // Hide '=' sign on mobile to save space
-        const isMobile = window.innerWidth < 768;
-        nameSpan.textContent = isMobile ? matrix.name : matrix.name + ' =';
+        // Hide '=' sign on phones only (not tablets), including phone landscape
+        const isMobilePhone = Boolean(this.deviceInfo && this.deviceInfo.isMobilePhone);
+        nameSpan.textContent = isMobilePhone ? matrix.name : matrix.name + ' =';
         matrixContent.appendChild(nameSpan);
         
         // Matrix grid with brackets
@@ -4654,6 +4659,7 @@ class VectoramaApp {
             this.invariantDisplayMode = 'off';
             this.clearInvariantSpaces();
             this.eigenvaluePanelMatrixId = id;
+            this.closePanelOnMobile();
         }
         
         // Update the eigenvalue panel
@@ -4693,6 +4699,7 @@ class VectoramaApp {
         } else {
             // Show panel for this line
             this.lineInfoPanelId = id;
+            this.closePanelOnMobile();
         }
         
         // Update the line info panel
@@ -4732,6 +4739,7 @@ class VectoramaApp {
         } else {
             // Show panel for this plane
             this.planeInfoPanelId = id;
+            this.closePanelOnMobile();
         }
         
         // Update the plane info panel
@@ -4765,6 +4773,7 @@ class VectoramaApp {
             this.vectorInfoPanelId = null;
         } else {
             this.vectorInfoPanelId = id;
+            this.closePanelOnMobile();
         }
 
         this.angleVisualizationState = null;
