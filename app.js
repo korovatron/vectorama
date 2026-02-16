@@ -304,6 +304,7 @@ class VectoramaApp {
         this.deviceInfo = {
             isMobilePhone: isMobilePhone,
             isTablet: isTablet,
+            isIPad: isIPad,
             devicePixelRatio: window.devicePixelRatio,
             clampedPixelRatio: pixelRatio,
             deviceType: isMobilePhone ? 'Mobile Phone' : (isTablet ? 'Tablet' : 'Desktop')
@@ -1265,15 +1266,21 @@ class VectoramaApp {
             }, 300);
         };
         
-        // Auto-close panel on canvas tap for narrow touch devices (phones in portrait)
+        // Auto-close panel on canvas tap for phones and iPad portrait
         this.canvas.addEventListener('touchstart', (e) => {
             // Exclude touches that start on control panel to prevent rubber banding
             if (e.target.closest('.control-panel')) {
                 return;
             }
             
-            // Only on narrow screens (phones) and when panel is open
-            if (window.innerWidth < 768 && this.panelOpen) {
+            const isPhoneNarrow = window.innerWidth < 768;
+            const isIPadPortrait = Boolean(
+                this.deviceInfo &&
+                this.deviceInfo.isIPad &&
+                window.innerHeight > window.innerWidth
+            );
+
+            if ((isPhoneNarrow || isIPadPortrait) && this.panelOpen) {
                 this.panelOpen = false;
                 controlPanel.classList.add('closed');
                 panelToggleBtn.classList.remove('active');
