@@ -1439,7 +1439,7 @@ body {
 /* Eigenvalue Info Panel (bottom-right) */
 .eigenvalue-panel {
     position: absolute;
-    bottom: 20px;
+    bottom: calc(20px + var(--safe-area-bottom, 0px));
     right: 20px;
     background: rgba(58, 79, 106, 0.95);
     border: 1px solid #555555;
@@ -1455,6 +1455,8 @@ body {
     z-index: 100;
     pointer-events: auto;
     user-select: none;
+    max-height: calc(100% - 40px - var(--safe-area-top, 0px) - var(--safe-area-bottom, 0px));
+    overflow-y: auto;
 }
 
 .eigenvalue-panel.info-panel-large {
