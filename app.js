@@ -204,11 +204,7 @@ class VectoramaApp {
         this.presetFaces = this.presetFaces2D;
         this.presetFaceMeshes = this.presetFaceMeshes2D;
         
-        // Debug performance tracking
-        this.debugEnabled = true; // Set to true to enable debug panel
-        this.frameCount = 0;
-        this.lastFrameTime = performance.now();
-        this.fps = 0;
+        // Interaction/performance state
         this.isInteracting = false; // Track when user is actively panning/rotating/zooming
         this.intersectionMarkers = []; // Store line-plane intersection markers
         this.planeIntersectionLines = []; // Store plane-plane intersection lines
@@ -246,7 +242,6 @@ class VectoramaApp {
         this.panelOpen = true; // Panel open by default
         this.initThreeJS();
         this.initEventListeners();
-        this.initDebugPanel();
         this.createGrid();
         this.createAxes();
         this.animate();
@@ -426,10 +421,25 @@ class VectoramaApp {
             this.scene.add(this.gridHelper);
             
             // Add axis numbers for 2D mode
-            // Clamp to axis limits (-100 to +100)
+            // Clamp to visible viewport and axis limits (-100 to +100)
             const labelOffset = distanceToTarget * 0.03; // Fixed screen-space offset
-            const maxRange = Math.floor(100 / spacing);
-            const range = Math.min(Math.ceil(size / 2 / spacing), maxRange);
+            const halfVisibleWidth = visibleWidth / 2;
+            const halfVisibleHeight = visibleHeight / 2;
+            const minX = Math.max(-100, this.controls.target.x - halfVisibleWidth);
+            const maxX = Math.min(100, this.controls.target.x + halfVisibleWidth);
+            const minY = Math.max(-100, this.controls.target.y - halfVisibleHeight);
+            const maxY = Math.min(100, this.controls.target.y + halfVisibleHeight);
+
+            const xStart = Math.ceil(minX / spacing);
+            const xEnd = Math.floor(maxX / spacing);
+            const yStart = Math.ceil(minY / spacing);
+            const yEnd = Math.floor(maxY / spacing);
+
+            const maxLabelsPerAxis = 30;
+            const xCount = Math.max(0, xEnd - xStart + 1);
+            const yCount = Math.max(0, yEnd - yStart + 1);
+            const xStride = Math.max(1, Math.ceil(xCount / maxLabelsPerAxis));
+            const yStride = Math.max(1, Math.ceil(yCount / maxLabelsPerAxis));
             
             // Get theme-appropriate colors for axis labels
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -437,16 +447,23 @@ class VectoramaApp {
             const xColor = isLight ? '#cc0000' : '#ff0000'; // Pure red in dark mode (with outline for readability)
             const yColor = isLight ? '#009900' : '#00ff00'; // Pure green in dark mode
             
-            for (let i = -range; i <= range; i++) {
-                if (i === 0) continue; // Skip origin
-                const value = i * spacing;
-                
+            for (let xi = xStart; xi <= xEnd; xi++) {
+                if (xi === 0) continue; // Skip origin
+                if ((xi - xStart) % xStride !== 0) continue;
+                const value = xi * spacing;
+
                 // X axis numbers (below the axis) - red for x-axis
                 const xLabel = this.createNumberLabel(value, xColor);
                 xLabel.position.set(value, -labelOffset, 0);
                 xLabel.userData = { axis: 'x', value: value };
                 this.axisNumbers.add(xLabel);
-                
+            }
+
+            for (let yi = yStart; yi <= yEnd; yi++) {
+                if (yi === 0) continue; // Skip origin
+                if ((yi - yStart) % yStride !== 0) continue;
+                const value = yi * spacing;
+
                 // Y axis numbers (left of the axis) - green for y-axis
                 const yLabel = this.createNumberLabel(value, yColor);
                 yLabel.position.set(-labelOffset, value, 0);
@@ -1131,35 +1148,6 @@ class VectoramaApp {
         
         // Update the display for 2D mode
         this.updateObjectsList();
-    }
-
-    initDebugPanel() {
-        if (!this.debugEnabled) return;
-        
-        const debugPanel = document.getElementById('debug-panel');
-        if (!debugPanel) return;
-        
-        // Show the debug panel
-        debugPanel.style.display = 'block';
-        
-        // Update device info
-        const deviceElement = document.getElementById('debug-device');
-        if (deviceElement) {
-            deviceElement.textContent = `Device: ${this.deviceInfo.deviceType}`;
-        }
-        
-        // Update pixel ratio info
-        const pixelRatioElement = document.getElementById('debug-pixelratio');
-        if (pixelRatioElement) {
-            const actual = this.deviceInfo.devicePixelRatio.toFixed(1);
-            const clamped = this.deviceInfo.clampedPixelRatio.toFixed(1);
-            if (actual === clamped) {
-                pixelRatioElement.textContent = `Pixel Ratio: ${actual}`;
-            } else {
-                pixelRatioElement.textContent = `Pixel Ratio: ${actual} → ${clamped}`;
-                pixelRatioElement.style.color = '#F39C12'; // Highlight when clamped
-            }
-        }
     }
 
     initEventListeners() {
@@ -9971,42 +9959,6 @@ class VectoramaApp {
         this.scene.add(this.angleVisualization);
     }
 
-    updateDebugPanel() {
-        if (!this.debugEnabled) return;
-        
-        const now = performance.now();
-        this.frameCount++;
-        
-        // Update interaction status indicator
-        const interactionElement = document.getElementById('debug-interaction');
-        if (interactionElement) {
-            if (this.isInteracting) {
-                interactionElement.textContent = 'Updates: PAUSED';
-                interactionElement.style.color = '#E74C3C'; // Red when paused
-            } else {
-                interactionElement.textContent = 'Updates: Normal';
-                interactionElement.style.color = '#27AE60'; // Green when normal
-            }
-        }
-        
-        // Update FPS every second
-        if (now >= this.lastFrameTime + 1000) {
-            this.fps = Math.round((this.frameCount * 1000) / (now - this.lastFrameTime));
-            this.frameCount = 0;
-            this.lastFrameTime = now;
-            
-            // Update debug display
-            const fpsElement = document.getElementById('debug-fps');
-            if (fpsElement) {
-                fpsElement.textContent = `FPS: ${this.fps}`;
-                // Color code FPS: green > 50, yellow 30-50, red < 30
-                if (this.fps > 50) fpsElement.style.color = '#27AE60';
-                else if (this.fps > 30) fpsElement.style.color = '#F39C12';
-                else fpsElement.style.color = '#E74C3C';
-            }
-        }
-    }
-
     animate() {
         if (this.isDestroyed) {
             return;
@@ -10063,7 +10015,6 @@ class VectoramaApp {
         this.updateInvariantSpaceColors();
         this.updateAngleVisualizationColorCycle();
         this.updateIntersectionVisualizationColorCycle();
-        this.updateDebugPanel();
         if (!this.isDestroyed && this.renderer) {
             this.renderer.render(this.scene, this.camera);
         }

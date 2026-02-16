@@ -1422,43 +1422,6 @@ body {
     accent-color: var(--accent-color);
 }
 
-/* Debug Panel (top-right) */
-.debug-panel {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(20, 20, 20, 0.9);
-    border: 1px solid #333333;
-    border-radius: 4px;
-    border-left: 8px solid #F39C12;
-    padding: 10px 14px;
-    min-width: 200px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    color: #FFFFFF;
-    z-index: 100;
-    pointer-events: none;
-    user-select: none;
-}
-
-.debug-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.debug-row {
-    color: #E8E8E8;
-    line-height: 1.5;
-}
-
-.debug-row strong {
-    color: #F39C12;
-    font-size: 13px;
-}
-
 /* Eigenvalue Info Panel (bottom-right) */
 .eigenvalue-panel {
     position: absolute;
@@ -1483,43 +1446,6 @@ body {
 .eigenvalue-panel.info-panel-large {
     transform: scale(1.2);
     transform-origin: bottom right;
-}
-
-/* Debug Panel */
-.debug-panel {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(20, 20, 20, 0.9);
-    border: 1px solid #333333;
-    border-radius: 4px;
-    border-left: 8px solid #F39C12;
-    padding: 10px 14px;
-    min-width: 200px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    color: #FFFFFF;
-    z-index: 100;
-    pointer-events: none;
-    user-select: none;
-}
-
-.debug-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.debug-row {
-    color: #E8E8E8;
-    line-height: 1.5;
-}
-
-.debug-row strong {
-    color: #F39C12;
-    font-size: 13px;
 }
 
 .eigenvalue-content {
