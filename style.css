@@ -1385,7 +1385,7 @@ body {
 /* Canvas Container */
 .canvas-container {
     width: 100%;
-    height: var(--actual-vh, 100vh);
+    height: 100vh;
     position: relative;
     background: var(--canvas-bg);
     overscroll-behavior: none;
@@ -1439,7 +1439,7 @@ body {
 /* Eigenvalue Info Panel (bottom-right) */
 .eigenvalue-panel {
     position: absolute;
-    bottom: calc(20px + var(--safe-area-bottom, 0px));
+    bottom: 20px;
     right: 20px;
     background: rgba(58, 79, 106, 0.95);
     border: 1px solid #555555;
