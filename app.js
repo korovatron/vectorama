@@ -6624,7 +6624,7 @@ class VectoramaApp {
 
     updateNumberLabelScales() {
         // Update all number label scales and positions to maintain consistent screen size and distance
-        if (!this.axisNumbers) return;
+        if (!this.axisNumbers || !this.gridVisible || !this.axisNumbers.visible || this.axisNumbers.children.length === 0) return;
         
         const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
         const scale = this.getAxisNumberLabelScale(distanceToTarget);
