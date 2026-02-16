@@ -1163,7 +1163,7 @@ class VectoramaApp {
         // Track panel interactions for analytics
         if (controlPanel) {
             let penPanelPointer = null;
-            const penActionSelector = 'button, .dropdown-item, .color-indicator, [role="button"]';
+            const penActionSelector = 'button, .dropdown-item, .color-indicator, .object-group-header, [role="button"]';
 
             const trackPanelInteraction = () => {
                 const now = Date.now();
