@@ -1163,7 +1163,7 @@ class VectoramaApp {
         // Track panel interactions for analytics
         if (controlPanel) {
             let penPanelPointer = null;
-            const penActionSelector = 'button, .dropdown-item, .color-indicator, .object-group-header, [role="button"]';
+            const penActionSelector = 'button, .dropdown-item, .color-indicator, .object-group-header, input, textarea, select, [contenteditable="true"], [role="button"]';
 
             const trackPanelInteraction = () => {
                 const now = Date.now();
@@ -1222,6 +1222,11 @@ class VectoramaApp {
                 if (isTap && sameTarget && penPanelPointer.target) {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    if (typeof penPanelPointer.target.focus === 'function') {
+                        penPanelPointer.target.focus({ preventScroll: true });
+                    }
+
                     penPanelPointer.target.click();
                 }
 
