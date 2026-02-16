@@ -3256,9 +3256,9 @@ class VectoramaApp {
         
         const nameSpan = document.createElement('div');
         nameSpan.className = 'matrix-name';
-        // Hide '=' sign on phones only (not tablets), including phone landscape
-        const isMobilePhone = Boolean(this.deviceInfo && this.deviceInfo.isMobilePhone);
-        nameSpan.textContent = isMobilePhone ? matrix.name : matrix.name + ' =';
+        // Hide '=' sign on mobile touch devices (phones and tablets), including iPad
+        const isMobileTouchDevice = Boolean(this.deviceInfo && (this.deviceInfo.isMobilePhone || this.deviceInfo.isTablet));
+        nameSpan.textContent = isMobileTouchDevice ? matrix.name : matrix.name + ' =';
         matrixContent.appendChild(nameSpan);
         
         // Matrix grid with brackets
