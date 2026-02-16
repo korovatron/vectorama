@@ -1438,9 +1438,9 @@ body {
 
 /* Eigenvalue Info Panel (bottom-right) */
 .eigenvalue-panel {
-    position: absolute;
-    bottom: calc(20px + var(--safe-area-bottom, 0px));
-    right: 20px;
+    position: fixed;
+    bottom: max(12px, calc(var(--safe-area-bottom, 0px) + 12px));
+    right: max(20px, calc(var(--safe-area-right, 0px) + 20px));
     background: rgba(58, 79, 106, 0.95);
     border: 1px solid #555555;
     border-radius: 4px;
@@ -1455,8 +1455,14 @@ body {
     z-index: 100;
     pointer-events: auto;
     user-select: none;
-    max-height: calc(100% - 40px - var(--safe-area-top, 0px) - var(--safe-area-bottom, 0px));
+    max-height: calc(100dvh - 32px - var(--safe-area-top, 0px) - var(--safe-area-bottom, 0px));
     overflow-y: auto;
+}
+
+@supports not (height: 100dvh) {
+    .eigenvalue-panel {
+        max-height: calc(100vh - 32px - var(--safe-area-top, 0px) - var(--safe-area-bottom, 0px));
+    }
 }
 
 .eigenvalue-panel.info-panel-large {
