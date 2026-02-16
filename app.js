@@ -5,120 +5,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const titleScreen = document.getElementById('title-screen');
 const mainApp = document.getElementById('main-app');
 const startBtn = document.getElementById('start-btn');
-const titleLogo = document.querySelector('.title-logo');
-const titleTagline = document.querySelector('.title-tagline');
-const defaultTaglineText = titleTagline ? titleTagline.textContent : '';
-const introTaglineText = titleTagline ? titleTagline.dataset.introTagline : '';
-
-let titleSequenceRunId = 0;
-let titleSequenceTimeouts = [];
-let titleSequenceAnimation = null;
 let startAppInitTimeoutId = null;
 
 let appInitialized = false;
-
-function clearTitleSequenceTimers() {
-    for (const timeoutId of titleSequenceTimeouts) {
-        clearTimeout(timeoutId);
-    }
-    titleSequenceTimeouts = [];
-}
-
-function animateTitleTimeline(initialTransform, unshearedTransform, uprightTransform, runId) {
-    return new Promise((resolve) => {
-        if (!titleLogo || runId !== titleSequenceRunId) {
-            resolve(false);
-            return;
-        }
-
-        if (titleSequenceAnimation) {
-            titleSequenceAnimation.cancel();
-            titleSequenceAnimation = null;
-        }
-
-        titleLogo.style.willChange = 'transform';
-        titleLogo.style.transform = initialTransform;
-
-        const totalDuration = 5500;
-        const ease = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
-
-        const animation = titleLogo.animate(
-            [
-                { transform: initialTransform, offset: 0, easing: 'linear' },
-                { transform: initialTransform, offset: 2000 / totalDuration, easing: ease },
-                { transform: unshearedTransform, offset: 2500 / totalDuration, easing: 'linear' },
-                { transform: unshearedTransform, offset: 3500 / totalDuration, easing: ease },
-                { transform: uprightTransform, offset: 4000 / totalDuration, easing: 'linear' },
-                { transform: uprightTransform, offset: 5000 / totalDuration, easing: ease },
-                { transform: 'none', offset: 1 }
-            ],
-            {
-                duration: totalDuration,
-                easing: 'linear',
-                fill: 'forwards'
-            }
-        );
-
-        titleSequenceAnimation = animation;
-
-        animation.onfinish = () => {
-            if (runId !== titleSequenceRunId) {
-                resolve(false);
-                return;
-            }
-
-            titleLogo.style.transform = 'none';
-            titleLogo.style.willChange = 'auto';
-            titleSequenceAnimation = null;
-            resolve(true);
-        };
-
-        animation.oncancel = () => {
-            resolve(false);
-        };
-    });
-}
-
-async function replayTitleSequence() {
-    if (!titleLogo || !titleTagline) {
-        return;
-    }
-
-    titleSequenceRunId += 1;
-    const runId = titleSequenceRunId;
-
-    clearTitleSequenceTimers();
-    if (titleSequenceAnimation) {
-        titleSequenceAnimation.cancel();
-        titleSequenceAnimation = null;
-    }
-
-    if (introTaglineText) {
-        titleTagline.textContent = introTaglineText;
-    } else {
-        titleTagline.textContent = defaultTaglineText;
-    }
-
-    titleLogo.style.animation = 'none';
-    titleLogo.style.willChange = 'transform';
-
-    const initialTransform = 'rotate(180deg) scaleX(-1) skewX(45deg)';
-    const unshearedTransform = 'rotate(180deg) scaleX(-1) skewX(0deg)';
-    const uprightTransform = 'rotate(0deg) scaleX(-1) skewX(0deg)';
-
-    titleLogo.style.transform = initialTransform;
-
-    if (!(await animateTitleTimeline(initialTransform, unshearedTransform, uprightTransform, runId))) return;
-
-    titleLogo.style.animation = 'none';
-    titleLogo.style.transform = 'none';
-    titleLogo.style.willChange = 'auto';
-    titleTagline.textContent = defaultTaglineText;
-}
-
-if (titleLogo && titleTagline) {
-    replayTitleSequence();
-}
 
 function startApp() {
     titleScreen.classList.add('hidden');
@@ -153,7 +42,6 @@ function returnToTitleScreen() {
     titleScreen.classList.remove('hidden');
     mainApp.style.display = 'none';
     appInitialized = false;
-    replayTitleSequence();
 
     if (window.vectoramaApp && window.vectoramaApp.cleanup) {
         window.vectoramaApp.cleanup();
