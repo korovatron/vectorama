@@ -1162,6 +1162,9 @@ class VectoramaApp {
         
         // Track panel interactions for analytics
         if (controlPanel) {
+            let penPanelPointer = null;
+            const penActionSelector = 'button, .dropdown-item, .color-indicator, [role="button"]';
+
             const trackPanelInteraction = () => {
                 const now = Date.now();
                 if (typeof gtag !== 'undefined' && (now - this.lastPanelEvent) >= this.analyticsThrottleMs) {
@@ -1177,6 +1180,56 @@ class VectoramaApp {
             controlPanel.addEventListener('touchstart', (e) => {
                 trackPanelInteraction();
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
+            }, withSignal({ passive: true }));
+
+            controlPanel.addEventListener('pointerdown', (e) => {
+                if (e.pointerType !== 'pen') {
+                    return;
+                }
+
+                const actionTarget = e.target && typeof e.target.closest === 'function'
+                    ? e.target.closest(penActionSelector)
+                    : null;
+
+                if (!actionTarget) {
+                    penPanelPointer = null;
+                    return;
+                }
+
+                penPanelPointer = {
+                    id: e.pointerId,
+                    x: e.clientX,
+                    y: e.clientY,
+                    target: actionTarget
+                };
+            }, withSignal({ passive: true }));
+
+            controlPanel.addEventListener('pointerup', (e) => {
+                if (e.pointerType !== 'pen' || !penPanelPointer || penPanelPointer.id !== e.pointerId) {
+                    return;
+                }
+
+                const actionTarget = e.target && typeof e.target.closest === 'function'
+                    ? e.target.closest(penActionSelector)
+                    : null;
+                const dx = e.clientX - penPanelPointer.x;
+                const dy = e.clientY - penPanelPointer.y;
+                const tapThreshold = 12;
+                const isTap = (dx * dx + dy * dy) <= (tapThreshold * tapThreshold);
+                const sameTarget = actionTarget === penPanelPointer.target ||
+                    (penPanelPointer.target && penPanelPointer.target.contains(e.target));
+
+                if (isTap && sameTarget && penPanelPointer.target) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    penPanelPointer.target.click();
+                }
+
+                penPanelPointer = null;
+            }, withSignal({ passive: false }));
+
+            controlPanel.addEventListener('pointercancel', () => {
+                penPanelPointer = null;
             }, withSignal({ passive: true }));
             
             controlPanel.addEventListener('touchmove', (e) => {
