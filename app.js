@@ -7957,6 +7957,73 @@ class VectoramaApp {
         trDiv.appendChild(trLabelDiv);
         trDiv.appendChild(trValueDiv);
         valuesDiv.appendChild(trDiv);
+
+        const buildCharacteristicEquation = () => {
+            const epsilon = 1e-8;
+
+            const formatTerm = (coefficient, power, isFirstTerm = false) => {
+                if (Math.abs(coefficient) < epsilon) return '';
+
+                const sign = coefficient < 0 ? '−' : '+';
+                const absCoeff = Math.abs(coefficient);
+                const needsCoeff = power === 0 || Math.abs(absCoeff - 1) > epsilon;
+
+                let termBody = '';
+                if (power === 0) {
+                    termBody = formatNum(absCoeff);
+                } else if (power === 1) {
+                    termBody = needsCoeff ? `${formatNum(absCoeff)}λ` : 'λ';
+                } else {
+                    termBody = needsCoeff ? `${formatNum(absCoeff)}λ${power === 2 ? '²' : '³'}` : `λ${power === 2 ? '²' : '³'}`;
+                }
+
+                if (isFirstTerm) {
+                    return coefficient < 0 ? `−${termBody}` : termBody;
+                }
+
+                return ` ${sign} ${termBody}`;
+            };
+
+            if (this.dimension === '2d') {
+                const leading = 'λ²';
+                const linear = formatTerm(-trace, 1);
+                const constant = formatTerm(determinant, 0);
+                return `${leading}${linear}${constant}`;
+            }
+
+            const a = selectedMatrix.values[0][0];
+            const b = selectedMatrix.values[0][1];
+            const c = selectedMatrix.values[0][2];
+            const d = selectedMatrix.values[1][0];
+            const e = selectedMatrix.values[1][1];
+            const f = selectedMatrix.values[1][2];
+            const g = selectedMatrix.values[2][0];
+            const h = selectedMatrix.values[2][1];
+            const i = selectedMatrix.values[2][2];
+
+            const secondCoeff = a * e + a * i + e * i - b * d - c * g - f * h;
+
+            const leading = 'λ³';
+            const quad = formatTerm(-trace, 2);
+            const linear = formatTerm(secondCoeff, 1);
+            const constant = formatTerm(-determinant, 0);
+            return `${leading}${quad}${linear}${constant}`;
+        };
+
+        const charDiv = document.createElement('div');
+        charDiv.className = 'eigenvalue-item char-equation-row';
+
+        const charLabelDiv = document.createElement('div');
+        charLabelDiv.className = 'eigenvalue-label';
+        charLabelDiv.textContent = 'p(λ)';
+
+        const charValueDiv = document.createElement('div');
+        charValueDiv.className = 'eigenvalue-value eigenvector';
+        charValueDiv.textContent = buildCharacteristicEquation();
+
+        charDiv.appendChild(charLabelDiv);
+        charDiv.appendChild(charValueDiv);
+        valuesDiv.appendChild(charDiv);
         
         // Only show eigenvectors section if we have real eigenvectors
         const hasRealEigenvectors = eigendata.some(e => !e.isComplex && e.vector);

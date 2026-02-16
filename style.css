@@ -1520,6 +1520,10 @@ body {
     gap: 12px;
 }
 
+.char-equation-row {
+    align-items: center;
+}
+
 .eigenvalue-label {
     font-weight: bold;
     color: #FFFFFF;
