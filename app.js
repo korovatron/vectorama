@@ -493,11 +493,11 @@ class VectoramaApp {
             this.scene.add(this.gridHelper);
             
             // Add axis numbers for 3D mode
-            // Clamp to axis limits (-100 to +100)
+            // Keep labels aligned to visible 3D grid extent for performance
             const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
             const labelOffset = distanceToTarget * 0.03; // Fixed screen-space offset
             const maxRange = Math.floor(100 / spacing);
-            const range = maxRange;
+            const range = Math.min(maxRange, halfGridSize);
             
             // Get theme-appropriate colors for axis labels
             const currentTheme = document.documentElement.getAttribute('data-theme');
