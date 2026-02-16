@@ -365,6 +365,11 @@ body {
     .top-btn:hover {
         background: #354d6b;
     }
+
+    #grid-toggle-btn:hover,
+    #intersection-toggle-btn:hover {
+        background: #354d6b !important;
+    }
 }
 
 .dim-option {
