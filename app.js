@@ -4728,7 +4728,11 @@ class VectoramaApp {
         // If panel is visible, update it to show this matrix's info
         if (isPanelVisible) {
             this.eigenvaluePanelMatrixId = id;
-            this.updateEigenvaluePanel(id);
+            if (this.invariantDisplayMode !== 'off') {
+                this.visualizeInvariantSpaces(id);
+            } else {
+                this.updateEigenvaluePanel(id);
+            }
         }
         
         // Apply this matrix transformation to all vectors
