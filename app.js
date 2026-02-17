@@ -1496,7 +1496,7 @@ class VectoramaApp {
             planeExtentSlider.value = String(this.planeExtent);
             planeExtentSlider.addEventListener('input', (e) => {
                 const nextExtent = this.toFiniteNumber(e.target.value, 10);
-                this.planeExtent = Math.max(5, Math.min(20, nextExtent));
+                this.planeExtent = Math.max(5, Math.min(100, nextExtent));
                 this.updatePlaneExtentControl();
                 this.planes.forEach(plane => this.renderPlane(plane));
                 this.updateIntersections();
@@ -2290,7 +2290,7 @@ class VectoramaApp {
         const hasVisiblePlane = this.dimension === '3d' && this.planes.some(plane => plane.visible);
         control.style.display = hasVisiblePlane ? 'block' : 'none';
 
-        const clampedExtent = Math.max(5, Math.min(20, this.toFiniteNumber(this.planeExtent, 10)));
+        const clampedExtent = Math.max(5, Math.min(100, this.toFiniteNumber(this.planeExtent, 10)));
         this.planeExtent = clampedExtent;
         slider.value = String(clampedExtent);
         valueLabel.textContent = String(clampedExtent);
@@ -5950,7 +5950,7 @@ class VectoramaApp {
             this.scene.remove(plane.mesh);
         }
 
-        const extent = Math.max(5, Math.min(20, this.toFiniteNumber(this.planeExtent, 10)));
+        const extent = Math.max(5, Math.min(100, this.toFiniteNumber(this.planeExtent, 10)));
         const geometry = new THREE.PlaneGeometry(extent * 2, extent * 2);
         const material = new THREE.MeshBasicMaterial({ 
             color: new THREE.Color(plane.color),
