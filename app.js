@@ -171,6 +171,7 @@ class VectoramaApp {
         this.intersectionsVisible = true; // Intersection markers/lines visibility state
         this.planeExtent = 10; // Plane half-size in each direction
         this.currentGridSpacing = 1; // Current grid spacing
+        this.last2DLabelBounds = null; // Track last generated 2D label coverage
         this.isResizing = false; // Flag to prevent animation loop interference
         this.resizeTimeout = null; // For debouncing
         this.updateTimeout = null; // For debouncing grid/axes updates during zoom
@@ -431,6 +432,8 @@ class VectoramaApp {
             const minY = Math.max(-100, this.controls.target.y - halfVisibleHeight);
             const maxY = Math.min(100, this.controls.target.y + halfVisibleHeight);
 
+            this.last2DLabelBounds = { minX, maxX, minY, maxY };
+
             const xStart = Math.ceil(minX / spacing);
             const xEnd = Math.floor(maxX / spacing);
             const yStart = Math.ceil(minY / spacing);
@@ -475,6 +478,7 @@ class VectoramaApp {
             this.axisNumbers.visible = this.gridVisible;
             this.scene.add(this.axisNumbers);
         } else {
+            this.last2DLabelBounds = null;
             // 3D: Create grid plane at y=0 (XZ plane - ground)
             this.gridHelper = new THREE.Group();
             const gridSize = 30; // Grid extent
@@ -590,6 +594,37 @@ class VectoramaApp {
         if (optimalSpacing !== this.currentGridSpacing) {
             this.lastUpdateTime = now;
             this.createGrid(optimalSpacing);
+            return;
+        }
+
+        // In 2D, also refresh labels when viewport extends beyond currently labeled bounds
+        // even if spacing itself has not changed.
+        if (this.dimension === '2d' && this.last2DLabelBounds && this.currentGridSpacing > 0) {
+            const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+            const fov = this.camera.fov * Math.PI / 180;
+            const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+            const visibleHeight = 2 * distanceToTarget * Math.tan(fov / 2);
+            const visibleWidth = visibleHeight * aspect;
+            const halfVisibleWidth = visibleWidth / 2;
+            const halfVisibleHeight = visibleHeight / 2;
+
+            const minX = Math.max(-100, this.controls.target.x - halfVisibleWidth);
+            const maxX = Math.min(100, this.controls.target.x + halfVisibleWidth);
+            const minY = Math.max(-100, this.controls.target.y - halfVisibleHeight);
+            const maxY = Math.min(100, this.controls.target.y + halfVisibleHeight);
+
+            const margin = this.currentGridSpacing;
+            const bounds = this.last2DLabelBounds;
+            const needsRefresh =
+                minX < bounds.minX + margin ||
+                maxX > bounds.maxX - margin ||
+                minY < bounds.minY + margin ||
+                maxY > bounds.maxY - margin;
+
+            if (needsRefresh) {
+                this.lastUpdateTime = now;
+                this.createGrid(this.currentGridSpacing);
+            }
         }
     }
 
