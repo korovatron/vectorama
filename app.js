@@ -488,7 +488,8 @@ class VectoramaApp {
             const lineMaterial = new THREE.LineBasicMaterial({ 
                 color: 0x888888,
                 transparent: true,
-                opacity: 0.5
+                opacity: 0.5,
+                depthWrite: false
             });
             
             // XZ plane (y=0) - lines parallel to X and Z
@@ -859,12 +860,12 @@ class VectoramaApp {
 
     getInvariantLineRadius() {
         const vectorThickness = this.getVectorArrowThickness();
-        const ratio = this.dimension === '2d' ? 0.2 : 0.24;
+        const ratio = this.dimension === '2d' ? 0.2 : 0.12;
         return vectorThickness.headWidth * ratio;
     }
 
     getInvariantLineRenderOrder() {
-        return this.dimension === '2d' ? 1002 : 10;
+        return this.dimension === '2d' ? 1002 : 0;
     }
 
     getPointSpriteTexture() {
@@ -945,14 +946,14 @@ class VectoramaApp {
         const material = new THREE.MeshBasicMaterial({ 
             color: color,
             depthWrite: this.dimension === '2d',
-            depthTest: true,
+            depthTest: this.dimension === '2d',
             polygonOffset: true,
             polygonOffsetFactor: 2,
             polygonOffsetUnits: 2
         });
         
         const cylinder = new THREE.Mesh(geometry, material);
-        cylinder.renderOrder = this.dimension === '2d' ? 0 : 0;
+        cylinder.renderOrder = this.dimension === '2d' ? 0 : -1;
         
         // Position at midpoint
         const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
@@ -1038,7 +1039,6 @@ class VectoramaApp {
         );
         const material = new THREE.MeshBasicMaterial({ 
             color: color,
-            transparent: this.dimension === '3d',
             depthWrite: true,
             depthTest: true,
             polygonOffset: true,
@@ -1047,7 +1047,9 @@ class VectoramaApp {
         });
 
         if (this.dimension === '3d') {
-            material.depthWrite = false;
+            material.polygonOffset = false;
+            material.polygonOffsetFactor = 0;
+            material.polygonOffsetUnits = 0;
         }
         const shaft = new THREE.Mesh(shaftGeometry, material);
         shaft.position.copy(direction.clone().multiplyScalar(shaftLength / 2));
@@ -1071,7 +1073,7 @@ class VectoramaApp {
         
         group.add(shaft, head);
         group.position.copy(origin);
-        group.renderOrder = this.dimension === '3d' ? 20 : 1; // In 3D, force vectors above axes/eigenlines
+        group.renderOrder = 1; // Render after axes while preserving normal depth occlusion
         
         return group;
     }
@@ -3178,7 +3180,7 @@ class VectoramaApp {
         const radialSegments = this.dimension === '2d' ? 3 : 16;
         const edgeColor = this.getPresetEdgeColor();
         const isSmallMode = this.vectorSizeMode === 'small';
-        const useOverlayEdges = isSmallMode;
+        const useOverlayEdges = this.dimension === '2d' && isSmallMode;
 
         this.presetEdges.forEach(edge => {
             const startVec = this.vectors.find(v => v.id === edge.startId);
@@ -3213,6 +3215,12 @@ class VectoramaApp {
                 polygonOffsetFactor: useOverlayEdges ? -6 : -4,
                 polygonOffsetUnits: useOverlayEdges ? -6 : -4
             });
+
+            if (this.dimension === '3d') {
+                material.polygonOffset = false;
+                material.polygonOffsetFactor = 0;
+                material.polygonOffsetUnits = 0;
+            }
 
             const cylinder = new THREE.Mesh(geometry, material);
             cylinder.renderOrder = useOverlayEdges ? 1003 : 2;
@@ -6163,9 +6171,11 @@ class VectoramaApp {
             const material = new THREE.MeshBasicMaterial(materialProps);
 
             if (this.dimension === '3d') {
-                material.polygonOffset = true;
-                material.polygonOffsetFactor = 4;
-                material.polygonOffsetUnits = 4;
+                material.depthTest = true;
+                material.depthWrite = true;
+                material.polygonOffset = false;
+                material.polygonOffsetFactor = 0;
+                material.polygonOffsetUnits = 0;
             }
             
             const cylinder = new THREE.Mesh(geometry, material);
@@ -7512,8 +7522,13 @@ class VectoramaApp {
                 }
 
                 material.polygonOffset = true;
-                material.polygonOffsetFactor = 4;
-                material.polygonOffsetUnits = 4;
+                material.polygonOffsetFactor = 12;
+                material.polygonOffsetUnits = 12;
+
+                if (this.dimension === '3d') {
+                    material.depthTest = false;
+                    material.depthWrite = false;
+                }
                 
                 const cylinder = new THREE.Mesh(geometry, material);
                 
@@ -7549,7 +7564,7 @@ class VectoramaApp {
                         transparent: true,
                         opacity: 0.95,
                         depthTest: true,
-                        depthWrite: false
+                        depthWrite: true
                     });
                 } else {
                     material = new THREE.MeshBasicMaterial({
@@ -7557,9 +7572,13 @@ class VectoramaApp {
                         transparent: true,
                         opacity: 0.95,
                         depthTest: true,
-                        depthWrite: false
+                        depthWrite: true
                     });
                 }
+
+                material.polygonOffset = false;
+                material.polygonOffsetFactor = 0;
+                material.polygonOffsetUnits = 0;
                 
                 const cylinder = new THREE.Mesh(geometry, material);
                 
@@ -7657,8 +7676,13 @@ class VectoramaApp {
             }
 
             material.polygonOffset = true;
-            material.polygonOffsetFactor = 4;
-            material.polygonOffsetUnits = 4;
+            material.polygonOffsetFactor = 12;
+            material.polygonOffsetUnits = 12;
+
+            if (this.dimension === '3d') {
+                material.depthTest = false;
+                material.depthWrite = false;
+            }
             
             const cylinder = new THREE.Mesh(geometry, material);
             
@@ -7708,7 +7732,7 @@ class VectoramaApp {
                     transparent: true,
                     opacity: 0.95,
                     depthTest: true,
-                    depthWrite: false
+                    depthWrite: true
                 });
             } else {
                 // Use bright magenta for pulse mode with higher opacity
@@ -7717,9 +7741,13 @@ class VectoramaApp {
                     transparent: true,
                     opacity: 0.95,
                     depthTest: true,
-                    depthWrite: false
+                    depthWrite: true
                 });
             }
+
+            material.polygonOffset = false;
+            material.polygonOffsetFactor = 0;
+            material.polygonOffsetUnits = 0;
             
             const cylinder = new THREE.Mesh(geometry, material);
             
