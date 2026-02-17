@@ -857,6 +857,16 @@ class VectoramaApp {
         };
     }
 
+    getInvariantLineRadius() {
+        const vectorThickness = this.getVectorArrowThickness();
+        const ratio = this.dimension === '2d' ? 0.2 : 0.24;
+        return vectorThickness.headWidth * ratio;
+    }
+
+    getInvariantLineRenderOrder() {
+        return this.dimension === '2d' ? 1002 : 1;
+    }
+
     getPointSpriteTexture() {
         if (this.pointSpriteTexture) {
             return this.pointSpriteTexture;
@@ -977,6 +987,7 @@ class VectoramaApp {
 
             const material = new THREE.MeshBasicMaterial({
                 color: color,
+                transparent: true,
                 depthWrite: false,
                 depthTest: false,
                 side: THREE.DoubleSide,
@@ -2647,6 +2658,7 @@ class VectoramaApp {
         this.updateVectorSizeModeUI();
         this.updateInfoPanelsSizeModeUI();
         this.updateVectorThickness(true);
+        this.updateInvariantLineThickness();
         this.updatePointSphereScales();
         this.updateNumberLabelScales();
         this.scheduleStateSave();
@@ -6103,10 +6115,8 @@ class VectoramaApp {
     updateInvariantLineThickness() {
         // Recreate all invariant lines with updated thickness based on current camera distance
         if (this.isAnimating) return; // Don't update during animation
-        
-        const thickness = this.getArrowThickness();
-        const lineRadiusMultiplier = this.dimension === '2d' ? 1.8 : 2.5;
-        const lineRadius = thickness.headWidth * 0.15 * lineRadiusMultiplier;
+
+        const lineRadius = this.getInvariantLineRadius();
         const lineLength = 200;
         
         this.invariantLines.forEach(lineObj => {
@@ -6144,8 +6154,8 @@ class VectoramaApp {
             quaternion.setFromUnitVectors(yAxis, direction);
             cylinder.quaternion.copy(quaternion);
             
-            // Ensure invariant lines render on top of axes when overlapping
-            cylinder.renderOrder = 1;
+            // Ensure invariant lines stay below vectors in 2D, while remaining above axes
+            cylinder.renderOrder = this.getInvariantLineRenderOrder();
             
             this.scene.add(cylinder);
             
@@ -7446,8 +7456,7 @@ class VectoramaApp {
     
     visualizeIdentityLikeEigenspace(matrix) {
         // For scalar multiples of identity, show standard basis vectors as invariant lines
-        const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15 * 2.5;
+        const lineRadius = this.getInvariantLineRadius();
         const lineLength = 200;
         
         if (this.dimension === '2d') {
@@ -7467,14 +7476,16 @@ class VectoramaApp {
                         map: texture,
                         transparent: true,
                         opacity: 0.95,
-                        depthTest: false
+                        depthTest: false,
+                        depthWrite: false
                     });
                 } else {
                     material = new THREE.MeshBasicMaterial({
                         color: 0xff00ff,
                         transparent: true,
                         opacity: 0.95,
-                        depthTest: false
+                        depthTest: false,
+                        depthWrite: false
                     });
                 }
                 
@@ -7484,7 +7495,7 @@ class VectoramaApp {
                 const yAxis = new THREE.Vector3(0, 1, 0);
                 quaternion.setFromUnitVectors(yAxis, direction);
                 cylinder.quaternion.copy(quaternion);
-                cylinder.renderOrder = 1;
+                cylinder.renderOrder = this.getInvariantLineRenderOrder();
                 
                 this.scene.add(cylinder);
                 this.invariantLines.push({
@@ -7530,7 +7541,7 @@ class VectoramaApp {
                 const yAxis = new THREE.Vector3(0, 1, 0);
                 quaternion.setFromUnitVectors(yAxis, direction);
                 cylinder.quaternion.copy(quaternion);
-                cylinder.renderOrder = 1;
+                cylinder.renderOrder = this.getInvariantLineRenderOrder();
                 
                 this.scene.add(cylinder);
                 this.invariantLines.push({
@@ -7583,10 +7594,8 @@ class VectoramaApp {
 
     visualizeInvariantSpaces2D(matrix) {
         const eigendata = this.computeEigenvalues2D(matrix);
-        
-        // Get same thickness as axes, but make invariant lines slightly thicker for visibility
-        const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15 * 1.8; // 1.8x thicker than axes
+
+        const lineRadius = this.getInvariantLineRadius();
         
         eigendata.forEach((eigen, index) => {
             // Skip if no vector (e.g., complex eigenvalues)
@@ -7607,7 +7616,8 @@ class VectoramaApp {
                     map: texture,
                     transparent: true,
                     opacity: 0.95,
-                    depthTest: false
+                    depthTest: false,
+                    depthWrite: false
                 });
             } else {
                 // Use bright magenta for pulse mode with higher opacity
@@ -7615,7 +7625,8 @@ class VectoramaApp {
                     color: 0xff00ff,
                     transparent: true,
                     opacity: 0.95,
-                    depthTest: false
+                    depthTest: false,
+                    depthWrite: false
                 });
             }
             
@@ -7629,7 +7640,7 @@ class VectoramaApp {
             cylinder.quaternion.copy(quaternion);
             
             // Ensure invariant lines render on top of axes when overlapping
-            cylinder.renderOrder = 1;
+            cylinder.renderOrder = this.getInvariantLineRenderOrder();
             
             this.scene.add(cylinder);
             
@@ -7644,10 +7655,8 @@ class VectoramaApp {
 
     visualizeInvariantSpaces3D(matrix) {
         const eigendata = this.computeEigenvalues3D(matrix);
-        
-        // Get same thickness as axes, but make invariant lines thicker for visibility
-        const thickness = this.getArrowThickness();
-        const lineRadius = thickness.headWidth * 0.15 * 2.5; // 2.5x thicker than axes
+
+        const lineRadius = this.getInvariantLineRadius();
         
         eigendata.forEach((eigen, index) => {
             // Skip if no vector (shouldn't happen in 3D but be safe)
@@ -7691,7 +7700,7 @@ class VectoramaApp {
             cylinder.quaternion.copy(quaternion);
             
             // Ensure invariant lines render on top of axes when overlapping
-            cylinder.renderOrder = 1;
+            cylinder.renderOrder = this.getInvariantLineRenderOrder();
             
             this.scene.add(cylinder);
             
