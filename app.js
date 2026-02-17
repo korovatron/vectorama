@@ -6422,14 +6422,159 @@ class VectoramaApp {
         return sprite;
     }
 
+    computeGcd(a, b) {
+        let x = Math.abs(a);
+        let y = Math.abs(b);
+
+        while (y !== 0) {
+            const temp = y;
+            y = x % y;
+            x = temp;
+        }
+
+        return x;
+    }
+
+    reduceIntegerTriple(x, y, z) {
+        const values = [x, y, z].map(v => Math.round(v));
+        const absValues = values.map(v => Math.abs(v)).filter(v => v !== 0);
+
+        if (absValues.length === 0) {
+            return null;
+        }
+
+        let gcd = absValues[0];
+        for (let i = 1; i < absValues.length; i++) {
+            gcd = this.computeGcd(gcd, absValues[i]);
+        }
+
+        const reduced = values.map(v => v / gcd);
+        const firstNonZero = reduced.find(v => v !== 0);
+
+        if (firstNonZero < 0) {
+            return reduced.map(v => -v);
+        }
+
+        return reduced;
+    }
+
+    findNiceIntegerDirection(direction) {
+        const dir = direction.clone();
+        if (dir.lengthSq() < 1e-10) {
+            return null;
+        }
+
+        dir.normalize();
+        const components = [dir.x, dir.y, dir.z];
+
+        let best = null;
+
+        for (let scale = 1; scale <= 140; scale++) {
+            const scaled = components.map(component => component * scale);
+            const rounded = scaled.map(value => Math.round(value));
+
+            if (rounded.every(value => value === 0)) {
+                continue;
+            }
+
+            const maxError = Math.max(
+                Math.abs(scaled[0] - rounded[0]),
+                Math.abs(scaled[1] - rounded[1]),
+                Math.abs(scaled[2] - rounded[2])
+            );
+
+            if (maxError > 0.08) {
+                continue;
+            }
+
+            const reduced = this.reduceIntegerTriple(rounded[0], rounded[1], rounded[2]);
+            if (!reduced) {
+                continue;
+            }
+
+            const maxAbs = Math.max(Math.abs(reduced[0]), Math.abs(reduced[1]), Math.abs(reduced[2]));
+            const sumAbs = Math.abs(reduced[0]) + Math.abs(reduced[1]) + Math.abs(reduced[2]);
+            const score = maxError + (maxAbs * 0.003) + (sumAbs * 0.0008);
+
+            if (!best || score < best.score) {
+                best = { direction: reduced, score };
+            }
+        }
+
+        return best ? new THREE.Vector3(best.direction[0], best.direction[1], best.direction[2]) : null;
+    }
+
+    findNicePointForDirection(point, integerDirection) {
+        const direction = [integerDirection.x, integerDirection.y, integerDirection.z];
+        const pointArray = [point.x, point.y, point.z];
+
+        let best = null;
+
+        for (let denominator = 1; denominator <= 24; denominator++) {
+            for (let numerator = -320; numerator <= 320; numerator++) {
+                const s = numerator / denominator;
+
+                const candidate = [
+                    pointArray[0] + s * direction[0],
+                    pointArray[1] + s * direction[1],
+                    pointArray[2] + s * direction[2]
+                ];
+
+                const rounded = candidate.map(value => Math.round(value));
+                const errors = candidate.map((value, index) => Math.abs(value - rounded[index]));
+                const maxError = Math.max(errors[0], errors[1], errors[2]);
+
+                if (maxError > 0.08) {
+                    continue;
+                }
+
+                const maxAbs = Math.max(Math.abs(rounded[0]), Math.abs(rounded[1]), Math.abs(rounded[2]));
+                if (maxAbs > 300) {
+                    continue;
+                }
+
+                const score = (errors[0] + errors[1] + errors[2]) + (maxAbs * 0.0015);
+
+                if (!best || score < best.score) {
+                    best = {
+                        point: new THREE.Vector3(rounded[0], rounded[1], rounded[2]),
+                        score
+                    };
+                }
+            }
+        }
+
+        return best ? best.point : null;
+    }
+
+    getNiceLineEquation(point, direction) {
+        const integerDirection = this.findNiceIntegerDirection(direction);
+
+        if (!integerDirection) {
+            return {
+                point: point.clone(),
+                direction: direction.clone()
+            };
+        }
+
+        const nicerPoint = this.findNicePointForDirection(point, integerDirection);
+
+        return {
+            point: nicerPoint || point.clone(),
+            direction: integerDirection
+        };
+    }
+
     createLineEquationLabel(point, direction) {
+        const niceEquation = this.getNiceLineEquation(point, direction);
+
         // Format line equation: r = (px, py, pz) + t(dx, dy, dz)
-        const px = Math.abs(point.x) < 0.01 ? 0 : parseFloat(point.x.toFixed(2));
-        const py = Math.abs(point.y) < 0.01 ? 0 : parseFloat(point.y.toFixed(2));
-        const pz = Math.abs(point.z) < 0.01 ? 0 : parseFloat(point.z.toFixed(2));
-        const dx = Math.abs(direction.x) < 0.01 ? 0 : parseFloat(direction.x.toFixed(2));
-        const dy = Math.abs(direction.y) < 0.01 ? 0 : parseFloat(direction.y.toFixed(2));
-        const dz = Math.abs(direction.z) < 0.01 ? 0 : parseFloat(direction.z.toFixed(2));
+        const px = Math.abs(niceEquation.point.x) < 0.01 ? 0 : parseFloat(niceEquation.point.x.toFixed(2));
+        const py = Math.abs(niceEquation.point.y) < 0.01 ? 0 : parseFloat(niceEquation.point.y.toFixed(2));
+        const pz = Math.abs(niceEquation.point.z) < 0.01 ? 0 : parseFloat(niceEquation.point.z.toFixed(2));
+        const dx = Math.abs(niceEquation.direction.x) < 0.01 ? 0 : parseFloat(niceEquation.direction.x.toFixed(2));
+        const dy = Math.abs(niceEquation.direction.y) < 0.01 ? 0 : parseFloat(niceEquation.direction.y.toFixed(2));
+        const dz = Math.abs(niceEquation.direction.z) < 0.01 ? 0 : parseFloat(niceEquation.direction.z.toFixed(2));
         
         const text = `r = (${px}, ${py}, ${pz}) + t(${dx}, ${dy}, ${dz})`;
         
