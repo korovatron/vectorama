@@ -617,10 +617,10 @@ class VectoramaApp {
             const margin = this.currentGridSpacing;
             const bounds = this.last2DLabelBounds;
             const needsRefresh =
-                minX < bounds.minX + margin ||
-                maxX > bounds.maxX - margin ||
-                minY < bounds.minY + margin ||
-                maxY > bounds.maxY - margin;
+                minX < bounds.minX - margin ||
+                maxX > bounds.maxX + margin ||
+                minY < bounds.minY - margin ||
+                maxY > bounds.maxY + margin;
 
             if (needsRefresh) {
                 this.lastUpdateTime = now;
