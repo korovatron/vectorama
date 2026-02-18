@@ -9769,8 +9769,19 @@ class VectoramaApp {
         this.angleVisualization = null;
     }
 
-    createAngleRay(origin, direction, length, color) {
-        const points = [origin.clone(), origin.clone().add(direction.clone().multiplyScalar(length))];
+    createAngleRay(origin, direction, length, color, solidStyle = false) {
+        const endPoint = origin.clone().add(direction.clone().multiplyScalar(length));
+
+        if (solidStyle) {
+            const rayRadius = Math.max(0.012, this.getArrowThickness().headWidth * 0.1);
+            const ray = this.createDistanceConnector(origin, endPoint, color, rayRadius);
+            if (!ray) return null;
+            ray.mesh.renderOrder = 20;
+            ray.mesh.material.depthTest = true;
+            return ray.mesh;
+        }
+
+        const points = [origin.clone(), endPoint];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         const material = new THREE.LineBasicMaterial({
             color: new THREE.Color(color),
@@ -9785,7 +9796,7 @@ class VectoramaApp {
         return ray;
     }
 
-    createAngleArc(origin, startDirection, endDirection, angle, radius, color) {
+    createAngleArc(origin, startDirection, endDirection, angle, radius, color, solidStyle = false) {
         if (angle < 0.01) return null;
 
         const normal = new THREE.Vector3().crossVectors(startDirection, endDirection);
@@ -9799,6 +9810,23 @@ class VectoramaApp {
             const t = i / segmentCount;
             const step = startDirection.clone().applyAxisAngle(normal, angle * t);
             points.push(origin.clone().add(step.multiplyScalar(radius)));
+        }
+
+        if (solidStyle) {
+            const tubePath = new THREE.CatmullRomCurve3(points);
+            const tubeRadius = Math.max(0.01, this.getArrowThickness().headWidth * 0.08);
+            const geometry = new THREE.TubeGeometry(tubePath, Math.max(16, segmentCount * 2), tubeRadius, 10, false);
+            const material = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(color),
+                transparent: true,
+                opacity: 0.95,
+                depthTest: true,
+                depthWrite: false
+            });
+
+            const arc = new THREE.Mesh(geometry, material);
+            arc.renderOrder = 21;
+            return arc;
         }
 
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -9866,11 +9894,64 @@ class VectoramaApp {
         material.color = new THREE.Color(color);
 
         const label = new THREE.Sprite(material);
-        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
-        const scale = distanceToTarget * 0.07;
-        label.scale.set(scale * 1.8, scale * 0.7, 1);
+        label.userData.screenHeightPx = 30;
+        label.userData.aspectRatio = 1.8 / 0.7;
+        label.onBeforeRender = (renderer, _scene, camera) => {
+            this.updateSpriteToScreenSize(label, camera, renderer);
+        };
+        this.updateSpriteToScreenSize(label, this.camera, this.renderer);
         label.renderOrder = 1002;
         return label;
+    }
+
+    updateSpriteToScreenSize(sprite, camera, renderer) {
+        if (!sprite || !camera || !renderer) return;
+
+        const pixelHeight = sprite.userData?.screenHeightPx ?? 30;
+        const aspectRatio = sprite.userData?.aspectRatio ?? 1;
+        const worldHeight = this.getWorldHeightForPixelSize(pixelHeight, sprite.position, camera, renderer);
+        sprite.scale.set(worldHeight * aspectRatio, worldHeight, 1);
+    }
+
+    getWorldHeightForPixelSize(pixelHeight, worldPosition, camera, renderer) {
+        const viewportHeight = Math.max(1, renderer.domElement?.clientHeight || window.innerHeight || 1);
+
+        let worldUnitsPerPixel = 0.01;
+        if (camera.isPerspectiveCamera) {
+            const distanceToCamera = Math.max(0.01, camera.position.distanceTo(worldPosition));
+            const verticalFovRadians = THREE.MathUtils.degToRad(camera.fov);
+            const visibleWorldHeight = 2 * Math.tan(verticalFovRadians / 2) * distanceToCamera;
+            worldUnitsPerPixel = visibleWorldHeight / viewportHeight;
+        } else if (camera.isOrthographicCamera) {
+            const visibleWorldHeight = (camera.top - camera.bottom) / Math.max(0.0001, camera.zoom || 1);
+            worldUnitsPerPixel = visibleWorldHeight / viewportHeight;
+        }
+
+        return Math.max(0.01, pixelHeight * worldUnitsPerPixel);
+    }
+
+    createDistanceConnector(startPoint, endPoint, color, radius) {
+        const connectorDirection = endPoint.clone().sub(startPoint);
+        const length = connectorDirection.length();
+        if (length < 1e-6) return null;
+
+        const geometry = new THREE.CylinderGeometry(radius, radius, length, 12, 1, false);
+        const material = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(color),
+            transparent: true,
+            opacity: 0.95,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const connectorMesh = new THREE.Mesh(geometry, material);
+        connectorMesh.position.copy(startPoint).add(endPoint).multiplyScalar(0.5);
+
+        const yAxis = new THREE.Vector3(0, 1, 0);
+        connectorMesh.quaternion.setFromUnitVectors(yAxis, connectorDirection.normalize());
+        connectorMesh.renderOrder = 1003;
+
+        return { mesh: connectorMesh, material };
     }
 
     getAngleRainbowColor() {
@@ -9932,19 +10013,11 @@ class VectoramaApp {
             if (connectorDirection.lengthSq() < 1e-12) return;
             connectorDirection.normalize();
 
-            const connectorPoints = [pointOnLine1.clone(), pointOnLine2.clone()];
-            const connectorGeometry = new THREE.BufferGeometry().setFromPoints(connectorPoints);
-            const connectorMaterial = new THREE.LineBasicMaterial({
-                color: new THREE.Color(overlayColor),
-                transparent: true,
-                opacity: 0.95,
-                depthTest: false,
-                depthWrite: false
-            });
-            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
-            connectorLine.renderOrder = 1003;
-            overlayGroup.add(connectorLine);
-            cycleMaterials.push(connectorMaterial);
+            const connectorRadius = Math.max(0.014, this.getArrowThickness().headWidth * 0.12);
+            const connector = this.createDistanceConnector(pointOnLine1, pointOnLine2, overlayColor, connectorRadius);
+            if (!connector) return;
+            overlayGroup.add(connector.mesh);
+            cycleMaterials.push(connector.material);
 
             const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
             const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
@@ -9999,6 +10072,9 @@ class VectoramaApp {
             } else {
                 offsetDirection.normalize();
             }
+            if (offsetDirection.dot(cameraDirection) > 0) {
+                offsetDirection.multiplyScalar(-1);
+            }
             label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
             overlayGroup.add(label);
             cycleMaterials.push(label.material);
@@ -10028,18 +10104,11 @@ class VectoramaApp {
             if (connectorDirection.lengthSq() < 1e-12) return;
             connectorDirection.normalize();
 
-            const connectorGeometry = new THREE.BufferGeometry().setFromPoints([pointOnLine.clone(), point.clone()]);
-            const connectorMaterial = new THREE.LineBasicMaterial({
-                color: new THREE.Color(overlayColor),
-                transparent: true,
-                opacity: 0.95,
-                depthTest: false,
-                depthWrite: false
-            });
-            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
-            connectorLine.renderOrder = 1003;
-            overlayGroup.add(connectorLine);
-            cycleMaterials.push(connectorMaterial);
+            const connectorRadius = Math.max(0.014, this.getArrowThickness().headWidth * 0.12);
+            const connector = this.createDistanceConnector(pointOnLine, point, overlayColor, connectorRadius);
+            if (!connector) return;
+            overlayGroup.add(connector.mesh);
+            cycleMaterials.push(connector.material);
 
             const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
             const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
@@ -10082,6 +10151,9 @@ class VectoramaApp {
             } else {
                 offsetDirection.normalize();
             }
+            if (offsetDirection.dot(cameraDirection) > 0) {
+                offsetDirection.multiplyScalar(-1);
+            }
             label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
             overlayGroup.add(label);
             cycleMaterials.push(label.material);
@@ -10108,18 +10180,11 @@ class VectoramaApp {
             if (connectorDirection.lengthSq() < 1e-12) return;
             connectorDirection.normalize();
 
-            const connectorGeometry = new THREE.BufferGeometry().setFromPoints([pointOnPlane.clone(), point.clone()]);
-            const connectorMaterial = new THREE.LineBasicMaterial({
-                color: new THREE.Color(overlayColor),
-                transparent: true,
-                opacity: 0.95,
-                depthTest: false,
-                depthWrite: false
-            });
-            const connectorLine = new THREE.Line(connectorGeometry, connectorMaterial);
-            connectorLine.renderOrder = 1003;
-            overlayGroup.add(connectorLine);
-            cycleMaterials.push(connectorMaterial);
+            const connectorRadius = Math.max(0.014, this.getArrowThickness().headWidth * 0.12);
+            const connector = this.createDistanceConnector(pointOnPlane, point, overlayColor, connectorRadius);
+            if (!connector) return;
+            overlayGroup.add(connector.mesh);
+            cycleMaterials.push(connector.material);
 
             const markerRadius = Math.max(0.03, this.getArrowThickness().headWidth * 0.35);
             const markerGeometry = new THREE.SphereGeometry(markerRadius, 12, 12);
@@ -10168,6 +10233,9 @@ class VectoramaApp {
                 offsetDirection.set(0, 1, 0);
             } else {
                 offsetDirection.normalize();
+            }
+            if (offsetDirection.dot(cameraDirection) > 0) {
+                offsetDirection.multiplyScalar(-1);
             }
             label.position.copy(midpoint).add(offsetDirection.multiplyScalar(Math.max(0.2, radius * 0.25)));
             overlayGroup.add(label);
@@ -10298,13 +10366,15 @@ class VectoramaApp {
 
         if (!ray1Direction || !ray2Direction) return;
 
-        const ray1 = this.createAngleRay(origin, ray1Direction, rayLength, overlayColor);
-        const ray2 = this.createAngleRay(origin, ray2Direction, rayLength, overlayColor);
+        const useSolidAngleLines = state.type === 'line-line' || state.type === 'plane-plane';
+        const ray1 = this.createAngleRay(origin, ray1Direction, rayLength, overlayColor, useSolidAngleLines);
+        const ray2 = this.createAngleRay(origin, ray2Direction, rayLength, overlayColor, useSolidAngleLines);
+        if (!ray1 || !ray2) return;
         overlayGroup.add(ray1);
         overlayGroup.add(ray2);
         cycleMaterials.push(ray1.material, ray2.material);
 
-        const arc = this.createAngleArc(origin, ray1Direction, ray2Direction, angle, radius, overlayColor);
+        const arc = this.createAngleArc(origin, ray1Direction, ray2Direction, angle, radius, overlayColor, useSolidAngleLines);
         if (arc) {
             overlayGroup.add(arc);
             cycleMaterials.push(arc.material);
