@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vectorama-version-0.1.88';
+const CACHE_NAME = 'vectorama-version-0.1.89';
 const LOCAL_ASSETS = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const LOCAL_ASSETS = [
   '/manifest.json',
   '/images/vectoramaLogo.png',
   '/images/panelLogo.png',
+  '/images/yt_icon_white_digital.png',
   '/images/icon-180.png',
   '/images/icon-192.png',
   '/images/icon-512.png'

@@ -1595,11 +1595,25 @@ body {
     margin: 0 20px;
 }
 
-.shortcuts-content h2 {
+.shortcuts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin: 0 0 20px 0;
+    font-size: 24px;
+}
+
+.shortcuts-content h2 {
+    margin: 0;
     color: #fff;
     font-size: 24px;
-    text-align: center;
+    text-align: left;
+}
+
+.shortcuts-youtube-logo {
+    display: block;
+    width: 40px;
+    height: 40px;
 }
 
 .shortcuts-section {
