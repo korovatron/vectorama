@@ -1,11 +1,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+const APP_VERSION = '1.0.0';
+
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
 const mainApp = document.getElementById('main-app');
 const startBtn = document.getElementById('start-btn');
+const appVersionLabel = document.getElementById('app-version-label');
 let startAppInitTimeoutId = null;
+
+if (appVersionLabel) {
+    appVersionLabel.textContent = APP_VERSION;
+}
 
 let appInitialized = false;
 
@@ -1568,6 +1575,10 @@ class VectoramaApp {
         const shouldShow = forceState === null ? !overlay.classList.contains('show') : Boolean(forceState);
 
         if (shouldShow) {
+            const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                || navigator.maxTouchPoints > 0
+                || 'ontouchstart' in window;
+            overlay.classList.toggle('touch-navigation-mode', isTouchDevice);
             overlay.classList.add('show');
         } else {
             overlay.classList.remove('show');

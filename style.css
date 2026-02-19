@@ -1647,7 +1647,7 @@ body {
 .shortcuts-close {
     margin-top: 20px;
     text-align: center;
-    color: #888;
+    color: #fff;
     font-size: 13px;
 }
 
@@ -1657,6 +1657,15 @@ body {
 
 .desktop-only {
     display: inline;
+}
+
+.shortcuts-overlay.touch-navigation-mode .touch-only {
+    display: inline;
+}
+
+.shortcuts-overlay.touch-navigation-mode .desktop-only,
+.shortcuts-overlay.touch-navigation-mode .keyboard-only {
+    display: none !important;
 }
 
 /* Mobile Responsive Styles */
