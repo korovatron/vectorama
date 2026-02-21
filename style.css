@@ -146,7 +146,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     font-size: 0.8em;
-    color: rgba(255, 255, 255, 0.6);
+    color: #fff;
     margin: 0;
     text-align: center;
     line-height: 1.3;
@@ -156,7 +156,7 @@ body {
 }
 
 .copyright a {
-    color: var(--accent-color);
+    color: #fff;
     text-decoration: none;
     white-space: nowrap;
     transition: color 0.2s;
@@ -173,12 +173,26 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    line-height: 0;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+    color: #fff;
+    transition: none;
+}
+
+.contact-icon-link:hover {
+    color: #fff;
 }
 
 .contact-icon-link svg {
-    width: 1.2em;
-    height: 1.2em;
+    width: 1.35em;
+    height: 1.35em;
+}
+
+.copyright .contact-icon-link,
+.copyright .contact-icon-link:hover,
+.copyright .contact-icon-link:visited {
+    color: #fff;
 }
 
 .contact-icon-link path {
@@ -186,7 +200,7 @@ body {
 }
 
 .copyright a:hover {
-    color: var(--text-primary);
+    color: #fff;
 }
 
 .break-mobile {
