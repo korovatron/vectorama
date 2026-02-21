@@ -162,6 +162,29 @@ body {
     transition: color 0.2s;
 }
 
+.more-contact-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.contact-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+}
+
+.contact-icon-link svg {
+    width: 1.2em;
+    height: 1.2em;
+}
+
+.contact-icon-link path {
+    fill: currentColor;
+}
+
 .copyright a:hover {
     color: var(--text-primary);
 }
@@ -172,6 +195,10 @@ body {
 
 .space-desktop {
     display: none;
+}
+
+.space-inline {
+    display: inline;
 }
 
 @media (min-width: 800px) {
