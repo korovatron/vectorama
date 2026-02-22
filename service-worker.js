@@ -1,16 +1,16 @@
-const CACHE_NAME = 'vectorama-version-1.0.5';
+const CACHE_NAME = 'vectorama-version-1.0.6';
 const LOCAL_ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json',
-  '/images/vectoramaLogo.png',
-  '/images/panelLogo.png',
-  '/images/yt_icon_white_digital.png',
-  '/images/icon-180.png',
-  '/images/icon-192.png',
-  '/images/icon-512.png'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  './images/vectoramaLogo.png',
+  './images/panelLogo.png',
+  './images/yt_icon_white_digital.png',
+  './images/icon-180.png',
+  './images/icon-192.png',
+  './images/icon-512.png'
 ];
 
 const CDN_ASSETS = [
@@ -43,12 +43,33 @@ async function cacheFirstWithBackgroundRefresh(request, options = {}) {
   return { response: null, background: null };
 }
 
+function toScopeUrl(path) {
+  return new URL(path, self.registration.scope).href;
+}
+
+async function getCachedAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+  const candidates = [
+    toScopeUrl('./index.html'),
+    toScopeUrl('./')
+  ];
+
+  for (const candidate of candidates) {
+    const match = await cache.match(candidate, { ignoreSearch: true });
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
 
     // Local shell is mandatory so launch is fast even with poor connectivity.
-    await cache.addAll(LOCAL_ASSETS);
+    await cache.addAll(LOCAL_ASSETS.map((asset) => toScopeUrl(asset)));
 
     // External CDN files are best-effort: don't block install when network is weak.
     await Promise.allSettled(CDN_ASSETS.map((url) => cache.add(url)));
@@ -73,7 +94,7 @@ self.addEventListener('fetch', (event) => {
   // Fast startup path: never wait on weak network for app shell navigation.
   if (isNavigation) {
     event.respondWith((async () => {
-      const { response, background } = await cacheFirstWithBackgroundRefresh('/index.html', { ignoreSearch: true });
+      const { response, background } = await cacheFirstWithBackgroundRefresh(toScopeUrl('./index.html'), { ignoreSearch: true });
       if (background) {
         event.waitUntil(background);
       }
@@ -82,7 +103,16 @@ self.addEventListener('fetch', (event) => {
         return response;
       }
 
-      return fetch(request);
+      try {
+        return await fetch(request);
+      } catch {
+        const shell = await getCachedAppShell();
+        if (shell) {
+          return shell;
+        }
+
+        throw new Error('Offline and no cached app shell available');
+      }
     })());
 
     return;
@@ -117,7 +147,21 @@ self.addEventListener('fetch', (event) => {
 
         return response;
       })
-      .catch(() => caches.match(request, { ignoreSearch: true }))
+      .catch(async () => {
+        const cached = await caches.match(request, { ignoreSearch: true });
+        if (cached) {
+          return cached;
+        }
+
+        if (isNavigation) {
+          const shell = await getCachedAppShell();
+          if (shell) {
+            return shell;
+          }
+        }
+
+        throw new Error('Request failed and no cache fallback found');
+      })
   );
 });
 
