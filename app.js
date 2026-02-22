@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -3461,7 +3461,15 @@ class VectoramaApp {
         infoBtn.className = 'matrix-info-btn';
         infoBtn.title = 'Show eigenvalue information';
         infoBtn.textContent = 'i';
-        infoBtn.addEventListener('click', () => this.showMatrixInfo(matrix.id));
+        infoBtn.addEventListener('click', () => {
+            if (typeof gtag !== 'undefined') {
+                    gtag('event', 'VECTOR-INFO-PANEL', {
+                        object_type: 'matrix',
+                        dimension: this.dimension
+                    });
+            }
+            this.showMatrixInfo(matrix.id);
+        });
         controls.appendChild(infoBtn);
         
         const removeBtn = document.createElement('button');
@@ -3575,7 +3583,15 @@ class VectoramaApp {
             infoBtn.className = 'matrix-info-btn';
             infoBtn.title = 'Show vector information';
             infoBtn.textContent = 'i';
-            infoBtn.addEventListener('click', () => this.showVectorInfo(vec.id));
+            infoBtn.addEventListener('click', () => {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'VECTOR-INFO-PANEL', {
+                        object_type: 'vector',
+                        dimension: this.dimension
+                    });
+                }
+                this.showVectorInfo(vec.id);
+            });
             controls.appendChild(infoBtn);
         }
 
@@ -3845,7 +3861,15 @@ class VectoramaApp {
             infoBtn.className = 'matrix-info-btn';
             infoBtn.title = 'Show line information';
             infoBtn.textContent = 'i';
-            infoBtn.addEventListener('click', () => this.showLineInfo(line.id));
+            infoBtn.addEventListener('click', () => {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'VECTOR-INFO-PANEL', {
+                        object_type: 'line',
+                        dimension: this.dimension
+                    });
+                }
+                this.showLineInfo(line.id);
+            });
             controls.appendChild(infoBtn);
         }
 
@@ -3953,7 +3977,15 @@ class VectoramaApp {
             infoBtn.className = 'matrix-info-btn';
             infoBtn.title = 'Show plane information';
             infoBtn.textContent = 'i';
-            infoBtn.addEventListener('click', () => this.showPlaneInfo(plane.id));
+            infoBtn.addEventListener('click', () => {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'VECTOR-INFO-PANEL', {
+                        object_type: 'plane',
+                        dimension: this.dimension
+                    });
+                }
+                this.showPlaneInfo(plane.id);
+            });
             controls.appendChild(infoBtn);
         }
 
@@ -4749,6 +4781,12 @@ class VectoramaApp {
     }
 
     applyMatrix(id) {
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'VECTOR-MATRIX-PLAY', {
+                dimension: this.dimension
+            });
+        }
+
         // Check if eigenvalue panel is currently displayed
         const panel = document.getElementById('eigenvalue-panel');
         const isPanelVisible = panel.style.display !== 'none';
@@ -8442,6 +8480,12 @@ class VectoramaApp {
                 btn.style.transition = 'all 0.2s ease';
                 
                 btn.addEventListener('click', () => {
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'VECTOR-EIGENSPACE', {
+                            mode: mode.value,
+                            dimension: this.dimension
+                        });
+                    }
                     this.invariantDisplayMode = mode.value;
                     this.visualizeInvariantSpaces(targetId);
                     // Update button styles
