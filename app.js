@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.0.10';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -7905,97 +7905,36 @@ class VectoramaApp {
         const eigendata = this.computeEigenvalues3D(matrix);
 
         const lineRadius = this.getInvariantLineRadius();
-        
-        eigendata.forEach((eigen, index) => {
-            // Skip if no vector (shouldn't happen in 3D but be safe)
-            if (!eigen.vector) return;
-            
-            const direction = eigen.vector.clone().normalize();
-            
-            // Create line using cylinder geometry, thicker than axes
-            const lineLength = 200; // Very long line
-            
-            const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
-            
-            let material;
-            if (this.invariantDisplayMode === 'solid') {
-                // Use dashed texture for solid mode with higher opacity
-                const texture = this.createDashedTexture();
-                material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true,
-                    opacity: 0.95,
-                    depthTest: true,
-                    depthWrite: true
-                });
-            } else {
-                // Use bright magenta for pulse mode with higher opacity
-                material = new THREE.MeshBasicMaterial({
-                    color: 0xff00ff,
-                    transparent: true,
-                    opacity: 0.95,
-                    depthTest: true,
-                    depthWrite: true
-                });
-            }
-
-            material.polygonOffset = false;
-            material.polygonOffsetFactor = 0;
-            material.polygonOffsetUnits = 0;
-            
-            const cylinder = new THREE.Mesh(geometry, material);
-            
-            // Position and orient the cylinder along the eigenvector direction
-            const quaternion = new THREE.Quaternion();
-            const yAxis = new THREE.Vector3(0, 1, 0);
-            quaternion.setFromUnitVectors(yAxis, direction);
-            cylinder.quaternion.copy(quaternion);
-            
-            // Ensure invariant lines render on top of axes when overlapping
-            cylinder.renderOrder = this.getInvariantLineRenderOrder();
-            
-            this.scene.add(cylinder);
-            
-            this.invariantLines.push({
-                mesh: cylinder,
-                eigenvalue: eigen.value,
-                direction: direction.clone(),
-                index: index
-            });
-        });
-        
-        // For 3D, visualize invariant planes only if we have a repeated eigenvalue
-        // with a 2-dimensional eigenspace
         const epsilon = 1e-6;
         
-        // Group eigenvectors by eigenvalue
+        // Group eigenvectors by eigenvalue and deduplicate parallel directions.
+        // This allows us to suppress basis lines when their eigenspace plane is displayed.
         const eigenvalueGroups = new Map();
         for (const eigen of eigendata) {
             // Skip if no vector
             if (!eigen.vector) continue;
             
-            let found = false;
-            for (const [key, group] of eigenvalueGroups) {
+            let matchingEigenvalue = null;
+            for (const key of eigenvalueGroups.keys()) {
                 if (Math.abs(eigen.value - key) < epsilon) {
-                    // Check if this vector is already in the group (avoid duplicates)
-                    let isDuplicate = false;
-                    for (const existingVec of group) {
-                        if (Math.abs(eigen.vector.dot(existingVec)) > 0.99) {
-                            isDuplicate = true;
-                            break;
-                        }
-                    }
-                    if (!isDuplicate) {
-                        group.push(eigen.vector);
-                    }
-                    found = true;
+                    matchingEigenvalue = key;
                     break;
                 }
             }
-            if (!found) {
-                eigenvalueGroups.set(eigen.value, [eigen.vector]);
+
+            if (matchingEigenvalue === null) {
+                eigenvalueGroups.set(eigen.value, [eigen.vector.clone()]);
+                continue;
+            }
+
+            const group = eigenvalueGroups.get(matchingEigenvalue);
+            const isDuplicate = group.some(existingVec => Math.abs(eigen.vector.dot(existingVec)) > 0.99);
+            if (!isDuplicate) {
+                group.push(eigen.vector.clone());
             }
         }
+
+        const eigenvaluesWithPlanes = new Set();
         
         // For each repeated eigenvalue with exactly 2 eigenvectors, create invariant plane
         // (2D eigenspace, not 3D like identity)
@@ -8041,6 +7980,9 @@ class VectoramaApp {
                     plane.lookAt(normal);
                     
                     this.scene.add(plane);
+
+                    // Do not render generating basis lines when the full eigenspace plane is shown.
+                    eigenvaluesWithPlanes.add(eigenvalue);
                     
                     this.invariantPlanes.push({
                         mesh: plane,
@@ -8050,6 +7992,68 @@ class VectoramaApp {
                     });
                 }
             }
+        }
+
+        let lineIndex = 0;
+
+        // Render line eigenspaces only when they are not represented by a displayed plane.
+        for (const [eigenvalue, vectors] of eigenvalueGroups) {
+            if (eigenvaluesWithPlanes.has(eigenvalue)) continue;
+
+            vectors.forEach((vector) => {
+                const direction = vector.clone().normalize();
+
+                // Create line using cylinder geometry, thicker than axes
+                const lineLength = 200; // Very long line
+
+                const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
+
+                let material;
+                if (this.invariantDisplayMode === 'solid') {
+                    // Use dashed texture for solid mode with higher opacity
+                    const texture = this.createDashedTexture();
+                    material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: true,
+                        depthWrite: true
+                    });
+                } else {
+                    // Use bright magenta for pulse mode with higher opacity
+                    material = new THREE.MeshBasicMaterial({
+                        color: 0xff00ff,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthTest: true,
+                        depthWrite: true
+                    });
+                }
+
+                material.polygonOffset = false;
+                material.polygonOffsetFactor = 0;
+                material.polygonOffsetUnits = 0;
+
+                const cylinder = new THREE.Mesh(geometry, material);
+
+                // Position and orient the cylinder along the eigenvector direction
+                const quaternion = new THREE.Quaternion();
+                const yAxis = new THREE.Vector3(0, 1, 0);
+                quaternion.setFromUnitVectors(yAxis, direction);
+                cylinder.quaternion.copy(quaternion);
+
+                // Ensure invariant lines render on top of axes when overlapping
+                cylinder.renderOrder = this.getInvariantLineRenderOrder();
+
+                this.scene.add(cylinder);
+
+                this.invariantLines.push({
+                    mesh: cylinder,
+                    eigenvalue: eigenvalue,
+                    direction: direction.clone(),
+                    index: lineIndex++
+                });
+            });
         }
     }
 
