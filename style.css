@@ -92,11 +92,36 @@ body {
     image-rendering: auto;
     image-rendering: smooth;
     -ms-interpolation-mode: bicubic;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    will-change: auto;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    will-change: transform, opacity;
     -webkit-user-drag: none;
     pointer-events: auto;
+    transform-origin: center center;
+    transform-style: preserve-3d;
+    transform: perspective(1200px) rotateY(180deg) scale(0);
+    opacity: 0;
+    animation: title-logo-startup-reveal 2s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
+@keyframes title-logo-startup-reveal {
+    0% {
+        transform: perspective(1200px) rotateY(180deg) scale(0);
+        opacity: 0;
+    }
+
+    100% {
+        transform: perspective(1200px) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .title-logo {
+        animation: none;
+        transform: none;
+        opacity: 1;
+    }
 }
 
 .title-tagline {

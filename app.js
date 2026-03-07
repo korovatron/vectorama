@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const APP_VERSION = '1.0.11';
+const APP_VERSION = '1.0.12';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
 const mainApp = document.getElementById('main-app');
 const startBtn = document.getElementById('start-btn');
 const appVersionLabel = document.getElementById('app-version-label');
+const titleLogo = document.querySelector('.title-logo');
 let startAppInitTimeoutId = null;
 
 if (appVersionLabel) {
@@ -15,6 +16,15 @@ if (appVersionLabel) {
 }
 
 let appInitialized = false;
+
+function replayTitleLogoAnimation() {
+    if (!titleLogo) return;
+
+    titleLogo.style.animation = 'none';
+    // Force a reflow so restoring animation restarts it from 0%.
+    void titleLogo.offsetHeight;
+    titleLogo.style.animation = '';
+}
 
 function startApp() {
     titleScreen.classList.add('hidden');
@@ -47,6 +57,7 @@ function returnToTitleScreen() {
     }
 
     titleScreen.classList.remove('hidden');
+    replayTitleLogoAnimation();
     mainApp.style.display = 'none';
     appInitialized = false;
 
