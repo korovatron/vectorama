@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const APP_VERSION = '1.0.10';
+const APP_VERSION = '1.0.11';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -197,6 +197,7 @@ class VectoramaApp {
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
+        this.lastInvariantLineTextureRepeat = null; // Track last stripe density for solid eigenline textures
         this.vectorDisplayMode = 'points'; // 'vectors' or 'points'
         this.vectorSizeMode = 'small'; // 'small' or 'large'
         this.presetEdges2D = []; // Hidden edge pairs for 2D preset groups
@@ -6243,6 +6244,10 @@ class VectoramaApp {
             // Update the reference
             lineObj.mesh = cylinder;
         });
+
+        if (this.invariantDisplayMode === 'solid') {
+            this.updateInvariantLineTextureScale(true);
+        }
     }
 
     updateLineThickness() {
@@ -7580,30 +7585,73 @@ class VectoramaApp {
 
     // Visualization of Invariant Spaces
     createDashedTexture() {
-        // Create a canvas for the dashed pattern
+        // Create a high-contrast alternating stripe texture for eigenlines.
+        // Stripe density is adjusted dynamically with zoom.
         const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
+        canvas.width = 64;
+        canvas.height = 256;
         const ctx = canvas.getContext('2d');
-        
-        // Two bright neon colors
+
+        // Two bright neon colors (same palette as before)
         const color1 = '#00ffff'; // Cyan
         const color2 = '#ff00ff'; // Magenta
-        
-        // Create horizontal stripes (will wrap around cylinder)
-        const stripeWidth = 16;
-        for (let i = 0; i < canvas.height; i += stripeWidth * 2) {
-            ctx.fillStyle = color1;
-            ctx.fillRect(0, i, canvas.width, stripeWidth);
-            ctx.fillStyle = color2;
-            ctx.fillRect(0, i + stripeWidth, canvas.width, stripeWidth);
+
+        const segmentHeight = 20;
+        for (let y = 0; y < canvas.height; y += segmentHeight) {
+            const segmentIndex = Math.floor(y / segmentHeight);
+            ctx.fillStyle = segmentIndex % 2 === 0 ? color1 : color2;
+            ctx.fillRect(0, y, canvas.width, Math.min(segmentHeight, canvas.height - y));
         }
-        
+
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(1, 8);
+        texture.repeat.set(1, this.getInvariantLineTextureRepeat());
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texture.generateMipmaps = false;
+        texture.needsUpdate = true;
         return texture;
+    }
+
+    getInvariantLineTextureRepeat(distanceToTarget = null) {
+        const distance = distanceToTarget !== null
+            ? distanceToTarget
+            : this.camera.position.distanceTo(this.controls.target);
+        const safeDistance = Math.max(distance, 0.001);
+
+        // Zoom in => more stripes (smaller segments); zoom out => fewer stripes.
+        const baseDistance = this.dimension === '2d' ? 7 : 6;
+        const baseRepeat = this.dimension === '2d' ? 9 : 7;
+        const minRepeat = 2;
+        const maxRepeat = this.dimension === '2d' ? 80 : 64;
+
+        const repeat = baseRepeat * (baseDistance / safeDistance);
+        return THREE.MathUtils.clamp(repeat, minRepeat, maxRepeat);
+    }
+
+    updateInvariantLineTextureScale(force = false) {
+        if (this.invariantDisplayMode !== 'solid' || this.invariantLines.length === 0) {
+            this.lastInvariantLineTextureRepeat = null;
+            return;
+        }
+
+        const targetRepeat = this.getInvariantLineTextureRepeat();
+        const hasPrevious = this.lastInvariantLineTextureRepeat !== null;
+        const repeatChange = hasPrevious ? Math.abs(targetRepeat - this.lastInvariantLineTextureRepeat) : Infinity;
+
+        if (!force && repeatChange < 0.2) {
+            return;
+        }
+
+        this.lastInvariantLineTextureRepeat = targetRepeat;
+
+        this.invariantLines.forEach((lineObj) => {
+            const texture = lineObj.mesh?.material?.map;
+            if (!texture) return;
+            texture.repeat.set(1, targetRepeat);
+            texture.needsUpdate = true;
+        });
     }
     
     createCheckerboardTexture() {
@@ -7640,6 +7688,7 @@ class VectoramaApp {
             this.scene.remove(lineObj.mesh);
         });
         this.invariantLines = [];
+        this.lastInvariantLineTextureRepeat = null;
         
         // Remove all invariant planes
         this.invariantPlanes.forEach(planeObj => {
@@ -7674,6 +7723,10 @@ class VectoramaApp {
             this.visualizeInvariantSpaces2D(matrix);
         } else {
             this.visualizeInvariantSpaces3D(matrix);
+        }
+
+        if (this.invariantDisplayMode === 'solid') {
+            this.updateInvariantLineTextureScale(true);
         }
         
         // Update eigenvalue info panel
@@ -8058,8 +8111,12 @@ class VectoramaApp {
     }
 
     updateInvariantSpaceColors() {
-        // Skip if invariant display is off or solid (textures already have colors)
-        if (this.invariantDisplayMode === 'off' || this.invariantDisplayMode === 'solid') return;
+        if (this.invariantDisplayMode === 'off') return;
+
+        if (this.invariantDisplayMode === 'solid') {
+            this.updateInvariantLineTextureScale();
+            return;
+        }
         
         // Update rainbow pulsing effect only for pulse mode
         if (this.invariantDisplayMode === 'pulse') {
