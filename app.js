@@ -251,10 +251,6 @@ class VectoramaApp {
         this.nextLineId = 1;
         this.nextPlaneId = 1;
         
-        // Google Analytics tracking
-        this.lastAnalyticsEvent = 0;
-        this.lastPanelEvent = 0;
-        this.analyticsThrottleMs = 30000; // Send event max once per 30 seconds
         this.isDestroyed = false;
         this.animationFrameId = null;
         this.eventAbortController = new AbortController();
@@ -351,9 +347,6 @@ class VectoramaApp {
             ONE: THREE.TOUCH.PAN,
             TWO: THREE.TOUCH.DOLLY_PAN
         };
-        
-        // Track graph interactions (pan/zoom) for analytics
-        this.controls.addEventListener('change', () => this.trackEngagement());
         
         // Track interaction start/end for performance optimization
         this.controls.addEventListener('start', () => {
@@ -1237,25 +1230,11 @@ class VectoramaApp {
         const panelToggleBtn = document.getElementById('panel-toggle-btn');
         const controlPanel = document.querySelector('.control-panel');
         
-        // Track panel interactions for analytics
         if (controlPanel) {
             let penPanelPointer = null;
             const penActionSelector = 'button, .dropdown-item, .color-indicator, .object-group-header, input, textarea, select, [contenteditable="true"], [role="button"]';
 
-            const trackPanelInteraction = () => {
-                const now = Date.now();
-                if (typeof gtag !== 'undefined' && (now - this.lastPanelEvent) >= this.analyticsThrottleMs) {
-                    gtag('event', 'VECTOR_panel_interaction', {
-                        'event_category': 'engagement',
-                        'event_label': this.dimension
-                    });
-                    this.lastPanelEvent = now;
-                }
-            };
-            
-            controlPanel.addEventListener('click', () => trackPanelInteraction(), withSignal({ passive: true }));
             controlPanel.addEventListener('touchstart', (e) => {
-                trackPanelInteraction();
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
             }, withSignal({ passive: true }));
 
@@ -1600,19 +1579,6 @@ class VectoramaApp {
         }
     }
     
-    trackEngagement() {
-        // Throttled Google Analytics event for user engagement tracking
-        // Only sends event if gtag exists and throttle period has elapsed
-        const now = Date.now();
-        if (typeof gtag !== 'undefined' && (now - this.lastAnalyticsEvent) >= this.analyticsThrottleMs) {
-            gtag('event', 'VECTOR_interaction', {
-                'event_category': 'engagement',
-                'event_label': this.dimension
-            });
-            this.lastAnalyticsEvent = now;
-        }
-    }
-
     addMatrixInputListeners() {
         // Listen to all matrix inputs for live preview
         const inputs = document.querySelectorAll('.matrix-grid input');
@@ -3474,12 +3440,6 @@ class VectoramaApp {
         infoBtn.title = 'Show eigenvalue information';
         infoBtn.textContent = 'i';
         infoBtn.addEventListener('click', () => {
-            if (typeof gtag !== 'undefined') {
-                    gtag('event', 'VECTOR-INFO-PANEL', {
-                        object_type: 'matrix',
-                        dimension: this.dimension
-                    });
-            }
             this.showMatrixInfo(matrix.id);
         });
         controls.appendChild(infoBtn);
@@ -3596,12 +3556,6 @@ class VectoramaApp {
             infoBtn.title = 'Show vector information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'VECTOR-INFO-PANEL', {
-                        object_type: 'vector',
-                        dimension: this.dimension
-                    });
-                }
                 this.showVectorInfo(vec.id);
             });
             controls.appendChild(infoBtn);
@@ -3874,12 +3828,6 @@ class VectoramaApp {
             infoBtn.title = 'Show line information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'VECTOR-INFO-PANEL', {
-                        object_type: 'line',
-                        dimension: this.dimension
-                    });
-                }
                 this.showLineInfo(line.id);
             });
             controls.appendChild(infoBtn);
@@ -3990,12 +3938,6 @@ class VectoramaApp {
             infoBtn.title = 'Show plane information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'VECTOR-INFO-PANEL', {
-                        object_type: 'plane',
-                        dimension: this.dimension
-                    });
-                }
                 this.showPlaneInfo(plane.id);
             });
             controls.appendChild(infoBtn);
@@ -4793,12 +4735,6 @@ class VectoramaApp {
     }
 
     applyMatrix(id) {
-        if (typeof gtag !== 'undefined') {
-            gtag('event', 'VECTOR-MATRIX-PLAY', {
-                dimension: this.dimension
-            });
-        }
-
         // Check if eigenvalue panel is currently displayed
         const panel = document.getElementById('eigenvalue-panel');
         const isPanelVisible = panel.style.display !== 'none';
@@ -8552,12 +8488,6 @@ class VectoramaApp {
                 btn.style.transition = 'all 0.2s ease';
                 
                 btn.addEventListener('click', () => {
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'VECTOR-EIGENSPACE', {
-                            mode: mode.value,
-                            dimension: this.dimension
-                        });
-                    }
                     this.invariantDisplayMode = mode.value;
                     this.visualizeInvariantSpaces(targetId);
                     // Update button styles
