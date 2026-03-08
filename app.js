@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const APP_VERSION = '1.0.12';
+const APP_VERSION = '1.0.13';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
