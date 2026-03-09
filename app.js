@@ -216,10 +216,15 @@ class VectoramaApp {
         this.latticeWorldRange2D = 20; // Fixed half-range in world units for lattice rendering
         this.latticeWorldRange3D = 10; // Fixed half-range in world units for 3D lattice rendering
         this.latticeDensity2D = 3; // 1 (sparse) to 5 (dense)
+        this.latticeAutoDensity2D = this.latticeDensity2D;
+        this.latticeDensityManualOverride2D = false;
+        this.latticeLastZoomDistance2D = null;
         this.latticeCurrentTransform2D = new THREE.Matrix3().identity();
         this.latticeCurrentTransform3D = new THREE.Matrix3().identity();
         this.latticeBasePoints2D = null;
         this.latticeEdgePairs2D = null;
+        this.latticeBaseSpacing2D = null;
+        this.latticeAdaptiveTierIndex2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
         this.latticeObjects = {
@@ -1724,15 +1729,117 @@ class VectoramaApp {
         return this.normalizeLatticeDensity(mappedDensity, this.latticeDensity2D);
     }
 
-    getLatticeSpacing(dimension = this.dimension) {
-        const density = this.normalizeLatticeDensity(this.latticeDensity2D, 3);
-        if (dimension === '3d') {
-            // 3D grows in complexity very quickly, so use a sparser curve.
-            const spacingByDensity = [8, 6, 5, 4, 3];
-            return spacingByDensity[density - 1];
+    getLatticeSpacingByDensity2D(density) {
+        const spacingByDensity = [5, 2, 1, 0.5, 0.25];
+        const normalizedDensity = this.normalizeLatticeDensity(density, 3);
+        return spacingByDensity[normalizedDensity - 1];
+    }
+
+    computeAdaptiveDensity2D(distanceToTarget = null) {
+        const thresholds = [30, 15, 7, 3.5];
+        const hysteresisFactor = 1.2;
+        const maxTierIndex = 4;
+
+        const distance = distanceToTarget !== null
+            ? distanceToTarget
+            : (this.camera && this.controls
+                ? this.camera.position.distanceTo(this.controls.target)
+                : null);
+
+        if (!Number.isFinite(distance) || distance <= 0) {
+            const fallbackDensity = this.normalizeLatticeDensity(this.latticeAutoDensity2D, this.latticeDensity2D);
+            this.latticeAdaptiveTierIndex2D = fallbackDensity - 1;
+            return fallbackDensity;
         }
 
-        return Math.max(1, 6 - density);
+        let tierIndex = this.latticeAdaptiveTierIndex2D;
+        if (!Number.isFinite(tierIndex)) {
+            tierIndex = 0;
+            while (tierIndex < maxTierIndex && distance < thresholds[tierIndex]) {
+                tierIndex += 1;
+            }
+        } else {
+            tierIndex = Math.max(0, Math.min(maxTierIndex, Math.round(tierIndex)));
+
+            while (tierIndex < maxTierIndex && distance < thresholds[tierIndex]) {
+                tierIndex += 1;
+            }
+
+            while (tierIndex > 0 && distance > (thresholds[tierIndex - 1] * hysteresisFactor)) {
+                tierIndex -= 1;
+            }
+        }
+
+        this.latticeAdaptiveTierIndex2D = tierIndex;
+        return tierIndex + 1;
+    }
+
+    syncLatticeDensityWithZoom2D(options = {}) {
+        const {
+            clearManualOverride = false,
+            updateUI = true
+        } = options;
+
+        if (this.dimension !== '2d' || !this.camera || !this.controls) {
+            return false;
+        }
+
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const previousDistance = this.latticeLastZoomDistance2D;
+        this.latticeLastZoomDistance2D = distanceToTarget;
+
+        const epsilon = Math.max(0.001, distanceToTarget * 0.002);
+        const zoomChanged = Number.isFinite(previousDistance)
+            && Math.abs(distanceToTarget - previousDistance) > epsilon;
+
+        const autoDensity = this.computeAdaptiveDensity2D(distanceToTarget);
+        this.latticeAutoDensity2D = autoDensity;
+
+        if (clearManualOverride || (this.latticeDensityManualOverride2D && zoomChanged)) {
+            this.latticeDensityManualOverride2D = false;
+        }
+
+        const nextDisplayDensity = this.latticeDensityManualOverride2D
+            ? this.normalizeLatticeDensity(this.latticeDensity2D, this.latticeDensity2D)
+            : autoDensity;
+
+        if (nextDisplayDensity === this.latticeDensity2D) {
+            return false;
+        }
+
+        this.latticeDensity2D = nextDisplayDensity;
+        if (updateUI) {
+            this.updateLatticeControlsUI();
+        }
+        return true;
+    }
+
+    getLatticeSpacing(dimension = this.dimension) {
+        if (dimension === '2d') {
+            const activeDensity = this.latticeDensityManualOverride2D
+                ? this.latticeDensity2D
+                : this.latticeAutoDensity2D;
+            return this.getLatticeSpacingByDensity2D(activeDensity);
+        }
+
+        const density = this.normalizeLatticeDensity(this.latticeDensity2D, 3);
+        // 3D grows in complexity very quickly, so use a sparser static curve.
+        const spacingByDensity = [8, 6, 5, 4, 3];
+        return spacingByDensity[density - 1];
+    }
+
+    refreshAdaptiveLattice2DForCamera() {
+        if (!this.shouldShowLatticeOverlay() || this.dimension !== '2d' || this.isAnimating) {
+            return;
+        }
+
+        const densityUpdated = this.syncLatticeDensityWithZoom2D({ updateUI: true });
+        const nextSpacing = this.getLatticeSpacing('2d');
+        if (!densityUpdated && this.latticeBaseSpacing2D === nextSpacing) {
+            return;
+        }
+
+        this.updateLatticeOverlay();
     }
 
     normalizePlaneFormPreference(value) {
@@ -2247,17 +2354,22 @@ class VectoramaApp {
         this.latticeGridRestoreState = null;
         this.latticeGridSessionActive = false;
         this.latticeGridUserOverride = false;
+        this.latticeBaseSpacing2D = null;
+        this.latticeAdaptiveTierIndex2D = null;
+        this.latticeDensityManualOverride2D = false;
+        this.latticeLastZoomDistance2D = null;
         if (state.latticeDensity2D !== undefined) {
             this.latticeDensity2D = this.normalizeLatticeDensity(state.latticeDensity2D, this.latticeDensity2D);
         } else {
             this.latticeDensity2D = this.mapLegacyLatticeExtentToDensity(state.latticeExtent2D);
         }
+        this.latticeAutoDensity2D = this.latticeDensity2D;
         this.latticeBasePoints2D = null;
         this.latticeEdgePairs2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
-        this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
-        this.latticeCurrentTransform3D = this.deserializeMatrix3(state.latticeCurrentTransform3D);
+        this.resetLatticeTransform2D();
+        this.resetLatticeTransform3D();
 
         this.vectors2D = this.deserializeVectors(state.vectors2D || []);
         this.vectors3D = this.deserializeVectors(state.vectors3D || []);
@@ -2396,6 +2508,7 @@ class VectoramaApp {
 
         const isLatticeSupported = this.dimension === '2d' || this.dimension === '3d';
         const isOn = this.latticeDisplayMode === 'on';
+        const canAdjustLattice = isLatticeSupported && isOn;
         const densityText = String(this.latticeDensity2D);
 
         if (latticeStateOn && latticeStateOff) {
@@ -2412,25 +2525,25 @@ class VectoramaApp {
         }
 
         if (latticeResetButton) {
-            latticeResetButton.disabled = !isLatticeSupported;
-            latticeResetButton.style.opacity = isLatticeSupported ? '1' : '0.55';
-            latticeResetButton.title = isLatticeSupported
-                ? 'Reset lattice transform'
-                : 'Lattice reset is not available in this mode';
+            latticeResetButton.disabled = !canAdjustLattice;
+            latticeResetButton.style.opacity = canAdjustLattice ? '1' : '0.55';
+            latticeResetButton.title = !isLatticeSupported
+                ? 'Lattice reset is not available in this mode'
+                : (isOn ? 'Reset lattice transform' : 'Enable lattice to reset transform');
         }
 
         if (latticeDensitySlider) {
             if (latticeDensitySlider.value !== densityText) {
                 latticeDensitySlider.value = densityText;
             }
-            latticeDensitySlider.disabled = !isLatticeSupported;
+            latticeDensitySlider.disabled = !canAdjustLattice;
         }
 
         if (latticeDensityControl) {
-            latticeDensityControl.classList.toggle('disabled', !isLatticeSupported);
-            latticeDensityControl.title = isLatticeSupported
-                ? 'Adjust lattice density (higher is denser)'
-                : 'Lattice density is not available in this mode';
+            latticeDensityControl.classList.toggle('disabled', !canAdjustLattice);
+            latticeDensityControl.title = !isLatticeSupported
+                ? 'Lattice density is not available in this mode'
+                : (isOn ? 'Adjust lattice density (higher is denser)' : 'Enable lattice to adjust density');
         }
     }
 
@@ -2464,6 +2577,35 @@ class VectoramaApp {
         }
     }
 
+    forceDisableAndResetLattice(options = {}) {
+        const { restoreGridState = true } = options;
+
+        if (restoreGridState && this.latticeGridSessionActive) {
+            if (!this.latticeGridUserOverride && this.latticeGridRestoreState !== null) {
+                this.setGridVisibility(this.latticeGridRestoreState, { saveState: false, fromLatticeAuto: true });
+            }
+
+            this.latticeGridRestoreState = null;
+            this.latticeGridSessionActive = false;
+            this.latticeGridUserOverride = false;
+        }
+
+        this.latticeDisplayMode = 'off';
+        this.resetLatticeTransform2D();
+        this.resetLatticeTransform3D();
+        this.latticeBasePoints2D = null;
+        this.latticeEdgePairs2D = null;
+        this.latticeBaseSpacing2D = null;
+        this.latticeAdaptiveTierIndex2D = null;
+        this.latticeDensityManualOverride2D = false;
+        this.latticeLastZoomDistance2D = null;
+        this.latticeAutoDensity2D = this.latticeDensity2D;
+        this.latticeBasePoints3D = null;
+        this.latticeEdgePairs3D = null;
+
+        this.clearLatticeOverlay();
+    }
+
     switchDimension(dimension, options = {}) {
         const {
             skipCameraStateCapture = false,
@@ -2472,6 +2614,10 @@ class VectoramaApp {
 
         // Save old dimension before changing
         const oldDimension = this.dimension;
+        if (oldDimension !== dimension && this.latticeDisplayMode === 'on') {
+            this.forceDisableAndResetLattice({ restoreGridState: true });
+        }
+
         if (!skipCameraStateCapture) {
             this.captureCurrentCameraState();
         }
@@ -2825,6 +2971,13 @@ class VectoramaApp {
         this.latticeDisplayMode = isTurningOn ? 'on' : 'off';
 
         if (isTurningOn) {
+            if (this.dimension === '2d') {
+                this.latticeDensityManualOverride2D = false;
+                this.latticeLastZoomDistance2D = null;
+                this.syncLatticeDensityWithZoom2D({ clearManualOverride: true, updateUI: false });
+            }
+
+            this.latticeAdaptiveTierIndex2D = null;
             this.latticeGridRestoreState = this.gridVisible;
             this.latticeGridSessionActive = true;
             this.latticeGridUserOverride = false;
@@ -2855,6 +3008,8 @@ class VectoramaApp {
 
         if (this.dimension === '2d') {
             this.resetLatticeTransform2D();
+            this.latticeDensityManualOverride2D = false;
+            this.syncLatticeDensityWithZoom2D({ clearManualOverride: true, updateUI: true });
         } else {
             this.resetLatticeTransform3D();
         }
@@ -2864,14 +3019,19 @@ class VectoramaApp {
 
     setLatticeDensity(value) {
         const nextDensity = this.normalizeLatticeDensity(value, this.latticeDensity2D);
+
         if (nextDensity === this.latticeDensity2D) {
             this.updateLatticeControlsUI();
             return;
         }
 
         this.latticeDensity2D = nextDensity;
+        if (this.dimension === '2d') {
+            this.latticeDensityManualOverride2D = true;
+        }
         this.latticeBasePoints2D = null;
         this.latticeEdgePairs2D = null;
+        this.latticeBaseSpacing2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
         this.updateLatticeOverlay();
@@ -7821,12 +7981,13 @@ class VectoramaApp {
     }
 
     initLatticeBaseData2D() {
-        if (this.latticeBasePoints2D && this.latticeEdgePairs2D) {
+        const worldRange = this.latticeWorldRange2D;
+        const spacing = this.getLatticeSpacing('2d');
+
+        if (this.latticeBasePoints2D && this.latticeEdgePairs2D && this.latticeBaseSpacing2D === spacing) {
             return;
         }
 
-        const worldRange = this.latticeWorldRange2D;
-        const spacing = this.getLatticeSpacing('2d');
         const indexExtent = Math.floor(worldRange / spacing);
         const size = (indexExtent * 2) + 1;
         const points = [];
@@ -7853,6 +8014,7 @@ class VectoramaApp {
 
         this.latticeBasePoints2D = points;
         this.latticeEdgePairs2D = edges;
+        this.latticeBaseSpacing2D = spacing;
     }
 
     initLatticeBaseData3D() {
@@ -11101,6 +11263,7 @@ class VectoramaApp {
         }
 
         this.controls.update();
+        this.refreshAdaptiveLattice2DForCamera();
         
         // Skip expensive updates during interaction to improve mobile performance
         // These will run again once interaction stops
