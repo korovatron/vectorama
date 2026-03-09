@@ -520,6 +520,24 @@ body {
     color: #666;
 }
 
+.dim-option {
+    color: #666;
+    transition: color 0.2s;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.dim-option.dim-active {
+    color: #ffffff;
+}
+
+.dim-separator {
+    margin: 0 6px;
+    color: #666;
+    font-size: 14px;
+    line-height: 1;
+}
+
 .theme-icon {
     color: #666;
     transition: color 0.2s;
