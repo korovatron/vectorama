@@ -217,8 +217,11 @@ class VectoramaApp {
         this.latticeWorldRange3D = 10; // Fixed half-range in world units for 3D lattice rendering
         this.latticeDensity2D = 3; // 1 (sparse) to 5 (dense)
         this.latticeAutoDensity2D = this.latticeDensity2D;
+        this.latticeAutoDensity3D = this.latticeDensity2D;
         this.latticeDensityManualOverride2D = false;
+        this.latticeDensityManualOverride3D = false;
         this.latticeLastZoomDistance2D = null;
+        this.latticeLastZoomDistance3D = null;
         this.latticeCurrentTransform2D = new THREE.Matrix3().identity();
         this.latticeCurrentTransform3D = new THREE.Matrix3().identity();
         this.latticeBasePoints2D = null;
@@ -227,6 +230,8 @@ class VectoramaApp {
         this.latticeAdaptiveTierIndex2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
+        this.latticeBaseSpacing3D = null;
+        this.latticeAdaptiveTierIndex3D = null;
         this.latticeObjects = {
             sourcePoints: null,
             sourceLines: null,
@@ -1735,6 +1740,13 @@ class VectoramaApp {
         return spacingByDensity[normalizedDensity - 1];
     }
 
+    getLatticeSpacingByDensity3D(density) {
+        // Keep far-zoom readable while avoiding overly dense close-zoom clutter.
+        const spacingByDensity = [5, 4, 3.5, 3, 2.5];
+        const normalizedDensity = this.normalizeLatticeDensity(density, 3);
+        return spacingByDensity[normalizedDensity - 1];
+    }
+
     computeAdaptiveDensity2D(distanceToTarget = null) {
         const thresholds = [30, 15, 7, 3.5];
         const hysteresisFactor = 1.2;
@@ -1771,6 +1783,45 @@ class VectoramaApp {
         }
 
         this.latticeAdaptiveTierIndex2D = tierIndex;
+        return tierIndex + 1;
+    }
+
+    computeAdaptiveDensity3D(distanceToTarget = null) {
+        const thresholds = [34, 15, 6, 2.0];
+        const hysteresisFactor = 1.2;
+        const maxTierIndex = 4;
+
+        const distance = distanceToTarget !== null
+            ? distanceToTarget
+            : (this.camera && this.controls
+                ? this.camera.position.distanceTo(this.controls.target)
+                : null);
+
+        if (!Number.isFinite(distance) || distance <= 0) {
+            const fallbackDensity = this.normalizeLatticeDensity(this.latticeAutoDensity3D, this.latticeDensity2D);
+            this.latticeAdaptiveTierIndex3D = fallbackDensity - 1;
+            return fallbackDensity;
+        }
+
+        let tierIndex = this.latticeAdaptiveTierIndex3D;
+        if (!Number.isFinite(tierIndex)) {
+            tierIndex = 0;
+            while (tierIndex < maxTierIndex && distance < thresholds[tierIndex]) {
+                tierIndex += 1;
+            }
+        } else {
+            tierIndex = Math.max(0, Math.min(maxTierIndex, Math.round(tierIndex)));
+
+            while (tierIndex < maxTierIndex && distance < thresholds[tierIndex]) {
+                tierIndex += 1;
+            }
+
+            while (tierIndex > 0 && distance > (thresholds[tierIndex - 1] * hysteresisFactor)) {
+                tierIndex -= 1;
+            }
+        }
+
+        this.latticeAdaptiveTierIndex3D = tierIndex;
         return tierIndex + 1;
     }
 
@@ -1814,6 +1865,46 @@ class VectoramaApp {
         return true;
     }
 
+    syncLatticeDensityWithZoom3D(options = {}) {
+        const {
+            clearManualOverride = false,
+            updateUI = true
+        } = options;
+
+        if (this.dimension !== '3d' || !this.camera || !this.controls) {
+            return false;
+        }
+
+        const distanceToTarget = this.camera.position.distanceTo(this.controls.target);
+        const previousDistance = this.latticeLastZoomDistance3D;
+        this.latticeLastZoomDistance3D = distanceToTarget;
+
+        const epsilon = Math.max(0.001, distanceToTarget * 0.002);
+        const zoomChanged = Number.isFinite(previousDistance)
+            && Math.abs(distanceToTarget - previousDistance) > epsilon;
+
+        const autoDensity = this.computeAdaptiveDensity3D(distanceToTarget);
+        this.latticeAutoDensity3D = autoDensity;
+
+        if (clearManualOverride || (this.latticeDensityManualOverride3D && zoomChanged)) {
+            this.latticeDensityManualOverride3D = false;
+        }
+
+        const nextDisplayDensity = this.latticeDensityManualOverride3D
+            ? this.normalizeLatticeDensity(this.latticeDensity2D, this.latticeDensity2D)
+            : autoDensity;
+
+        if (nextDisplayDensity === this.latticeDensity2D) {
+            return false;
+        }
+
+        this.latticeDensity2D = nextDisplayDensity;
+        if (updateUI) {
+            this.updateLatticeControlsUI();
+        }
+        return true;
+    }
+
     getLatticeSpacing(dimension = this.dimension) {
         if (dimension === '2d') {
             const activeDensity = this.latticeDensityManualOverride2D
@@ -1822,10 +1913,14 @@ class VectoramaApp {
             return this.getLatticeSpacingByDensity2D(activeDensity);
         }
 
-        const density = this.normalizeLatticeDensity(this.latticeDensity2D, 3);
-        // 3D grows in complexity very quickly, so use a sparser static curve.
-        const spacingByDensity = [8, 6, 5, 4, 3];
-        return spacingByDensity[density - 1];
+        if (dimension === '3d') {
+            const activeDensity = this.latticeDensityManualOverride3D
+                ? this.latticeDensity2D
+                : this.latticeAutoDensity3D;
+            return this.getLatticeSpacingByDensity3D(activeDensity);
+        }
+
+        return this.getLatticeSpacingByDensity3D(this.latticeDensity2D);
     }
 
     refreshAdaptiveLattice2DForCamera() {
@@ -1836,6 +1931,20 @@ class VectoramaApp {
         const densityUpdated = this.syncLatticeDensityWithZoom2D({ updateUI: true });
         const nextSpacing = this.getLatticeSpacing('2d');
         if (!densityUpdated && this.latticeBaseSpacing2D === nextSpacing) {
+            return;
+        }
+
+        this.updateLatticeOverlay();
+    }
+
+    refreshAdaptiveLattice3DForCamera() {
+        if (!this.shouldShowLatticeOverlay() || this.dimension !== '3d' || this.isAnimating) {
+            return;
+        }
+
+        const densityUpdated = this.syncLatticeDensityWithZoom3D({ updateUI: true });
+        const nextSpacing = this.getLatticeSpacing('3d');
+        if (!densityUpdated && this.latticeBaseSpacing3D === nextSpacing) {
             return;
         }
 
@@ -2358,12 +2467,17 @@ class VectoramaApp {
         this.latticeAdaptiveTierIndex2D = null;
         this.latticeDensityManualOverride2D = false;
         this.latticeLastZoomDistance2D = null;
+        this.latticeBaseSpacing3D = null;
+        this.latticeAdaptiveTierIndex3D = null;
+        this.latticeDensityManualOverride3D = false;
+        this.latticeLastZoomDistance3D = null;
         if (state.latticeDensity2D !== undefined) {
             this.latticeDensity2D = this.normalizeLatticeDensity(state.latticeDensity2D, this.latticeDensity2D);
         } else {
             this.latticeDensity2D = this.mapLegacyLatticeExtentToDensity(state.latticeExtent2D);
         }
         this.latticeAutoDensity2D = this.latticeDensity2D;
+        this.latticeAutoDensity3D = this.latticeDensity2D;
         this.latticeBasePoints2D = null;
         this.latticeEdgePairs2D = null;
         this.latticeBasePoints3D = null;
@@ -2602,6 +2716,11 @@ class VectoramaApp {
         this.latticeAutoDensity2D = this.latticeDensity2D;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
+        this.latticeBaseSpacing3D = null;
+        this.latticeAdaptiveTierIndex3D = null;
+        this.latticeDensityManualOverride3D = false;
+        this.latticeLastZoomDistance3D = null;
+        this.latticeAutoDensity3D = this.latticeDensity2D;
 
         this.clearLatticeOverlay();
     }
@@ -2975,9 +3094,13 @@ class VectoramaApp {
                 this.latticeDensityManualOverride2D = false;
                 this.latticeLastZoomDistance2D = null;
                 this.syncLatticeDensityWithZoom2D({ clearManualOverride: true, updateUI: false });
+                this.latticeAdaptiveTierIndex2D = null;
+            } else if (this.dimension === '3d') {
+                this.latticeDensityManualOverride3D = false;
+                this.latticeLastZoomDistance3D = null;
+                this.syncLatticeDensityWithZoom3D({ clearManualOverride: true, updateUI: false });
+                this.latticeAdaptiveTierIndex3D = null;
             }
-
-            this.latticeAdaptiveTierIndex2D = null;
             this.latticeGridRestoreState = this.gridVisible;
             this.latticeGridSessionActive = true;
             this.latticeGridUserOverride = false;
@@ -3012,6 +3135,8 @@ class VectoramaApp {
             this.syncLatticeDensityWithZoom2D({ clearManualOverride: true, updateUI: true });
         } else {
             this.resetLatticeTransform3D();
+            this.latticeDensityManualOverride3D = false;
+            this.syncLatticeDensityWithZoom3D({ clearManualOverride: true, updateUI: true });
         }
         this.updateLatticeOverlay();
         this.scheduleStateSave();
@@ -3028,12 +3153,15 @@ class VectoramaApp {
         this.latticeDensity2D = nextDensity;
         if (this.dimension === '2d') {
             this.latticeDensityManualOverride2D = true;
+        } else if (this.dimension === '3d') {
+            this.latticeDensityManualOverride3D = true;
         }
         this.latticeBasePoints2D = null;
         this.latticeEdgePairs2D = null;
         this.latticeBaseSpacing2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
+        this.latticeBaseSpacing3D = null;
         this.updateLatticeOverlay();
         this.updateLatticeControlsUI();
         this.scheduleStateSave();
@@ -8018,12 +8146,13 @@ class VectoramaApp {
     }
 
     initLatticeBaseData3D() {
-        if (this.latticeBasePoints3D && this.latticeEdgePairs3D) {
+        const worldRange = this.latticeWorldRange3D;
+        const spacing = this.getLatticeSpacing('3d');
+
+        if (this.latticeBasePoints3D && this.latticeEdgePairs3D && this.latticeBaseSpacing3D === spacing) {
             return;
         }
 
-        const worldRange = this.latticeWorldRange3D;
-        const spacing = this.getLatticeSpacing('3d');
         const indexExtent = Math.floor(worldRange / spacing);
         const size = (indexExtent * 2) + 1;
         const points = [];
@@ -8066,6 +8195,7 @@ class VectoramaApp {
 
         this.latticeBasePoints3D = points;
         this.latticeEdgePairs3D = edges;
+        this.latticeBaseSpacing3D = spacing;
     }
 
     transformLatticePoints2D(points, matrix) {
@@ -11264,6 +11394,7 @@ class VectoramaApp {
 
         this.controls.update();
         this.refreshAdaptiveLattice2DForCamera();
+        this.refreshAdaptiveLattice3DForCamera();
         
         // Skip expensive updates during interaction to improve mobile performance
         // These will run again once interaction stops
