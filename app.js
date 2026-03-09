@@ -8397,7 +8397,6 @@ class VectoramaApp {
         const transformedPoints = this.transformLatticePoints3D(sourcePoints, effectiveTransform);
         const latticeLineWidth = this.vectorSizeMode === 'large' ? 3.2 : 2.0;
 
-        // 3D is much easier to read without the source overlay; show transformed lattice lines only.
         this.latticeObjects.transformedLines = this.createLatticeLineSegments(
             transformedPoints,
             this.latticeEdgePairs3D,
