@@ -8320,6 +8320,192 @@ class VectoramaApp {
         return lines;
     }
 
+    updateLatticePointPositions(points, targetArray) {
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            const offset = i * 3;
+            targetArray[offset] = point.x;
+            targetArray[offset + 1] = point.y;
+            targetArray[offset + 2] = this.toFiniteNumber(point.z, 0);
+        }
+    }
+
+    updateLatticeSegmentPositions(points, edgePairs, targetArray) {
+        for (let i = 0; i < edgePairs.length; i++) {
+            const [startIndex, endIndex] = edgePairs[i];
+            const start = points[startIndex];
+            const end = points[endIndex];
+            const offset = i * 6;
+
+            targetArray[offset] = start.x;
+            targetArray[offset + 1] = start.y;
+            targetArray[offset + 2] = this.toFiniteNumber(start.z, 0);
+            targetArray[offset + 3] = end.x;
+            targetArray[offset + 4] = end.y;
+            targetArray[offset + 5] = this.toFiniteNumber(end.z, 0);
+        }
+    }
+
+    clearSingleLatticeObject(key) {
+        const object = this.latticeObjects[key];
+        if (!object) {
+            return;
+        }
+
+        this.disposeSceneObject(object);
+        this.latticeObjects[key] = null;
+    }
+
+    upsertLatticePointCloud(key, points, color, opacity, size, renderOrder, options = {}) {
+        const { skipPositionUpdate = false } = options;
+        const expectedLength = points.length * 3;
+        let cloud = this.latticeObjects[key];
+
+        const canReuse = cloud
+            && cloud.isPoints
+            && cloud.geometry
+            && cloud.geometry.getAttribute('position')
+            && cloud.geometry.getAttribute('position').array.length === expectedLength;
+
+        if (!canReuse) {
+            if (cloud) {
+                this.disposeSceneObject(cloud);
+            }
+
+            cloud = this.createLatticePointCloud(points, color, opacity, size, renderOrder);
+            this.latticeObjects[key] = cloud;
+            this.scene.add(cloud);
+            return cloud;
+        }
+
+        if (!skipPositionUpdate) {
+            const positionAttribute = cloud.geometry.getAttribute('position');
+            this.updateLatticePointPositions(points, positionAttribute.array);
+            positionAttribute.needsUpdate = true;
+            cloud.geometry.computeBoundingSphere();
+        }
+
+        const material = cloud.material;
+        material.color.set(color);
+        material.opacity = opacity;
+        material.size = size;
+        material.transparent = true;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.needsUpdate = true;
+
+        cloud.renderOrder = renderOrder;
+        cloud.visible = true;
+        if (!cloud.parent) {
+            this.scene.add(cloud);
+        }
+
+        return cloud;
+    }
+
+    upsertLatticeLineSegments(key, points, edgePairs, color, opacity, renderOrder, options = {}) {
+        const {
+            depthTest = false,
+            depthWrite = false,
+            useWideLines = false,
+            lineWidth = 1.5,
+            skipPositionUpdate = false
+        } = options;
+
+        const expectedSegmentCount = edgePairs.length;
+        let lines = this.latticeObjects[key];
+        let canReuse = false;
+
+        if (lines) {
+            const previousWideLines = lines.userData && lines.userData.latticeUseWideLines === true;
+            const previousSegmentCount = lines.userData ? lines.userData.latticeSegmentCount : null;
+
+            if (useWideLines) {
+                canReuse = lines.isLineSegments2
+                    && previousWideLines
+                    && previousSegmentCount === expectedSegmentCount
+                    && lines.geometry
+                    && lines.material;
+            } else {
+                const positionAttribute = lines.geometry ? lines.geometry.getAttribute('position') : null;
+                canReuse = Boolean(
+                    lines.isLineSegments
+                    && !lines.isLineSegments2
+                    && !previousWideLines
+                    && previousSegmentCount === expectedSegmentCount
+                    && positionAttribute
+                    && positionAttribute.array.length === expectedSegmentCount * 6
+                    && lines.material
+                );
+            }
+        }
+
+        if (!canReuse) {
+            if (lines) {
+                this.disposeSceneObject(lines);
+            }
+
+            lines = this.createLatticeLineSegments(
+                points,
+                edgePairs,
+                color,
+                opacity,
+                renderOrder,
+                {
+                    depthTest,
+                    depthWrite,
+                    useWideLines,
+                    lineWidth
+                }
+            );
+
+            lines.userData.latticeUseWideLines = useWideLines;
+            lines.userData.latticeSegmentCount = expectedSegmentCount;
+            this.latticeObjects[key] = lines;
+            this.scene.add(lines);
+            return lines;
+        }
+
+        if (!skipPositionUpdate) {
+            if (useWideLines) {
+                const segmentPositions = new Float32Array(expectedSegmentCount * 6);
+                this.updateLatticeSegmentPositions(points, edgePairs, segmentPositions);
+                lines.geometry.setPositions(segmentPositions);
+            } else {
+                const positionAttribute = lines.geometry.getAttribute('position');
+                this.updateLatticeSegmentPositions(points, edgePairs, positionAttribute.array);
+                positionAttribute.needsUpdate = true;
+                lines.geometry.computeBoundingSphere();
+            }
+        }
+
+        const material = lines.material;
+        material.color.set(color);
+        material.opacity = opacity;
+        material.transparent = true;
+        material.depthTest = depthTest;
+        material.depthWrite = depthWrite;
+
+        if (useWideLines) {
+            material.linewidth = lineWidth;
+            if (this.renderer && material.resolution) {
+                const viewportSize = this.renderer.getSize(new THREE.Vector2());
+                material.resolution.set(viewportSize.x, viewportSize.y);
+            }
+        }
+
+        material.needsUpdate = true;
+        lines.renderOrder = renderOrder;
+        lines.visible = true;
+        lines.userData.latticeUseWideLines = useWideLines;
+        lines.userData.latticeSegmentCount = expectedSegmentCount;
+        if (!lines.parent) {
+            this.scene.add(lines);
+        }
+
+        return lines;
+    }
+
     disposeSceneObject(object) {
         if (!object) return;
 
@@ -8342,21 +8528,15 @@ class VectoramaApp {
     }
 
     clearLatticeOverlay() {
-        this.disposeSceneObject(this.latticeObjects.sourcePoints);
-        this.disposeSceneObject(this.latticeObjects.sourceLines);
-        this.disposeSceneObject(this.latticeObjects.transformedPoints);
-        this.disposeSceneObject(this.latticeObjects.transformedLines);
-
-        this.latticeObjects.sourcePoints = null;
-        this.latticeObjects.sourceLines = null;
-        this.latticeObjects.transformedPoints = null;
-        this.latticeObjects.transformedLines = null;
+        this.clearSingleLatticeObject('sourcePoints');
+        this.clearSingleLatticeObject('sourceLines');
+        this.clearSingleLatticeObject('transformedPoints');
+        this.clearSingleLatticeObject('transformedLines');
     }
 
     updateLatticeOverlay(interpolatedMatrix = null) {
-        this.clearLatticeOverlay();
-
         if (!this.shouldShowLatticeOverlay()) {
+            this.clearLatticeOverlay();
             return;
         }
 
@@ -8374,17 +8554,20 @@ class VectoramaApp {
 
             const transformedPoints = this.transformLatticePoints2D(sourcePoints, effectiveTransform);
 
-            this.latticeObjects.sourceLines = this.createLatticeLineSegments(sourcePoints, this.latticeEdgePairs2D, styles.sourceLine, 0.16, 994);
-            this.latticeObjects.sourcePoints = this.createLatticePointCloud(sourcePoints, styles.sourcePoint, 0.25, basePointSize - 0.4, 995);
-            this.latticeObjects.transformedLines = this.createLatticeLineSegments(transformedPoints, this.latticeEdgePairs2D, styles.transformedLine, 0.7, 996);
-            this.latticeObjects.transformedPoints = this.createLatticePointCloud(transformedPoints, styles.transformedPoint, 0.85, basePointSize, 997);
-
-            this.scene.add(this.latticeObjects.sourceLines);
-            this.scene.add(this.latticeObjects.sourcePoints);
-            this.scene.add(this.latticeObjects.transformedLines);
-            this.scene.add(this.latticeObjects.transformedPoints);
+            this.upsertLatticeLineSegments('sourceLines', sourcePoints, this.latticeEdgePairs2D, styles.sourceLine, 0.16, 994, {
+                skipPositionUpdate: true
+            });
+            this.upsertLatticePointCloud('sourcePoints', sourcePoints, styles.sourcePoint, 0.25, basePointSize - 0.4, 995, {
+                skipPositionUpdate: true
+            });
+            this.upsertLatticeLineSegments('transformedLines', transformedPoints, this.latticeEdgePairs2D, styles.transformedLine, 0.7, 996);
+            this.upsertLatticePointCloud('transformedPoints', transformedPoints, styles.transformedPoint, 0.85, basePointSize, 997);
             return;
         }
+
+        this.clearSingleLatticeObject('sourceLines');
+        this.clearSingleLatticeObject('sourcePoints');
+        this.clearSingleLatticeObject('transformedPoints');
 
         this.initLatticeBaseData3D();
 
@@ -8397,7 +8580,8 @@ class VectoramaApp {
         const transformedPoints = this.transformLatticePoints3D(sourcePoints, effectiveTransform);
         const latticeLineWidth = this.vectorSizeMode === 'large' ? 3.2 : 2.0;
 
-        this.latticeObjects.transformedLines = this.createLatticeLineSegments(
+        this.upsertLatticeLineSegments(
+            'transformedLines',
             transformedPoints,
             this.latticeEdgePairs3D,
             styles.transformedLine,
@@ -8410,8 +8594,6 @@ class VectoramaApp {
                 lineWidth: latticeLineWidth
             }
         );
-
-        this.scene.add(this.latticeObjects.transformedLines);
     }
 
     // Visualization of Invariant Spaces
