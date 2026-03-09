@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
 const APP_VERSION = '1.0.13';
 
@@ -1721,8 +1724,15 @@ class VectoramaApp {
         return this.normalizeLatticeDensity(mappedDensity, this.latticeDensity2D);
     }
 
-    getLatticeSpacing() {
-        return Math.max(1, 6 - this.latticeDensity2D);
+    getLatticeSpacing(dimension = this.dimension) {
+        const density = this.normalizeLatticeDensity(this.latticeDensity2D, 3);
+        if (dimension === '3d') {
+            // 3D grows in complexity very quickly, so use a sparser curve.
+            const spacingByDensity = [8, 6, 5, 4, 3];
+            return spacingByDensity[density - 1];
+        }
+
+        return Math.max(1, 6 - density);
     }
 
     normalizePlaneFormPreference(value) {
@@ -6272,6 +6282,9 @@ class VectoramaApp {
         // Force redraw
         this.createAxes();
         this.createGrid();
+        if (this.shouldShowLatticeOverlay()) {
+            this.updateLatticeOverlay();
+        }
         
         // Reset flag after a short delay
         this.resizeTimeout = setTimeout(() => {
@@ -6289,6 +6302,10 @@ class VectoramaApp {
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
+
+        if (this.shouldShowLatticeOverlay()) {
+            this.updateLatticeOverlay();
+        }
     }
 
     updateAxesLength() {
@@ -7809,7 +7826,7 @@ class VectoramaApp {
         }
 
         const worldRange = this.latticeWorldRange2D;
-        const spacing = this.getLatticeSpacing();
+        const spacing = this.getLatticeSpacing('2d');
         const indexExtent = Math.floor(worldRange / spacing);
         const size = (indexExtent * 2) + 1;
         const points = [];
@@ -7844,7 +7861,7 @@ class VectoramaApp {
         }
 
         const worldRange = this.latticeWorldRange3D;
-        const spacing = this.getLatticeSpacing();
+        const spacing = this.getLatticeSpacing('3d');
         const indexExtent = Math.floor(worldRange / spacing);
         const size = (indexExtent * 2) + 1;
         const points = [];
@@ -7951,7 +7968,12 @@ class VectoramaApp {
     createLatticeLineSegments(points, edgePairs, color, opacity, renderOrder, options = {}) {
         const segmentCount = edgePairs.length;
         const positions = new Float32Array(segmentCount * 6);
-        const { depthTest = false, depthWrite = false } = options;
+        const {
+            depthTest = false,
+            depthWrite = false,
+            useWideLines = false,
+            lineWidth = 1.5
+        } = options;
 
         for (let i = 0; i < segmentCount; i++) {
             const [startIndex, endIndex] = edgePairs[i];
@@ -7967,18 +7989,41 @@ class VectoramaApp {
             positions[offset + 5] = this.toFiniteNumber(end.z, 0);
         }
 
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        let lines;
+        if (useWideLines) {
+            const geometry = new LineSegmentsGeometry();
+            geometry.setPositions(positions);
 
-        const material = new THREE.LineBasicMaterial({
-            color,
-            transparent: true,
-            opacity,
-            depthTest,
-            depthWrite
-        });
+            const material = new LineMaterial({
+                color,
+                transparent: true,
+                opacity,
+                linewidth: lineWidth,
+                depthTest,
+                depthWrite
+            });
 
-        const lines = new THREE.LineSegments(geometry, material);
+            if (this.renderer) {
+                const viewportSize = this.renderer.getSize(new THREE.Vector2());
+                material.resolution.set(viewportSize.x, viewportSize.y);
+            }
+
+            lines = new LineSegments2(geometry, material);
+        } else {
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.LineBasicMaterial({
+                color,
+                transparent: true,
+                opacity,
+                depthTest,
+                depthWrite
+            });
+
+            lines = new THREE.LineSegments(geometry, material);
+        }
+
         lines.renderOrder = renderOrder;
         return lines;
     }
@@ -8058,6 +8103,7 @@ class VectoramaApp {
         }
 
         const transformedPoints = this.transformLatticePoints3D(sourcePoints, effectiveTransform);
+        const latticeLineWidth = this.vectorSizeMode === 'large' ? 3.2 : 2.0;
 
         // 3D is much easier to read without the source overlay; show transformed lattice lines only.
         this.latticeObjects.transformedLines = this.createLatticeLineSegments(
@@ -8066,7 +8112,12 @@ class VectoramaApp {
             styles.transformedLine,
             0.38,
             997,
-            { depthTest: true, depthWrite: true }
+            {
+                depthTest: true,
+                depthWrite: true,
+                useWideLines: true,
+                lineWidth: latticeLineWidth
+            }
         );
 
         this.scene.add(this.latticeObjects.transformedLines);
