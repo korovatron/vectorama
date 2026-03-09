@@ -209,6 +209,25 @@
 
             <!-- Bottom controls under objects -->
             <div class="panel-separator"></div>
+            <div class="top-button-row lattice-controls-row">
+                <button id="lattice-toggle-btn" class="top-btn" title="Toggle lattice overlay (2D)">
+                    <span class="lattice-label">LATTICE</span>
+                    <span class="lattice-state-row">
+                        <span class="lattice-state lattice-state-on" id="lattice-state-on">ON</span>
+                        <span class="lattice-state-divider">|</span>
+                        <span class="lattice-state lattice-state-off lattice-active" id="lattice-state-off">OFF</span>
+                    </span>
+                </button>
+                <button id="lattice-reset-btn" class="top-btn" title="Reset lattice transform (2D)">
+                    RESET<br>LATTICE
+                </button>
+                <div id="lattice-density-control" class="top-btn lattice-density-control" title="Adjust lattice density (2D)">
+                    <div class="lattice-density-header">
+                        <span class="lattice-density-label">DENSITY</span>
+                    </div>
+                    <input id="lattice-density-slider" class="lattice-density-slider" type="range" min="1" max="5" step="1" value="3" aria-label="Lattice density">
+                </div>
+            </div>
             <div class="top-button-row bottom-controls-row">
                 <div class="bottom-half-buttons">
                     <button id="return-to-title" class="top-btn bottom-half-btn" title="Return to Title Screen">

@@ -209,6 +209,18 @@ class VectoramaApp {
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
         this.lastInvariantLineTextureRepeat = null; // Track last stripe density for solid eigenline textures
+        this.latticeDisplayMode = 'off'; // 'off' | 'on'
+        this.latticeWorldRange2D = 20; // Fixed half-range in world units for lattice rendering
+        this.latticeDensity2D = 3; // 1 (sparse) to 5 (dense)
+        this.latticeCurrentTransform2D = new THREE.Matrix3().identity();
+        this.latticeBasePoints2D = null;
+        this.latticeEdgePairs2D = null;
+        this.latticeObjects = {
+            sourcePoints: null,
+            sourceLines: null,
+            transformedPoints: null,
+            transformedLines: null
+        };
         this.vectorDisplayMode = 'points'; // 'vectors' or 'points'
         this.vectorSizeMode = 'small'; // 'small' or 'large'
         this.presetEdges2D = []; // Hidden edge pairs for 2D preset groups
@@ -1451,6 +1463,24 @@ class VectoramaApp {
             intersectionToggleBtn.addEventListener('click', () => this.toggleIntersections(), withSignal());
         }
 
+        const latticeToggleBtn = document.getElementById('lattice-toggle-btn');
+        if (latticeToggleBtn) {
+            latticeToggleBtn.addEventListener('click', () => this.toggleLatticeDisplay(), withSignal());
+        }
+
+        const latticeResetBtn = document.getElementById('lattice-reset-btn');
+        if (latticeResetBtn) {
+            latticeResetBtn.addEventListener('click', () => this.resetLattice(), withSignal());
+        }
+
+        const latticeDensitySlider = document.getElementById('lattice-density-slider');
+        if (latticeDensitySlider) {
+            latticeDensitySlider.value = String(this.latticeDensity2D);
+            latticeDensitySlider.addEventListener('input', (e) => {
+                this.setLatticeDensity(e.target.value);
+            }, withSignal());
+        }
+
         const returnToTitleButton = document.getElementById('return-to-title');
         if (returnToTitleButton) {
             returnToTitleButton.onclick = () => {
@@ -1555,6 +1585,7 @@ class VectoramaApp {
         this.updateDropdownVisibility();
         this.updateGridToggleUI();
         this.updateIntersectionsToggleUI();
+        this.updateLatticeControlsUI();
         this.updatePlaneExtentControl();
         this.updateVectorDisplayModeUI();
     }
@@ -1633,6 +1664,8 @@ class VectoramaApp {
             this.controls.dispose();
         }
 
+        this.clearLatticeOverlay();
+
         if (this.renderer) {
             this.renderer.dispose();
         }
@@ -1669,6 +1702,22 @@ class VectoramaApp {
         return value === '3d' ? '3d' : '2d';
     }
 
+    normalizeLatticeDensity(value, fallback = 3) {
+        const parsed = Math.round(this.toFiniteNumber(value, fallback));
+        return Math.max(1, Math.min(5, parsed));
+    }
+
+    mapLegacyLatticeExtentToDensity(value) {
+        const legacyExtent = Math.max(8, Math.min(22, Math.round(this.toFiniteNumber(value, 15))));
+        const normalized = (legacyExtent - 8) / 14;
+        const mappedDensity = 1 + Math.round(normalized * 4);
+        return this.normalizeLatticeDensity(mappedDensity, this.latticeDensity2D);
+    }
+
+    getLatticeSpacing2D() {
+        return Math.max(1, 6 - this.latticeDensity2D);
+    }
+
     normalizePlaneFormPreference(value) {
         if (value === 'cartesian') return 'cartesian';
         if (value === 'vector') return 'vector';
@@ -1699,6 +1748,32 @@ class VectoramaApp {
             return colorValue;
         }
         return fallback;
+    }
+
+    serializeMatrix3(matrix, fallbackElements = null) {
+        const identityElements = [
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ];
+        const source = matrix && matrix.isMatrix3
+            ? matrix.elements
+            : (Array.isArray(fallbackElements) ? fallbackElements : identityElements);
+
+        if (!Array.isArray(source) || source.length !== 9) {
+            return identityElements;
+        }
+
+        return source.map((value, index) => this.toFiniteNumber(value, identityElements[index]));
+    }
+
+    deserializeMatrix3(values) {
+        const elements = this.serializeMatrix3(null, values);
+        return new THREE.Matrix3().fromArray(elements);
+    }
+
+    resetLatticeTransform2D() {
+        this.latticeCurrentTransform2D.identity();
     }
 
     serializeVector(vector) {
@@ -2054,6 +2129,8 @@ class VectoramaApp {
             dimension: this.dimension,
             vectorDisplayMode: this.vectorDisplayMode,
             currentGridSpacing: this.currentGridSpacing,
+            latticeDensity2D: this.latticeDensity2D,
+            latticeCurrentTransform2D: this.serializeMatrix3(this.latticeCurrentTransform2D),
             counters: {
                 nextVectorId: this.nextVectorId,
                 nextMatrixId: this.nextMatrixId,
@@ -2144,6 +2221,15 @@ class VectoramaApp {
         this.intersectionsVisible = true;
         this.planeExtent = 10;
         this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
+        this.latticeDisplayMode = 'off';
+        if (state.latticeDensity2D !== undefined) {
+            this.latticeDensity2D = this.normalizeLatticeDensity(state.latticeDensity2D, this.latticeDensity2D);
+        } else {
+            this.latticeDensity2D = this.mapLegacyLatticeExtentToDensity(state.latticeExtent2D);
+        }
+        this.latticeBasePoints2D = null;
+        this.latticeEdgePairs2D = null;
+        this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
 
         this.vectors2D = this.deserializeVectors(state.vectors2D || []);
         this.vectors3D = this.deserializeVectors(state.vectors3D || []);
@@ -2220,12 +2306,14 @@ class VectoramaApp {
         this.updateInfoPanelsSizeModeUI();
         this.updateGridToggleUI();
         this.updateIntersectionsToggleUI();
+        this.updateLatticeControlsUI();
         this.updatePlaneExtentControl();
 
         const targetDimension = this.normalizeDimension(state.dimension);
         this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
         this.updateObjectsList();
         this.updateIntersections();
+        this.clearLatticeOverlay();
 
         return true;
     }
@@ -2267,6 +2355,54 @@ class VectoramaApp {
             } else {
                 intersectionIcon.classList.remove('intersection-active');
             }
+        }
+    }
+
+    updateLatticeControlsUI() {
+        const latticeToggleButton = document.getElementById('lattice-toggle-btn');
+        const latticeResetButton = document.getElementById('lattice-reset-btn');
+        const latticeDensityControl = document.getElementById('lattice-density-control');
+        const latticeDensitySlider = document.getElementById('lattice-density-slider');
+        const latticeStateOn = document.getElementById('lattice-state-on');
+        const latticeStateOff = document.getElementById('lattice-state-off');
+
+        const is2D = this.dimension === '2d';
+        const isOn = this.latticeDisplayMode === 'on';
+        const densityText = String(this.latticeDensity2D);
+
+        if (latticeStateOn && latticeStateOff) {
+            latticeStateOn.classList.toggle('lattice-active', isOn);
+            latticeStateOff.classList.toggle('lattice-active', !isOn);
+        }
+
+        if (latticeToggleButton) {
+            latticeToggleButton.disabled = !is2D;
+            latticeToggleButton.style.opacity = is2D ? '1' : '0.55';
+            latticeToggleButton.title = is2D
+                ? (isOn ? 'Lattice enabled (click to disable)' : 'Lattice disabled (click to enable)')
+                : 'Lattice is available in 2D mode';
+        }
+
+        if (latticeResetButton) {
+            latticeResetButton.disabled = !is2D;
+            latticeResetButton.style.opacity = is2D ? '1' : '0.55';
+            latticeResetButton.title = is2D
+                ? 'Reset lattice transform'
+                : 'Lattice reset is available in 2D mode';
+        }
+
+        if (latticeDensitySlider) {
+            if (latticeDensitySlider.value !== densityText) {
+                latticeDensitySlider.value = densityText;
+            }
+            latticeDensitySlider.disabled = !is2D;
+        }
+
+        if (latticeDensityControl) {
+            latticeDensityControl.classList.toggle('disabled', !is2D);
+            latticeDensityControl.title = is2D
+                ? 'Adjust lattice density (higher is denser)'
+                : 'Lattice density is available in 2D mode';
         }
     }
 
@@ -2522,6 +2658,8 @@ class VectoramaApp {
         this.eigenvaluePanelMatrixId = null;
         this.invariantDisplayMode = 'off';
         this.clearInvariantSpaces();
+        this.updateLatticeOverlay();
+        this.updateLatticeControlsUI();
         this.visualizeInvariantSpaces();
         this.updateEigenvaluePanel();
         this.updateIntersections();
@@ -2632,6 +2770,42 @@ class VectoramaApp {
         this.updateIntersectionsToggleUI();
         this.scheduleStateSave();
     }
+
+    toggleLatticeDisplay() {
+        if (this.dimension !== '2d') {
+            return;
+        }
+
+        this.latticeDisplayMode = this.latticeDisplayMode === 'on' ? 'off' : 'on';
+        this.updateLatticeOverlay();
+        this.updateLatticeControlsUI();
+        this.scheduleStateSave();
+    }
+
+    resetLattice() {
+        if (this.dimension !== '2d') {
+            return;
+        }
+
+        this.resetLatticeTransform2D();
+        this.updateLatticeOverlay();
+        this.scheduleStateSave();
+    }
+
+    setLatticeDensity(value) {
+        const nextDensity = this.normalizeLatticeDensity(value, this.latticeDensity2D);
+        if (nextDensity === this.latticeDensity2D) {
+            this.updateLatticeControlsUI();
+            return;
+        }
+
+        this.latticeDensity2D = nextDensity;
+        this.latticeBasePoints2D = null;
+        this.latticeEdgePairs2D = null;
+        this.updateLatticeOverlay();
+        this.updateLatticeControlsUI();
+        this.scheduleStateSave();
+    }
     
     toggleDimension() {
         // Toggle between 2D and 3D
@@ -2661,6 +2835,7 @@ class VectoramaApp {
         this.updateInvariantLineThickness();
         this.updatePointSphereScales();
         this.updateNumberLabelScales();
+        this.updateLatticeOverlay();
         this.scheduleStateSave();
     }
 
@@ -5403,6 +5578,14 @@ class VectoramaApp {
                 if (panel) panel.style.display = 'none';
                 this.eigenvaluePanelMatrixId = null;
             }
+
+            if (this.eigenvaluePanelMatrixId === id) {
+                const panel = document.getElementById('eigenvalue-panel');
+                if (panel) panel.style.display = 'none';
+                this.eigenvaluePanelMatrixId = null;
+                this.invariantDisplayMode = 'off';
+                this.clearInvariantSpaces();
+            }
             
             this.updateObjectsList();
             this.scheduleStateSave();
@@ -5444,6 +5627,7 @@ class VectoramaApp {
         
         // Clear any existing visualizations before starting
         this.updateVectorDisplay();
+        this.updateLatticeOverlay();
         
         // Get matrix to apply
         const targetMatrixId = matrixId || this.selectedMatrixId;
@@ -5541,6 +5725,7 @@ class VectoramaApp {
 
             // Update visualization based on current mode
             this.updateVectorDisplay();
+            this.updateLatticeOverlay(interpolatedMatrix);
 
             // Transform lines
             this.lines.forEach(line => {
@@ -5648,6 +5833,12 @@ class VectoramaApp {
                     plane.c = plane.currentC;
                     plane.d = plane.currentD;
                 });
+
+                if (this.dimension === '2d') {
+                    this.latticeCurrentTransform2D.premultiply(matrix);
+                }
+
+                this.updateLatticeOverlay();
                 
                 // Final update of objects list and intersections
                 this.updateObjectsList();
@@ -6984,6 +7175,7 @@ class VectoramaApp {
 
         // Refresh preset edge color (black in light mode, white in dark mode)
         this.updateVectorDisplay();
+        this.updateLatticeOverlay();
         this.scheduleStateSave();
     }
 
@@ -7528,6 +7720,198 @@ class VectoramaApp {
         }
         
         return null;
+    }
+
+    shouldShowLatticeOverlay() {
+        return this.dimension === '2d'
+            && this.latticeDisplayMode === 'on';
+    }
+
+    getLatticeThemeStyles() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const isLight = currentTheme === 'light';
+
+        return {
+            sourceLine: isLight ? 0x2a2a2a : 0xb0b0b0,
+            sourcePoint: isLight ? 0x1f1f1f : 0xe0e0e0,
+            transformedLine: isLight ? 0x0066cc : 0x7ee8ff,
+            transformedPoint: isLight ? 0x0052a3 : 0xb8f8ff
+        };
+    }
+
+    initLatticeBaseData2D() {
+        if (this.latticeBasePoints2D && this.latticeEdgePairs2D) {
+            return;
+        }
+
+        const worldRange = this.latticeWorldRange2D;
+        const spacing = this.getLatticeSpacing2D();
+        const indexExtent = Math.floor(worldRange / spacing);
+        const size = (indexExtent * 2) + 1;
+        const points = [];
+        const edges = [];
+
+        for (let yi = -indexExtent; yi <= indexExtent; yi++) {
+            for (let xi = -indexExtent; xi <= indexExtent; xi++) {
+                points.push({ x: xi * spacing, y: yi * spacing });
+            }
+        }
+
+        const indexFor = (x, y) => ((y + indexExtent) * size) + (x + indexExtent);
+        for (let yi = -indexExtent; yi <= indexExtent; yi++) {
+            for (let xi = -indexExtent; xi <= indexExtent; xi++) {
+                const index = indexFor(xi, yi);
+                if (xi < indexExtent) {
+                    edges.push([index, indexFor(xi + 1, yi)]);
+                }
+                if (yi < indexExtent) {
+                    edges.push([index, indexFor(xi, yi + 1)]);
+                }
+            }
+        }
+
+        this.latticeBasePoints2D = points;
+        this.latticeEdgePairs2D = edges;
+    }
+
+    transformLatticePoints2D(points, matrix) {
+        const e = matrix.elements;
+        const transformed = new Array(points.length);
+
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            transformed[i] = {
+                x: (e[0] * point.x) + (e[3] * point.y),
+                y: (e[1] * point.x) + (e[4] * point.y)
+            };
+        }
+
+        return transformed;
+    }
+
+    createLatticePointCloud(points, color, opacity, size, renderOrder) {
+        const positions = new Float32Array(points.length * 3);
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            const offset = i * 3;
+            positions[offset] = point.x;
+            positions[offset + 1] = point.y;
+            positions[offset + 2] = 0;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+            color,
+            size,
+            sizeAttenuation: false,
+            transparent: true,
+            opacity,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const cloud = new THREE.Points(geometry, material);
+        cloud.renderOrder = renderOrder;
+        return cloud;
+    }
+
+    createLatticeLineSegments(points, color, opacity, renderOrder) {
+        const segmentCount = this.latticeEdgePairs2D.length;
+        const positions = new Float32Array(segmentCount * 6);
+
+        for (let i = 0; i < segmentCount; i++) {
+            const [startIndex, endIndex] = this.latticeEdgePairs2D[i];
+            const start = points[startIndex];
+            const end = points[endIndex];
+            const offset = i * 6;
+
+            positions[offset] = start.x;
+            positions[offset + 1] = start.y;
+            positions[offset + 2] = 0;
+            positions[offset + 3] = end.x;
+            positions[offset + 4] = end.y;
+            positions[offset + 5] = 0;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            color,
+            transparent: true,
+            opacity,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const lines = new THREE.LineSegments(geometry, material);
+        lines.renderOrder = renderOrder;
+        return lines;
+    }
+
+    disposeSceneObject(object) {
+        if (!object) return;
+
+        this.scene.remove(object);
+
+        if (object.geometry) {
+            object.geometry.dispose();
+        }
+
+        if (object.material) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => {
+                if (!material) return;
+                if (material.map) {
+                    material.map.dispose();
+                }
+                material.dispose();
+            });
+        }
+    }
+
+    clearLatticeOverlay() {
+        this.disposeSceneObject(this.latticeObjects.sourcePoints);
+        this.disposeSceneObject(this.latticeObjects.sourceLines);
+        this.disposeSceneObject(this.latticeObjects.transformedPoints);
+        this.disposeSceneObject(this.latticeObjects.transformedLines);
+
+        this.latticeObjects.sourcePoints = null;
+        this.latticeObjects.sourceLines = null;
+        this.latticeObjects.transformedPoints = null;
+        this.latticeObjects.transformedLines = null;
+    }
+
+    updateLatticeOverlay(interpolatedMatrix = null) {
+        this.clearLatticeOverlay();
+
+        if (!this.shouldShowLatticeOverlay()) {
+            return;
+        }
+
+        this.initLatticeBaseData2D();
+
+        const sourcePoints = this.latticeBasePoints2D;
+        const effectiveTransform = this.latticeCurrentTransform2D.clone();
+        if (interpolatedMatrix && interpolatedMatrix.isMatrix3) {
+            effectiveTransform.premultiply(interpolatedMatrix);
+        }
+
+        const transformedPoints = this.transformLatticePoints2D(sourcePoints, effectiveTransform);
+        const styles = this.getLatticeThemeStyles();
+        const pointSize = this.vectorSizeMode === 'large' ? 4 : 3;
+
+        this.latticeObjects.sourceLines = this.createLatticeLineSegments(sourcePoints, styles.sourceLine, 0.16, 994);
+        this.latticeObjects.sourcePoints = this.createLatticePointCloud(sourcePoints, styles.sourcePoint, 0.25, pointSize - 0.4, 995);
+        this.latticeObjects.transformedLines = this.createLatticeLineSegments(transformedPoints, styles.transformedLine, 0.7, 996);
+        this.latticeObjects.transformedPoints = this.createLatticePointCloud(transformedPoints, styles.transformedPoint, 0.85, pointSize, 997);
+
+        this.scene.add(this.latticeObjects.sourceLines);
+        this.scene.add(this.latticeObjects.sourcePoints);
+        this.scene.add(this.latticeObjects.transformedLines);
+        this.scene.add(this.latticeObjects.transformedPoints);
     }
 
     // Visualization of Invariant Spaces
@@ -8519,6 +8903,7 @@ class VectoramaApp {
             
             valuesDiv.appendChild(invariantControls);
         }
+
     }
 
     updateVectorPanel() {

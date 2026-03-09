@@ -401,6 +401,9 @@ body {
 .top-button-row.four-col-row {
     grid-template-columns: repeat(4, 1fr);
 }
+.top-button-row.two-col-row {
+    grid-template-columns: repeat(2, 1fr);
+}
 
 .top-btn {
     padding: 8px;
@@ -416,6 +419,15 @@ body {
     align-items: center;
     justify-content: center;
     transition: background 0.2s;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.top-btn:disabled {
+    cursor: not-allowed;
+}
+
+.top-btn:disabled:hover {
+    background: #2A3F5A;
 }
 
 .bottom-controls-row {
@@ -438,26 +450,14 @@ body {
         background: #354d6b;
     }
 
+    .lattice-density-control.disabled:hover {
+        background: #2A3F5A;
+    }
+
     #grid-toggle-btn:hover,
     #intersection-toggle-btn:hover {
         background: #354d6b !important;
     }
-}
-
-.dim-option {
-    color: #666;
-    transition: color 0.2s;
-    font-size: 14px;
-}
-
-.dim-option.dim-active {
-    color: #ffffff;
-}
-
-.dim-separator {
-    margin: 0 6px;
-    color: #666;
-    font-size: 14px;
 }
 
 .inv-option {
@@ -545,6 +545,94 @@ body {
 
 .size-separator {
     color: #666;
+}
+
+.lattice-controls-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 8px;
+}
+
+#lattice-toggle-btn {
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.lattice-label {
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1;
+}
+
+.lattice-state-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    line-height: 1;
+}
+
+.lattice-state-divider {
+    font-size: 10px;
+    color: #666;
+}
+
+.lattice-state {
+    font-size: 10px;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.lattice-state.lattice-active {
+    color: #ffffff;
+}
+
+.lattice-density-control {
+    height: 40px;
+    padding: 4px 6px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.lattice-density-control.disabled {
+    opacity: 0.55;
+}
+
+.lattice-density-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    line-height: 1;
+}
+
+.lattice-density-label {
+    font-size: 9px;
+    letter-spacing: 0.45px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.lattice-density-slider {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.lattice-density-slider:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .add-button {
