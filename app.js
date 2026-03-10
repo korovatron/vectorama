@@ -5016,11 +5016,10 @@ class VectoramaApp {
         // Remove old arrow
         this.scene.remove(vec.arrow);
         
-        // Create new arrow
-        const direction = vec.currentEnd.clone().normalize();
         const length = vec.currentEnd.length();
         
         if (length > 0) {
+            const direction = vec.currentEnd.clone().normalize();
             const thickness = this.getVectorArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
@@ -5030,15 +5029,18 @@ class VectoramaApp {
                 thickness.headLength,
                 thickness.headWidth
             );
-            
-            // Update point sphere position
-            if (vec.pointSphere) {
-                vec.pointSphere.position.copy(vec.currentEnd);
-            }
-            
-            // Re-add to scene based on current mode and visibility
-            this.updateVectorDisplay();
+        } else {
+            // No arrow to draw at the origin; keep points mode in sync.
+            vec.arrow = null;
         }
+
+        // Update point sphere position for both non-zero and zero vectors.
+        if (vec.pointSphere) {
+            vec.pointSphere.position.copy(vec.currentEnd);
+        }
+
+        // Re-add visuals based on current mode and visibility.
+        this.updateVectorDisplay();
 
         if (!this.isAnimating) {
             this.scheduleStateSave();
