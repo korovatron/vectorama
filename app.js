@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.15';
+const APP_VERSION = '1.0.16';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -7501,16 +7501,20 @@ class VectoramaApp {
         const sizeFactor = this.getVectorSizeModeFactor();
         
         if (this.dimension === '2d') {
-            // In 2D, scale with distance to maintain constant screen size
+            // In 2D, keep near/mid zoom sizing stable, then shrink points at far zoom to reduce overlap.
             const screenConstantScale = distanceToTarget * 0.085 * sizeFactor;
+            const farZoomStartDistance = 14;
+            const farZoomRatio = Math.max(1, distanceToTarget / farZoomStartDistance);
+            const farZoomAttenuation = 1 / Math.pow(farZoomRatio, 1.5);
             
             this.vectors.forEach(vec => {
                 if (vec.pointSphere) {
                     if (vec.pointSphere.isSprite) {
-                        const spriteScale = screenConstantScale * 0.34;
+                        const spriteScale = screenConstantScale * 0.34 * farZoomAttenuation;
                         vec.pointSphere.scale.set(spriteScale, spriteScale, 1);
                     } else {
-                        vec.pointSphere.scale.set(screenConstantScale, screenConstantScale, screenConstantScale);
+                        const meshScale = screenConstantScale * farZoomAttenuation;
+                        vec.pointSphere.scale.set(meshScale, meshScale, meshScale);
                     }
                 }
             });
