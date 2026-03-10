@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.14';
+const APP_VERSION = '1.0.15';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -5982,7 +5982,9 @@ class VectoramaApp {
     }
 
     animateTransformation(matrixId = null) {
-        if (this.isAnimating || (this.vectors.length === 0 && this.lines.length === 0 && this.planes.length === 0)) return;
+        const hasTransformableObjects = this.vectors.length > 0 || this.lines.length > 0 || this.planes.length > 0;
+        const canAnimateLatticeOnly = this.shouldShowLatticeOverlay();
+        if (this.isAnimating || (!hasTransformableObjects && !canAnimateLatticeOnly)) return;
         
         // Auto-close panel on mobile/narrow screens to see the animation
         this.closePanelOnMobile();
