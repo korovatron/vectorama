@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.17';
+const APP_VERSION = '1.0.18';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -3244,11 +3244,13 @@ class VectoramaApp {
 
         if (isTurningOn) {
             if (this.dimension === '2d') {
+                this.resetLatticeTransform2D();
                 this.latticeDensityManualOverride2D = false;
                 this.latticeLastZoomDistance2D = null;
                 this.syncLatticeDensityWithZoom2D({ clearManualOverride: true, updateUI: false });
                 this.latticeAdaptiveTierIndex2D = null;
             } else if (this.dimension === '3d') {
+                this.resetLatticeTransform3D();
                 this.latticeDensityManualOverride3D = false;
                 this.latticeLastZoomDistance3D = null;
                 this.syncLatticeDensityWithZoom3D({ clearManualOverride: true, updateUI: false });
@@ -6402,10 +6404,12 @@ class VectoramaApp {
                     plane.d = plane.currentD;
                 });
 
-                if (this.dimension === '2d') {
-                    this.latticeCurrentTransform2D.premultiply(matrix);
-                } else if (this.dimension === '3d') {
-                    this.latticeCurrentTransform3D.premultiply(matrix);
+                if (this.shouldShowLatticeOverlay()) {
+                    if (this.dimension === '2d') {
+                        this.latticeCurrentTransform2D.premultiply(matrix);
+                    } else if (this.dimension === '3d') {
+                        this.latticeCurrentTransform3D.premultiply(matrix);
+                    }
                 }
 
                 this.updateLatticeOverlay();
