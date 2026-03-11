@@ -288,6 +288,27 @@
                 </div>
                 <input id="plane-extent-slider" type="range" min="5" max="100" step="1" value="10" aria-label="Plane size">
             </div>
+
+            <div id="drag-vector-overlay" class="drag-vector-overlay" style="display: none;" aria-live="polite">
+                <div class="drag-vector-overlay-title">Add Vector</div>
+                <div class="drag-vector-overlay-label" aria-label="Current drag coordinates">
+                    <span class="drag-axis-group">
+                        <span class="drag-axis-label">x =</span>
+                        <span id="drag-vector-overlay-x" class="drag-axis-value">0</span>
+                    </span>
+                    <span class="drag-axis-group">
+                        <span class="drag-axis-divider">|</span>
+                        <span class="drag-axis-label">y =</span>
+                        <span id="drag-vector-overlay-y" class="drag-axis-value">0</span>
+                    </span>
+                    <span id="drag-vector-overlay-z-group" class="drag-axis-group">
+                        <span class="drag-axis-divider">|</span>
+                        <span class="drag-axis-label">z =</span>
+                        <span id="drag-vector-overlay-z" class="drag-axis-value">0</span>
+                    </span>
+                </div>
+                <div id="drag-vector-overlay-hint" class="drag-vector-overlay-hint">Mouse wheel adjusts y</div>
+            </div>
             
             <!-- Eigenvalue Info Panel (bottom-right) -->
             <div id="eigenvalue-panel" class="eigenvalue-panel" style="display: none;">
@@ -364,10 +385,13 @@
             <div class="shortcuts-section">
                 <h3>Navigation</h3>
                 <div class="shortcut-item desktop-only">
-                    <span class="shortcut-description">Pan/rotate/zoom with mouse and wheel.</span>
+                    <span class="shortcut-description"><strong>2D:</strong> Left click pan, right click add vector.</span>
+                </div>
+                <div class="shortcut-item desktop-only">
+                    <span class="shortcut-description"><strong>3D:</strong> Left click rotate, right click add vector, middle click pan.</span>
                 </div>
                 <div class="shortcut-item touch-only">
-                    <span class="shortcut-description">Pan with one finger and zoom with pinch.</span>
+                    <span class="shortcut-description">Pan with one finger and zoom with pinch. Add vectors using the panel by entering coordinates.</span>
                 </div>
                 <div class="shortcut-item keyboard-only">
                     <span class="shortcut-description">Use <strong>+</strong> / <strong>-</strong> keyboard keys for zoom.</span>

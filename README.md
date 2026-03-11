@@ -40,9 +40,8 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 ### Transform Mode
 
 #### Adding Vectors
-- Drag on the canvas to create vectors
-- In 2D: Simple drag
-- In 3D: Hold Shift + drag (to avoid conflict with camera rotation)
+- Right-click + drag on the canvas to create vectors in both 2D and 3D
+- In 3D, while right-dragging, use the mouse wheel to raise/lower the vector's y coordinate in grid steps
 - Vectors snap to grid points when released
 
 #### Transforming Vectors
@@ -60,11 +59,11 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 #### Camera Controls
 - **2D Mode**: 
-  - Right Click + Drag: Pan the view
+  - Left or Middle Click + Drag: Pan the view
   - Scroll: Zoom in/out
 - **3D Mode**:
   - Left Click + Drag: Rotate the view
-  - Right Click + Drag: Pan the view  
+  - Middle Click + Drag: Pan the view  
   - Scroll: Zoom in/out
 
 ## Technical Stack

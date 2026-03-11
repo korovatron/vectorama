@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.16';
+const APP_VERSION = '1.0.17';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -191,6 +191,10 @@ class VectoramaApp {
         this.gridVisible = true; // Grid visibility state
         this.intersectionsVisible = true; // Intersection markers/lines visibility state
         this.planeExtent = 10; // Plane half-size in each direction
+        this.dragPreviewPoint3D = null; // Current preview point while middle-dragging in 3D
+        this.dragPreviewY3D = 0; // Wheel-adjusted y-coordinate for 3D drag preview
+        this.dragWheelAccumulator3D = 0; // Fractional wheel detents carried between wheel events
+        this.dragWheelDetentPixels3D = 100; // Learned pixel delta for one wheel detent
         this.currentGridSpacing = 1; // Current grid spacing
         this.last2DLabelBounds = null; // Track last generated 2D label coverage
         this.isResizing = false; // Flag to prevent animation loop interference
@@ -368,10 +372,10 @@ class VectoramaApp {
         this.controls.minDistance = isMobilePhone ? 2 : 1;   // Mobile phones can't zoom as close
         this.controls.maxDistance = 100; // Prevent zooming beyond axis endpoints
         
-        // Set mouse button mappings for 2D mode (left click = pan, right for vectors)
+        // Set mouse button mappings for 2D mode (left/middle click = pan, right for vectors)
         this.controls.mouseButtons = {
             LEFT: THREE.MOUSE.PAN,
-            MIDDLE: THREE.MOUSE.DOLLY
+            MIDDLE: THREE.MOUSE.PAN
         };
         
         // Set touch mappings for 2D mode (one finger = pan, pinch = zoom)
@@ -1557,6 +1561,7 @@ class VectoramaApp {
         this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e), withSignal());
         this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e), withSignal());
         this.canvas.addEventListener('mouseleave', (e) => this.onCanvasMouseUp(e), withSignal());
+        this.canvas.addEventListener('wheel', (e) => this.onCanvasWheel(e), withSignal({ passive: false }));
         
         // Keyboard zoom and pan controls
         document.addEventListener('keydown', (e) => {
@@ -1564,7 +1569,7 @@ class VectoramaApp {
             if (!window.vectoramaApp || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
             }
-            
+
             // Check for zoom in keys: + (Equal key) or NumpadAdd
             if (e.code === 'Equal' || e.code === 'NumpadAdd') {
                 e.preventDefault();
@@ -1720,6 +1725,145 @@ class VectoramaApp {
 
     normalizeDimension(value) {
         return value === '3d' ? '3d' : '2d';
+    }
+
+    getGridSnapSpacing() {
+        const spacing = Math.abs(this.toFiniteNumber(this.currentGridSpacing, 1));
+        return spacing > 1e-6 ? spacing : 1;
+    }
+
+    snapValueToGrid(value) {
+        const spacing = this.getGridSnapSpacing();
+        const snapped = Math.round(this.toFiniteNumber(value, 0) / spacing) * spacing;
+        return Math.abs(snapped) < 1e-10 ? 0 : snapped;
+    }
+
+    normalizeWheelDeltaToDetents3D(event) {
+        const rawDelta = this.toFiniteNumber(event?.deltaY, 0);
+        if (rawDelta === 0) {
+            return 0;
+        }
+
+        const deltaMode = this.toFiniteNumber(event?.deltaMode, 0);
+
+        // deltaMode: 0 = pixels, 1 = lines, 2 = pages
+        if (deltaMode === 1) {
+            const absDelta = Math.abs(rawDelta);
+            const lineUnit = absDelta >= 3 ? 3 : 1;
+            return rawDelta / lineUnit;
+        }
+
+        if (deltaMode === 2) {
+            return rawDelta;
+        }
+
+        const absDelta = Math.abs(rawDelta);
+        if (absDelta >= 40) {
+            this.dragWheelDetentPixels3D = absDelta;
+        }
+
+        const pixelUnit = Math.max(1, this.toFiniteNumber(this.dragWheelDetentPixels3D, 100));
+        return rawDelta / pixelUnit;
+    }
+
+    consumeWheelDetentSteps3D(event) {
+        this.dragWheelAccumulator3D += this.normalizeWheelDeltaToDetents3D(event);
+
+        const steps = this.dragWheelAccumulator3D > 0
+            ? Math.floor(this.dragWheelAccumulator3D)
+            : Math.ceil(this.dragWheelAccumulator3D);
+
+        this.dragWheelAccumulator3D -= steps;
+        return steps;
+    }
+
+    getSnappedXZDragIntersection3D() {
+        if (this.dimension !== '3d') {
+            return null;
+        }
+
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectPoint = new THREE.Vector3();
+        const didIntersect = this.raycaster.ray.intersectPlane(plane, intersectPoint);
+        if (!didIntersect) {
+            return null;
+        }
+
+        return {
+            x: this.snapValueToGrid(intersectPoint.x),
+            z: this.snapValueToGrid(intersectPoint.z)
+        };
+    }
+
+    updateDragVectorOverlay(point, pointerEvent = null) {
+        const overlay = document.getElementById('drag-vector-overlay');
+        const xField = document.getElementById('drag-vector-overlay-x');
+        const yField = document.getElementById('drag-vector-overlay-y');
+        const zField = document.getElementById('drag-vector-overlay-z');
+        const zGroup = document.getElementById('drag-vector-overlay-z-group');
+        const hint = document.getElementById('drag-vector-overlay-hint');
+        if (!overlay || !xField || !yField || !zField || !zGroup || !hint) return;
+
+        if (!point) {
+            overlay.style.display = 'none';
+            return;
+        }
+
+        const show3DFields = this.dimension === '3d';
+        zGroup.style.display = show3DFields ? 'inline-flex' : 'none';
+        hint.style.display = show3DFields ? 'block' : 'none';
+
+        const xText = this.formatDisplayNumber(point.x, 3);
+        const yText = this.formatDisplayNumber(point.y, 3);
+        const zText = this.formatDisplayNumber(point.z, 3);
+        xField.textContent = xText;
+        yField.textContent = yText;
+        zField.textContent = zText;
+        overlay.style.display = 'block';
+
+        if (!pointerEvent) {
+            return;
+        }
+
+        const padding = 8;
+        const offsetX = 14;
+        const offsetY = 14;
+        const rawLeft = pointerEvent.clientX + offsetX;
+        const rawTop = pointerEvent.clientY + offsetY;
+
+        const rect = overlay.getBoundingClientRect();
+        const width = rect.width || overlay.offsetWidth || 220;
+        const height = rect.height || overlay.offsetHeight || 64;
+
+        const maxLeft = Math.max(padding, window.innerWidth - width - padding);
+        const maxTop = Math.max(padding, window.innerHeight - height - padding);
+        const left = Math.max(padding, Math.min(rawLeft, maxLeft));
+        const top = Math.max(padding, Math.min(rawTop, maxTop));
+
+        overlay.style.left = `${Math.round(left)}px`;
+        overlay.style.top = `${Math.round(top)}px`;
+        overlay.style.right = 'auto';
+    }
+
+    update3DDragPreviewFromMouse(pointerEvent = null) {
+        if (this.dimension !== '3d' || !this.isDragging) {
+            return;
+        }
+
+        const snappedXZ = this.getSnappedXZDragIntersection3D();
+        if (!snappedXZ) {
+            return;
+        }
+
+        const nextPoint = {
+            x: snappedXZ.x,
+            y: this.snapValueToGrid(this.dragPreviewY3D),
+            z: snappedXZ.z
+        };
+
+        this.dragPreviewPoint3D = nextPoint;
+        this.updateTempVector(nextPoint.x, nextPoint.y, nextPoint.z);
+        this.updateDragVectorOverlay(nextPoint, pointerEvent);
     }
 
     normalizeLatticeDensity(value, fallback = 3) {
@@ -2458,6 +2602,10 @@ class VectoramaApp {
         this.gridVisible = true;
         this.intersectionsVisible = true;
         this.planeExtent = 10;
+        this.dragPreviewPoint3D = null;
+        this.dragPreviewY3D = 0;
+        this.dragWheelAccumulator3D = 0;
+        this.dragWheelDetentPixels3D = 100;
         this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
         this.latticeDisplayMode = 'off';
         this.latticeGridRestoreState = null;
@@ -2562,6 +2710,7 @@ class VectoramaApp {
         this.updateIntersectionsToggleUI();
         this.updateLatticeControlsUI();
         this.updatePlaneExtentControl();
+        this.updateDragVectorOverlay(null);
 
         const targetDimension = this.normalizeDimension(state.dimension);
         this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
@@ -2768,10 +2917,10 @@ class VectoramaApp {
             this.controls.enableRotate = false; // Disable rotation in 2D
             this.controls.target.set(0, 0, 0);
             
-            // Set mouse buttons for 2D: left = pan, right for vectors
+            // Set mouse buttons for 2D: left/middle = pan, right for vectors
             this.controls.mouseButtons = {
                 LEFT: THREE.MOUSE.PAN,
-                MIDDLE: THREE.MOUSE.DOLLY
+                MIDDLE: THREE.MOUSE.PAN
             };
             
             // Set touch controls for 2D: one finger = pan, pinch = zoom
@@ -2786,11 +2935,11 @@ class VectoramaApp {
             this.controls.enableRotate = true; // Enable rotation in 3D
             this.controls.target.set(0, 0, 0);
             
-            // Set mouse buttons for 3D: left = rotate, right = pan
+            // Set mouse buttons for 3D: left = rotate, middle = pan, right = vector add
             this.controls.mouseButtons = {
                 LEFT: THREE.MOUSE.ROTATE,
-                MIDDLE: THREE.MOUSE.DOLLY,
-                RIGHT: THREE.MOUSE.PAN
+                MIDDLE: THREE.MOUSE.PAN,
+                RIGHT: null
             };
             
             // Set touch controls for 3D: one finger = rotate, two fingers = pan, pinch = zoom
@@ -2838,6 +2987,9 @@ class VectoramaApp {
             this.scene.remove(this.tempArrow);
             this.tempArrow = null;
         }
+        this.dragPreviewPoint3D = null;
+        this.dragWheelAccumulator3D = 0;
+        this.updateDragVectorOverlay(null);
         this.isDragging = false;
         this.controls.enabled = true;
         
@@ -2953,6 +3105,7 @@ class VectoramaApp {
         this.clearInvariantSpaces();
         this.updateLatticeOverlay();
         this.updateLatticeControlsUI();
+        this.updateDragVectorOverlay(null);
         this.visualizeInvariantSpaces();
         this.updateEigenvaluePanel();
         this.updateIntersections();
@@ -3288,10 +3441,13 @@ class VectoramaApp {
 
     onCanvasMouseDown(event) {
         if (this.isAnimating) return;
+
+        // Keep touch devices panel-only for vector creation.
+        const isMobileTouchDevice = Boolean(this.deviceInfo && (this.deviceInfo.isMobilePhone || this.deviceInfo.isTablet));
+        if (isMobileTouchDevice) return;
         
-        // Vector creation: right-click in 2D, middle-click in 3D
-        const isVectorButton = (this.dimension === '2d' && event.button === 2) || 
-                               (this.dimension === '3d' && event.button === 1);
+        // Vector creation: right-click drag in both 2D and 3D
+        const isVectorButton = (this.dimension === '2d' || this.dimension === '3d') && event.button === 2;
         
         if (!isVectorButton) return;
         
@@ -3304,6 +3460,14 @@ class VectoramaApp {
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (this.dimension === '3d') {
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            this.dragPreviewY3D = 0;
+            this.dragWheelAccumulator3D = 0;
+            this.dragPreviewPoint3D = null;
+            this.update3DDragPreviewFromMouse(event);
+        }
     }
 
     onCanvasMouseMove(event) {
@@ -3324,22 +3488,49 @@ class VectoramaApp {
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
                 // Snap to grid for preview
-                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
-                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
+                const x = this.snapValueToGrid(intersectPoint.x);
+                const y = this.snapValueToGrid(intersectPoint.y);
                 this.updateTempVector(x, y, 0);
+                this.updateDragVectorOverlay({ x, y, z: 0 }, event);
+            } else {
+                this.updateDragVectorOverlay(null);
             }
         } else {
-            // XZ plane (y = 0) for 3D mode
-            plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            this.raycaster.ray.intersectPlane(plane, intersectPoint);
-            if (intersectPoint) {
-                // Snap to grid for preview
-                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
-                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
-                const z = Math.round(intersectPoint.z / this.currentGridSpacing) * this.currentGridSpacing;
-                this.updateTempVector(x, y, z);
-            }
+            this.update3DDragPreviewFromMouse(event);
         }
+    }
+
+    onCanvasWheel(event) {
+        if (!this.isDragging || this.isAnimating || this.dimension !== '3d') {
+            return;
+        }
+
+        event.preventDefault();
+
+        const step = this.getGridSnapSpacing();
+        const wheelSteps = this.consumeWheelDetentSteps3D(event);
+        if (wheelSteps === 0) {
+            return;
+        }
+
+        // Wheel down increases deltaY (positive) and should lower y.
+        this.dragPreviewY3D = this.snapValueToGrid(this.dragPreviewY3D - (wheelSteps * step));
+
+        if (!this.dragPreviewPoint3D) {
+            this.update3DDragPreviewFromMouse(event);
+            this.scheduleStateSave();
+            return;
+        }
+
+        this.dragPreviewPoint3D = {
+            x: this.dragPreviewPoint3D.x,
+            y: this.dragPreviewY3D,
+            z: this.dragPreviewPoint3D.z
+        };
+
+        this.updateTempVector(this.dragPreviewPoint3D.x, this.dragPreviewPoint3D.y, this.dragPreviewPoint3D.z);
+        this.updateDragVectorOverlay(this.dragPreviewPoint3D, event);
+        this.scheduleStateSave();
     }
 
     onCanvasMouseUp(event) {
@@ -3362,8 +3553,8 @@ class VectoramaApp {
             this.raycaster.ray.intersectPlane(plane, intersectPoint);
             if (intersectPoint) {
                 // Snap to grid intersection
-                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
-                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
+                const x = this.snapValueToGrid(intersectPoint.x);
+                const y = this.snapValueToGrid(intersectPoint.y);
                 
                 // Only add if vector has some length
                 if (x !== 0 || y !== 0) {
@@ -3371,14 +3562,11 @@ class VectoramaApp {
                 }
             }
         } else {
-            // XZ plane (y = 0) for 3D mode
-            plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            this.raycaster.ray.intersectPlane(plane, intersectPoint);
-            if (intersectPoint) {
-                // Snap to grid intersection
-                const x = Math.round(intersectPoint.x / this.currentGridSpacing) * this.currentGridSpacing;
-                const y = Math.round(intersectPoint.y / this.currentGridSpacing) * this.currentGridSpacing;
-                const z = Math.round(intersectPoint.z / this.currentGridSpacing) * this.currentGridSpacing;
+            const point = this.dragPreviewPoint3D;
+            if (point) {
+                const x = point.x;
+                const y = point.y;
+                const z = point.z;
                 
                 // Only add if vector has some length
                 if (x !== 0 || y !== 0 || z !== 0) {
@@ -3392,6 +3580,11 @@ class VectoramaApp {
             this.scene.remove(this.tempArrow);
             this.tempArrow = null;
         }
+
+        this.dragPreviewPoint3D = null;
+        this.dragPreviewY3D = 0;
+        this.dragWheelAccumulator3D = 0;
+        this.updateDragVectorOverlay(null);
         
         // Re-enable orbit controls
         this.controls.enabled = true;
@@ -3833,7 +4026,18 @@ class VectoramaApp {
         const addBtn = document.createElement('button');
         addBtn.className = 'group-add-btn';
         addBtn.innerHTML = '<svg class="group-add-icon" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><line x1="5" y1="1.5" x2="5" y2="8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line></svg>';
-        addBtn.title = `Add ${groupName.slice(0, -1)}`; // Remove 's' from plural
+        const singularNames = {
+            matrices: 'Matrix',
+            vectors: 'Vector',
+            lines: 'Line',
+            planes: 'Plane'
+        };
+        const singularName = singularNames[groupKey] || groupName.replace(/s$/, '');
+        if (groupKey === 'vectors') {
+            addBtn.title = `Add ${singularName} (desktop: right-click + drag canvas)`;
+        } else {
+            addBtn.title = `Add ${singularName}`;
+        }
         addBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent header click (collapse/expand)
             
