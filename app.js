@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.20';
+const APP_VERSION = '1.0.21';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -3913,6 +3913,429 @@ class VectoramaApp {
         return Object.is(rounded, -0) ? '0' : String(rounded);
     }
 
+    isApproximatelyEqual(a, b, epsilon = 1e-3) {
+        return Math.abs(this.toFiniteNumber(a, 0) - this.toFiniteNumber(b, 0)) <= epsilon;
+    }
+
+    normalizeSignedAngleDegrees(degrees) {
+        let normalized = this.toFiniteNumber(degrees, 0) % 360;
+        if (normalized > 180) {
+            normalized -= 360;
+        } else if (normalized <= -180) {
+            normalized += 360;
+        }
+
+        if (Math.abs(normalized) < 1e-8) {
+            return 0;
+        }
+
+        return normalized;
+    }
+
+    format3DRotationAxisLabel(axis) {
+        if (!(axis instanceof THREE.Vector3) || axis.lengthSq() < 1e-12) {
+            return 'an axis';
+        }
+
+        const normalized = axis.clone().normalize();
+        const epsilon = 0.02;
+        const isNear = (value, target) => Math.abs(value - target) < epsilon;
+
+        if (isNear(Math.abs(normalized.x), 1) && Math.abs(normalized.y) < epsilon && Math.abs(normalized.z) < epsilon) {
+            return normalized.x >= 0 ? 'x-axis' : '-x-axis';
+        }
+
+        if (isNear(Math.abs(normalized.y), 1) && Math.abs(normalized.x) < epsilon && Math.abs(normalized.z) < epsilon) {
+            return normalized.y >= 0 ? 'y-axis' : '-y-axis';
+        }
+
+        if (isNear(Math.abs(normalized.z), 1) && Math.abs(normalized.x) < epsilon && Math.abs(normalized.y) < epsilon) {
+            return normalized.z >= 0 ? 'z-axis' : '-z-axis';
+        }
+
+        const x = this.formatDisplayNumber(normalized.x, 3);
+        const y = this.formatDisplayNumber(normalized.y, 3);
+        const z = this.formatDisplayNumber(normalized.z, 3);
+        return `axis (${x}, ${y}, ${z})`;
+    }
+
+    get3DRotationLabel(matrix3) {
+        if (!matrix3 || !matrix3.isMatrix3) {
+            return '3D rotation';
+        }
+
+        const elements = matrix3.elements;
+        const a11 = elements[0];
+        const a12 = elements[3];
+        const a13 = elements[6];
+        const a21 = elements[1];
+        const a22 = elements[4];
+        const a23 = elements[7];
+        const a31 = elements[2];
+        const a32 = elements[5];
+        const a33 = elements[8];
+
+        const trace = a11 + a22 + a33;
+        const cosTheta = THREE.MathUtils.clamp((trace - 1) / 2, -1, 1);
+        const theta = Math.acos(cosTheta);
+        const angleDegrees = theta * (180 / Math.PI);
+
+        if (angleDegrees < 0.2) {
+            return 'Identity matrix';
+        }
+
+        const nearestInt = Math.round(angleDegrees);
+        const angleText = Math.abs(angleDegrees - nearestInt) < 0.2
+            ? String(nearestInt)
+            : this.formatDisplayNumber(angleDegrees, 1);
+
+        const nearPi = Math.abs(Math.PI - theta) < 1e-3;
+        const sinTheta = Math.sin(theta);
+        let axis = new THREE.Vector3();
+
+        if (!nearPi && Math.abs(sinTheta) > 1e-6) {
+            axis.set(
+                a32 - a23,
+                a13 - a31,
+                a21 - a12
+            ).multiplyScalar(1 / (2 * sinTheta));
+        } else {
+            // For ~180° rotations, infer the axis from the longest column of (R + I).
+            const col1 = new THREE.Vector3(a11 + 1, a21, a31);
+            const col2 = new THREE.Vector3(a12, a22 + 1, a32);
+            const col3 = new THREE.Vector3(a13, a23, a33 + 1);
+
+            axis = col1;
+            if (col2.lengthSq() > axis.lengthSq()) axis = col2;
+            if (col3.lengthSq() > axis.lengthSq()) axis = col3;
+        }
+
+        if (axis.lengthSq() < 1e-10) {
+            axis = new THREE.Vector3(1, 0, 0);
+        } else {
+            axis.normalize();
+        }
+
+        const axisLabel = this.format3DRotationAxisLabel(axis);
+        return `Rotation ${angleText}° about ${axisLabel}`;
+    }
+
+    getMatrixTransformationLabel(matrix) {
+        if (!matrix || !Array.isArray(matrix.values)) {
+            return '';
+        }
+
+        const size = matrix.values.length;
+        if (size === 2) {
+            return this.getMatrixTransformationLabel2D(matrix.values);
+        }
+
+        if (size === 3) {
+            return this.getMatrixTransformationLabel3D(matrix.values);
+        }
+
+        return '';
+    }
+
+    getMatrixTransformationLabel2D(values) {
+        if (!Array.isArray(values) || values.length < 2 || !Array.isArray(values[0]) || !Array.isArray(values[1])) {
+            return '';
+        }
+
+        const a = this.toFiniteNumber(values[0][0], 0);
+        const b = this.toFiniteNumber(values[0][1], 0);
+        const c = this.toFiniteNumber(values[1][0], 0);
+        const d = this.toFiniteNumber(values[1][1], 0);
+        const epsilon = 1e-3;
+        const approx = (x, y) => this.isApproximatelyEqual(x, y, epsilon);
+        const formatFactor = (value) => this.formatDisplayNumber(value, 2);
+        const determinant = a * d - b * c;
+
+        if (approx(a, 1) && approx(b, 0) && approx(c, 0) && approx(d, 1)) {
+            return 'Identity matrix';
+        }
+
+        if (approx(a, 0) && approx(b, 0) && approx(c, 0) && approx(d, 0)) {
+            return 'Zero transformation';
+        }
+
+        if (approx(a, 1) && approx(b, 0) && approx(c, 0) && approx(d, -1)) {
+            return 'Reflection in x-axis';
+        }
+
+        if (approx(a, -1) && approx(b, 0) && approx(c, 0) && approx(d, 1)) {
+            return 'Reflection in y-axis';
+        }
+
+        if (approx(a, 0) && approx(b, 1) && approx(c, 1) && approx(d, 0)) {
+            return 'Reflection in y=x';
+        }
+
+        if (approx(a, 0) && approx(b, -1) && approx(c, -1) && approx(d, 0)) {
+            return 'Reflection in y=-x';
+        }
+
+        if (approx(a, 1) && approx(b, 0) && approx(c, 0) && approx(d, 0)) {
+            return 'Projection onto x-axis';
+        }
+
+        if (approx(a, 0) && approx(b, 0) && approx(c, 0) && approx(d, 1)) {
+            return 'Projection onto y-axis';
+        }
+
+        const matrix3 = new THREE.Matrix3().set(
+            a, b, 0,
+            c, d, 0,
+            0, 0, 1
+        );
+
+        if (this.isProperRotationMatrix2(matrix3)) {
+            const angleDegreesRaw = Math.atan2(c, a) * (180 / Math.PI);
+            const angleDegrees = this.normalizeSignedAngleDegrees(angleDegreesRaw);
+
+            if (this.isApproximatelyEqual(Math.abs(angleDegrees), 180, 0.2)) {
+                return 'Rotation 180°';
+            }
+
+            if (Math.abs(angleDegrees) < 0.2) {
+                return 'Identity matrix';
+            }
+
+            const absAngle = Math.abs(angleDegrees);
+            const nearestInt = Math.round(absAngle);
+            const angleText = Math.abs(absAngle - nearestInt) < 0.2
+                ? String(nearestInt)
+                : this.formatDisplayNumber(absAngle, 1);
+            const direction = angleDegrees > 0 ? 'anticlockwise' : 'clockwise';
+
+            return `Rotation ${angleText}° ${direction}`;
+        }
+
+        if (approx(a, d) && approx(b, 0) && approx(c, 0)) {
+            return `Uniform scale by ${formatFactor(a)}`;
+        }
+
+        if (approx(b, 0) && approx(c, 0)) {
+            return `Scale x by ${formatFactor(a)}, y by ${formatFactor(d)}`;
+        }
+
+        if (approx(a, 1) && approx(d, 1) && approx(c, 0) && !approx(b, 0)) {
+            return `Shear parallel to x-axis (factor ${formatFactor(b)})`;
+        }
+
+        if (approx(a, 1) && approx(d, 1) && approx(b, 0) && !approx(c, 0)) {
+            return `Shear parallel to y-axis (factor ${formatFactor(c)})`;
+        }
+
+        const xAxis = new THREE.Vector2(a, c);
+        const yAxis = new THREE.Vector2(b, d);
+        const hasUnitAxes =
+            Math.abs(xAxis.length() - 1) < epsilon &&
+            Math.abs(yAxis.length() - 1) < epsilon;
+        const hasOrthogonalAxes = Math.abs(xAxis.dot(yAxis)) < epsilon;
+
+        if (hasUnitAxes && hasOrthogonalAxes && approx(determinant, -1)) {
+            if (approx(b, c)) {
+                let lineAngleDegrees = 0.5 * Math.atan2(b, a) * (180 / Math.PI);
+                lineAngleDegrees = ((lineAngleDegrees + 90) % 180 + 180) % 180 - 90;
+
+                if (Math.abs(lineAngleDegrees) < 0.2) {
+                    return 'Reflection in x-axis';
+                }
+
+                const nearestInt = Math.round(lineAngleDegrees);
+                const angleText = Math.abs(lineAngleDegrees - nearestInt) < 0.2
+                    ? String(nearestInt)
+                    : this.formatDisplayNumber(lineAngleDegrees, 1);
+                return `Reflection in line at ${angleText}°`;
+            }
+
+            return 'Reflection';
+        }
+
+        if (Math.abs(determinant) < epsilon) {
+            return 'Singular transformation';
+        }
+
+        return '';
+    }
+
+    getMatrixTransformationLabel3D(values) {
+        if (!Array.isArray(values) || values.length < 3 || !Array.isArray(values[0]) || !Array.isArray(values[1]) || !Array.isArray(values[2])) {
+            return '';
+        }
+
+        const a11 = this.toFiniteNumber(values[0][0], 0);
+        const a12 = this.toFiniteNumber(values[0][1], 0);
+        const a13 = this.toFiniteNumber(values[0][2], 0);
+        const a21 = this.toFiniteNumber(values[1][0], 0);
+        const a22 = this.toFiniteNumber(values[1][1], 0);
+        const a23 = this.toFiniteNumber(values[1][2], 0);
+        const a31 = this.toFiniteNumber(values[2][0], 0);
+        const a32 = this.toFiniteNumber(values[2][1], 0);
+        const a33 = this.toFiniteNumber(values[2][2], 0);
+        const epsilon = 1e-3;
+        const approx = (x, y) => this.isApproximatelyEqual(x, y, epsilon);
+        const formatFactor = (value) => this.formatDisplayNumber(value, 2);
+        const determinant =
+            a11 * (a22 * a33 - a23 * a32) -
+            a12 * (a21 * a33 - a23 * a31) +
+            a13 * (a21 * a32 - a22 * a31);
+
+        const isZeroMatrix =
+            approx(a11, 0) && approx(a12, 0) && approx(a13, 0) &&
+            approx(a21, 0) && approx(a22, 0) && approx(a23, 0) &&
+            approx(a31, 0) && approx(a32, 0) && approx(a33, 0);
+
+        if (isZeroMatrix) {
+            return 'Zero transformation';
+        }
+
+        const isIdentity =
+            approx(a11, 1) && approx(a12, 0) && approx(a13, 0) &&
+            approx(a21, 0) && approx(a22, 1) && approx(a23, 0) &&
+            approx(a31, 0) && approx(a32, 0) && approx(a33, 1);
+
+        if (isIdentity) {
+            return 'Identity matrix';
+        }
+
+        const isDiagonal =
+            approx(a12, 0) && approx(a13, 0) &&
+            approx(a21, 0) && approx(a23, 0) &&
+            approx(a31, 0) && approx(a32, 0);
+
+        if (isDiagonal) {
+            if (approx(a11, 1) && approx(a22, 1) && approx(a33, -1)) {
+                return 'Reflection in xy-plane';
+            }
+
+            if (approx(a11, 1) && approx(a22, -1) && approx(a33, 1)) {
+                return 'Reflection in xz-plane';
+            }
+
+            if (approx(a11, -1) && approx(a22, 1) && approx(a33, 1)) {
+                return 'Reflection in yz-plane';
+            }
+
+            if (approx(a11, -1) && approx(a22, -1) && approx(a33, -1)) {
+                return 'Inversion through origin';
+            }
+
+            if (approx(a11, a22) && approx(a22, a33)) {
+                return `Uniform scale by ${formatFactor(a11)}`;
+            }
+
+            return `Scale x by ${formatFactor(a11)}, y by ${formatFactor(a22)}, z by ${formatFactor(a33)}`;
+        }
+
+        const isUnitDiagonal = approx(a11, 1) && approx(a22, 1) && approx(a33, 1);
+        const shearEntries = [
+            { value: a12, target: 'x', source: 'y' },
+            { value: a13, target: 'x', source: 'z' },
+            { value: a21, target: 'y', source: 'x' },
+            { value: a23, target: 'y', source: 'z' },
+            { value: a31, target: 'z', source: 'x' },
+            { value: a32, target: 'z', source: 'y' }
+        ].filter(entry => !approx(entry.value, 0));
+
+        if (isUnitDiagonal && shearEntries.length > 0) {
+            if (Math.abs(determinant) < epsilon) {
+                return 'Singular transformation';
+            }
+
+            const groupedShears = {
+                x: [],
+                y: [],
+                z: []
+            };
+
+            shearEntries.forEach(entry => {
+                groupedShears[entry.target].push(entry);
+            });
+
+            const buildShearEquation = (axis, entries) => {
+                let expression = axis;
+
+                entries.forEach(entry => {
+                    const sign = entry.value >= 0 ? '+' : '-';
+                    const absCoeff = Math.abs(entry.value);
+                    const coefficient = this.isApproximatelyEqual(absCoeff, 1, epsilon)
+                        ? ''
+                        : formatFactor(absCoeff);
+                    expression += ` ${sign} ${coefficient}${entry.source}`;
+                });
+
+                return `${axis}\u2032 = ${expression}`;
+            };
+
+            const equations = ['x', 'y', 'z']
+                .filter(axis => groupedShears[axis].length > 0)
+                .map(axis => ({
+                    axis,
+                    equation: buildShearEquation(axis, groupedShears[axis])
+                }));
+
+            const formatAxisPhrase = (axes) => {
+                const labels = axes.map(axis => `${axis}-axis`);
+                if (labels.length === 0) return 'axis';
+                if (labels.length === 1) return labels[0];
+                if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+                return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+            };
+
+            const axisPhrase = formatAxisPhrase(equations.map(item => item.axis));
+
+            if (equations.length === 1) {
+                return `Shear parallel to ${axisPhrase}: ${equations[0].equation}`;
+            }
+
+            return `Combined shear parallel to ${axisPhrase}: ${equations.map(item => item.equation).join(', ')}`;
+        }
+
+        const matrix3 = new THREE.Matrix3().set(
+            a11, a12, a13,
+            a21, a22, a23,
+            a31, a32, a33
+        );
+
+        if (this.isProperRotationMatrix3(matrix3)) {
+            return this.get3DRotationLabel(matrix3);
+        }
+
+        const xAxis = new THREE.Vector3(a11, a21, a31);
+        const yAxis = new THREE.Vector3(a12, a22, a32);
+        const zAxis = new THREE.Vector3(a13, a23, a33);
+        const hasUnitAxes =
+            Math.abs(xAxis.length() - 1) < epsilon &&
+            Math.abs(yAxis.length() - 1) < epsilon &&
+            Math.abs(zAxis.length() - 1) < epsilon;
+        const hasOrthogonalAxes =
+            Math.abs(xAxis.dot(yAxis)) < epsilon &&
+            Math.abs(xAxis.dot(zAxis)) < epsilon &&
+            Math.abs(yAxis.dot(zAxis)) < epsilon;
+
+        if (hasUnitAxes && hasOrthogonalAxes && this.isApproximatelyEqual(determinant, -1, epsilon)) {
+            return '3D reflection';
+        }
+
+        if (Math.abs(determinant) < epsilon) {
+            return 'Singular transformation';
+        }
+
+        return '';
+    }
+
+    updateMatrixTransformationLabel(labelElement, matrix) {
+        if (!labelElement) {
+            return;
+        }
+
+        const labelText = this.getMatrixTransformationLabel(matrix);
+        labelElement.textContent = labelText;
+        labelElement.classList.toggle('visible', Boolean(labelText));
+    }
+
     formatDisplayAngle(radians, maxDecimals = 1) {
         const degrees = radians * (180 / Math.PI);
         return `${this.formatDisplayNumber(degrees, maxDecimals)}°`;
@@ -4273,6 +4696,11 @@ class VectoramaApp {
         item.style.borderLeftColor = matrix.color.getStyle();
         item.setAttribute('data-matrix-id', matrix.id);
 
+        const transformationLabel = document.createElement('div');
+        transformationLabel.className = 'matrix-transform-label';
+        this.updateMatrixTransformationLabel(transformationLabel, matrix);
+        item.appendChild(transformationLabel);
+
         const mainRow = document.createElement('div');
         mainRow.className = 'matrix-main-row';
         
@@ -4313,6 +4741,7 @@ class VectoramaApp {
                     const r = parseInt(e.target.getAttribute('data-row'));
                     const c = parseInt(e.target.getAttribute('data-col'));
                     matrix.values[r][c] = parseFloat(e.target.value) || 0;
+                    this.updateMatrixTransformationLabel(transformationLabel, matrix);
                     this.visualizeInvariantSpaces();
                     this.scheduleStateSave();
                 });
