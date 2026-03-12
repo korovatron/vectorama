@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.19';
+const APP_VERSION = '1.0.20';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -195,6 +195,7 @@ class VectoramaApp {
         this.dragPreviewY3D = 0; // Wheel-adjusted y-coordinate for 3D drag preview
         this.dragWheelAccumulator3D = 0; // Fractional wheel detents carried between wheel events
         this.dragWheelDetentPixels3D = 100; // Learned pixel delta for one wheel detent
+        this.dragElevationIndicator3D = null; // Temporary 3D drag indicator showing elevation angle
         this.currentGridSpacing = 1; // Current grid spacing
         this.last2DLabelBounds = null; // Track last generated 2D label coverage
         this.isResizing = false; // Flag to prevent animation loop interference
@@ -1694,6 +1695,8 @@ class VectoramaApp {
             this.controls.dispose();
         }
 
+        this.clear3DDragElevationIndicator();
+
         this.clearLatticeOverlay();
 
         if (this.renderer) {
@@ -1800,6 +1803,157 @@ class VectoramaApp {
         };
     }
 
+    clear3DDragElevationIndicator() {
+        if (!this.dragElevationIndicator3D) {
+            return;
+        }
+
+        this.dragElevationIndicator3D.traverse((obj) => {
+            if (obj.geometry) {
+                obj.geometry.dispose();
+            }
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach((material) => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+            }
+        });
+
+        this.scene.remove(this.dragElevationIndicator3D);
+        this.dragElevationIndicator3D = null;
+    }
+
+    update3DDragElevationIndicator(point) {
+        this.clear3DDragElevationIndicator();
+
+        if (!point || this.dimension !== '3d' || !this.isDragging) {
+            return;
+        }
+
+        const vector = new THREE.Vector3(point.x, point.y, point.z);
+        const length = vector.length();
+        const yMagnitude = Math.abs(point.y);
+        if (length < 1e-6 || yMagnitude < 1e-6) {
+            return;
+        }
+
+        const projectedToPlane = new THREE.Vector3(point.x, 0, point.z);
+        let planeDirection = projectedToPlane.clone();
+        if (planeDirection.lengthSq() < 1e-8) {
+            planeDirection = this.camera.position.clone().sub(this.controls.target);
+            planeDirection.y = 0;
+            if (planeDirection.lengthSq() < 1e-8) {
+                planeDirection.set(1, 0, 0);
+            }
+        }
+        planeDirection.normalize();
+
+        const vectorDirection = vector.clone().normalize();
+        const dot = THREE.MathUtils.clamp(planeDirection.dot(vectorDirection), -1, 1);
+        const angle = Math.acos(dot);
+        if (angle < 1e-3) {
+            return;
+        }
+
+        const origin = new THREE.Vector3(0, 0, 0);
+        const fallbackRadius = Math.max(0.18, this.getGridSnapSpacing() * 0.4);
+        const screenSpaceRadius = this.renderer
+            ? this.getWorldHeightForPixelSize(56, origin, this.camera, this.renderer)
+            : fallbackRadius;
+        const minRadius = Math.max(0.06, this.getGridSnapSpacing() * 0.16);
+        const maxRadius = Math.max(minRadius, length * 0.55);
+        const radius = THREE.MathUtils.clamp(screenSpaceRadius, minRadius, maxRadius);
+        const rayLength = radius * 1.3;
+        const indicatorColor = point.y >= 0 ? '#6EC1FF' : '#FF9A62';
+
+        const setPreviewMaterialOpacity = (material, opacity) => {
+            if (!material) {
+                return;
+            }
+            material.transparent = true;
+            material.opacity = opacity;
+            material.depthWrite = false;
+            material.depthTest = true;
+        };
+
+        const indicatorGroup = new THREE.Group();
+
+        const planeRay = this.createAngleRay(origin, planeDirection, rayLength, indicatorColor);
+        if (planeRay) {
+            if (planeRay.material) {
+                setPreviewMaterialOpacity(planeRay.material, 0.65);
+            }
+            indicatorGroup.add(planeRay);
+        }
+
+        const arc = this.createAngleArc(
+            origin,
+            planeDirection,
+            vectorDirection,
+            angle,
+            radius,
+            indicatorColor
+        );
+        if (arc) {
+            if (arc.material) {
+                setPreviewMaterialOpacity(arc.material, 0.9);
+            }
+            indicatorGroup.add(arc);
+        }
+
+        const verticalDirection = point.y >= 0 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, -1, 0);
+        const dropGuide = this.createAngleRay(projectedToPlane, verticalDirection, yMagnitude, indicatorColor);
+        if (dropGuide) {
+            if (dropGuide.material) {
+                setPreviewMaterialOpacity(dropGuide.material, 0.55);
+            }
+            indicatorGroup.add(dropGuide);
+        }
+
+        const projectedLength = projectedToPlane.length();
+        if (projectedLength > 1e-6) {
+            const toOriginDirection = projectedToPlane.clone().multiplyScalar(-1).normalize();
+
+            const projectionGuide = this.createAngleRay(projectedToPlane, toOriginDirection, projectedLength, indicatorColor);
+            if (projectionGuide) {
+                if (projectionGuide.material) {
+                    setPreviewMaterialOpacity(projectionGuide.material, 0.5);
+                }
+                indicatorGroup.add(projectionGuide);
+            }
+
+            const markerPixelSize = 18;
+            const markerWorldHeight = this.renderer
+                ? this.getWorldHeightForPixelSize(markerPixelSize, projectedToPlane, this.camera, this.renderer)
+                : (this.getGridSnapSpacing() * 0.28);
+            const maxMarkerSizeFromLegs = Math.max(0.04, Math.min(projectedLength, yMagnitude) * 0.45);
+            const rightAngleSize = THREE.MathUtils.clamp(markerWorldHeight * 0.8, 0.03, maxMarkerSizeFromLegs);
+            const rightAngleMarker = this.createRightAngleMarker(
+                projectedToPlane,
+                toOriginDirection,
+                verticalDirection,
+                rightAngleSize,
+                indicatorColor
+            );
+            if (rightAngleMarker) {
+                if (rightAngleMarker.material) {
+                    rightAngleMarker.material.opacity = 0.88;
+                }
+                rightAngleMarker.renderOrder = 22;
+                indicatorGroup.add(rightAngleMarker);
+            }
+        }
+
+        this.dragElevationIndicator3D = indicatorGroup;
+        this.scene.add(indicatorGroup);
+    }
+
     updateDragVectorOverlay(point, pointerEvent = null) {
         const overlay = document.getElementById('drag-vector-overlay');
         const xField = document.getElementById('drag-vector-overlay-x');
@@ -1852,11 +2006,13 @@ class VectoramaApp {
 
     update3DDragPreviewFromMouse(pointerEvent = null) {
         if (this.dimension !== '3d' || !this.isDragging) {
+            this.clear3DDragElevationIndicator();
             return;
         }
 
         const snappedXZ = this.getSnappedXZDragIntersection3D();
         if (!snappedXZ) {
+            this.clear3DDragElevationIndicator();
             return;
         }
 
@@ -1868,6 +2024,7 @@ class VectoramaApp {
 
         this.dragPreviewPoint3D = nextPoint;
         this.updateTempVector(nextPoint.x, nextPoint.y, nextPoint.z);
+        this.update3DDragElevationIndicator(nextPoint);
         this.updateDragVectorOverlay(nextPoint, pointerEvent);
     }
 
@@ -2993,7 +3150,9 @@ class VectoramaApp {
             this.tempArrow = null;
         }
         this.dragPreviewPoint3D = null;
+        this.dragPreviewY3D = 0;
         this.dragWheelAccumulator3D = 0;
+        this.clear3DDragElevationIndicator();
         this.updateDragVectorOverlay(null);
         this.isDragging = false;
         this.controls.enabled = true;
@@ -3463,6 +3622,7 @@ class VectoramaApp {
 
         this.isDragging = true;
         this.controls.enabled = false; // Disable orbit controls while drawing
+        this.clear3DDragElevationIndicator();
         
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -3536,6 +3696,7 @@ class VectoramaApp {
         };
 
         this.updateTempVector(this.dragPreviewPoint3D.x, this.dragPreviewPoint3D.y, this.dragPreviewPoint3D.z);
+        this.update3DDragElevationIndicator(this.dragPreviewPoint3D);
         this.updateDragVectorOverlay(this.dragPreviewPoint3D, event);
         this.scheduleStateSave();
     }
@@ -3591,6 +3752,7 @@ class VectoramaApp {
         this.dragPreviewPoint3D = null;
         this.dragPreviewY3D = 0;
         this.dragWheelAccumulator3D = 0;
+        this.clear3DDragElevationIndicator();
         this.updateDragVectorOverlay(null);
         
         // Re-enable orbit controls
