@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.21';
+const APP_VERSION = '1.0.22';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1714,6 +1714,35 @@ class VectoramaApp {
         });
         document.querySelectorAll('.action-3d').forEach(el => {
             el.style.display = this.dimension === '3d' ? 'block' : 'none';
+        });
+
+        this.updateTransformationDropdownLabels();
+    }
+
+    updateTransformationDropdownLabels() {
+        const labelsByDimension = this.dimension === '2d'
+            ? {
+                'rotation-45': 'Rotation 45° anticlockwise',
+                'rotation-90': 'Rotation 90° anticlockwise',
+                'scale-2x': 'Uniform scale by 2',
+                'shear-x': 'Shear parallel to x-axis (factor 1)',
+                'reflection-x': 'Reflection in x-axis',
+                'reflection-y': 'Reflection in y-axis'
+            }
+            : {
+                'rotation-45': 'Rotation 45° about z-axis',
+                'rotation-90': 'Rotation 90° about z-axis',
+                'scale-2x': 'Uniform scale by 2',
+                'shear-x': 'Shear parallel to x-axis: x\u2032 = x + y',
+                'reflection-x': 'Reflection in xz-plane',
+                'reflection-y': 'Reflection in yz-plane'
+            };
+
+        Object.entries(labelsByDimension).forEach(([action, label]) => {
+            const item = document.querySelector(`#add-dropdown .dropdown-item[data-action="${action}"]`);
+            if (item) {
+                item.textContent = label;
+            }
         });
     }
 
