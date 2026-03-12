@@ -5218,24 +5218,20 @@ class VectoramaApp {
 
         const formToggleBtn = document.createElement('button');
         formToggleBtn.className = 'form-toggle-btn';
-        const formLabelMap = {
-            parametric: 'P',
-            cross: '×',
-            cartesian: 'C'
-        };
         const nextFormMap = {
             parametric: 'cross',
             cross: 'cartesian',
             cartesian: 'parametric'
         };
         const formTitleMap = {
-            parametric: 'Parametric',
+            parametric: 'Vector',
             cross: 'Cross Product',
             cartesian: 'Cartesian'
         };
         const nextForm = nextFormMap[currentForm];
-        formToggleBtn.textContent = formLabelMap[currentForm];
-        formToggleBtn.title = `Toggle to ${formTitleMap[nextForm]} form`;
+        formToggleBtn.textContent = 'F';
+        formToggleBtn.title = `Form: ${formTitleMap[currentForm]} (click for ${formTitleMap[nextForm]})`;
+        formToggleBtn.setAttribute('aria-label', formToggleBtn.title);
         formToggleBtn.addEventListener('click', () => {
             line.formPreference = nextFormMap[this.normalizeLineFormPreference(line.formPreference)];
             this.updateObjectsList();
@@ -5326,15 +5322,9 @@ class VectoramaApp {
         colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
         controls.appendChild(colorIndicator);
 
-        // Form toggle button (C|V|S)
+        // Form toggle button (F)
         const formToggleBtn = document.createElement('button');
         formToggleBtn.className = 'form-toggle-btn';
-        const formLabelMap = {
-            cartesian: 'C',
-            vector: 'V',
-            scalar: 'S',
-            dot: 'D'
-        };
         const formTitleMap = {
             cartesian: 'Cartesian',
             vector: 'Vector',
@@ -5343,8 +5333,9 @@ class VectoramaApp {
         };
         const normalizedForm = this.normalizePlaneFormPreference(plane.formPreference);
         const nextForm = this.getNextPlaneFormPreference(normalizedForm);
-        formToggleBtn.textContent = formLabelMap[normalizedForm] || 'D';
-        formToggleBtn.title = `Toggle to ${formTitleMap[nextForm]} form`;
+        formToggleBtn.textContent = 'F';
+        formToggleBtn.title = `Form: ${formTitleMap[normalizedForm]} (click for ${formTitleMap[nextForm]})`;
+        formToggleBtn.setAttribute('aria-label', formToggleBtn.title);
         formToggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             plane.formPreference = this.getNextPlaneFormPreference(plane.formPreference);
@@ -7273,7 +7264,7 @@ class VectoramaApp {
             color: colorHex,
             visible: true,
             mesh: null,
-            formPreference: 'parametric' // 'parametric', 'cross', or 'cartesian'
+            formPreference: 'parametric' // Vector form ('parametric'), 'cross', or 'cartesian'
         };
         
         this.lines.push(line);
