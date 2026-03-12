@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.22';
+const APP_VERSION = '1.0.23';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -6957,42 +6957,6 @@ class VectoramaApp {
             ? Math.atan2(matrix.elements[1], matrix.elements[0])
             : null;
 
-        // Temporary perf debugging (opt-in): set window.__vectoramaPerfDebug = true
-        // or localStorage.setItem('vectorama-perf-debug', '1') in browser console.
-        let perfDebugEnabled = false;
-        try {
-            perfDebugEnabled = Boolean(window.__vectoramaPerfDebug)
-                || localStorage.getItem('vectorama-perf-debug') === '1';
-        } catch {
-            perfDebugEnabled = Boolean(window.__vectoramaPerfDebug);
-        }
-
-        const perfStats = perfDebugEnabled
-            ? {
-                frameCount: 0,
-                totalFrameMs: 0,
-                maxFrameMs: 0,
-                logEveryNFrames: 30,
-                spikeThresholdMs: 24,
-                sectionTotals: {
-                    buildTransform: 0,
-                    vectorTransform: 0,
-                    vectorDisplay: 0,
-                    lattice: 0,
-                    lineTransform: 0,
-                    planeTransform: 0,
-                    intersections: 0
-                }
-            }
-            : null;
-
-        if (perfDebugEnabled) {
-            console.log(
-                `[PerfDebug] animation start | matrix=${selectedMatrix.name || selectedMatrix.id} | ` +
-                `matrices=${this.matrices.length} vectors=${this.vectors.length} lines=${this.lines.length} planes=${this.planes.length}`
-            );
-        }
-
         this.isAnimating = true;
         const duration = this.animationSpeed * 1000;
         const startTime = Date.now();
@@ -7000,20 +6964,6 @@ class VectoramaApp {
         const vectorDirectionScratch = new THREE.Vector3();
 
         const animate = () => {
-            const frameStartMs = perfDebugEnabled ? performance.now() : 0;
-            const frameSections = perfDebugEnabled
-                ? {
-                    buildTransform: 0,
-                    vectorTransform: 0,
-                    vectorDisplay: 0,
-                    lattice: 0,
-                    lineTransform: 0,
-                    planeTransform: 0,
-                    intersections: 0
-                }
-                : null;
-            let sectionStartMs = perfDebugEnabled ? performance.now() : 0;
-
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const eased = this.easeInOutCubic(progress);
@@ -7028,11 +6978,6 @@ class VectoramaApp {
             );
             const interpolatedMatrix = interpolatedTransform.matrix3;
             const interpolatedMatrix4 = interpolatedTransform.matrix4;
-
-            if (perfDebugEnabled) {
-                frameSections.buildTransform = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
 
             const shouldRebuildArrowMeshes = this.vectorDisplayMode === 'vectors';
             const vectorThickness = shouldRebuildArrowMeshes ? this.getVectorArrowThickness() : null;
@@ -7064,25 +7009,10 @@ class VectoramaApp {
                 }
             });
 
-            if (perfDebugEnabled) {
-                frameSections.vectorTransform = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
-
             // Update visualization based on current mode
             this.updateVectorDisplay();
 
-            if (perfDebugEnabled) {
-                frameSections.vectorDisplay = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
-
             this.updateLatticeOverlay(interpolatedMatrix);
-
-            if (perfDebugEnabled) {
-                frameSections.lattice = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
 
             // Transform lines
             this.lines.forEach(line => {
@@ -7105,11 +7035,6 @@ class VectoramaApp {
                 // Re-render line with transformed values
                 this.renderLine(line);
             });
-
-            if (perfDebugEnabled) {
-                frameSections.lineTransform = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
 
             // Transform planes (only in 3D)
             if (this.dimension === '3d' && matrix4) {
@@ -7151,45 +7076,8 @@ class VectoramaApp {
                 });
             }
 
-            if (perfDebugEnabled) {
-                frameSections.planeTransform = performance.now() - sectionStartMs;
-                sectionStartMs = performance.now();
-            }
-
             // Update intersections in real-time during animation
             this.updateIntersections();
-
-            if (perfDebugEnabled) {
-                frameSections.intersections = performance.now() - sectionStartMs;
-                const frameMs = performance.now() - frameStartMs;
-
-                perfStats.frameCount += 1;
-                perfStats.totalFrameMs += frameMs;
-                perfStats.maxFrameMs = Math.max(perfStats.maxFrameMs, frameMs);
-                Object.keys(frameSections).forEach((key) => {
-                    perfStats.sectionTotals[key] += frameSections[key];
-                });
-
-                const shouldLogFrame = frameMs >= perfStats.spikeThresholdMs
-                    || perfStats.frameCount % perfStats.logEveryNFrames === 0;
-
-                if (shouldLogFrame) {
-                    const avgFrameMs = perfStats.totalFrameMs / perfStats.frameCount;
-                    const tag = frameMs >= perfStats.spikeThresholdMs ? 'spike' : 'sample';
-                    console.log(
-                        `[PerfDebug:${tag}] frame=${perfStats.frameCount} ` +
-                        `ms=${frameMs.toFixed(2)} avg=${avgFrameMs.toFixed(2)} | ` +
-                        `build=${frameSections.buildTransform.toFixed(2)} ` +
-                        `vecXform=${frameSections.vectorTransform.toFixed(2)} ` +
-                        `vecDisplay=${frameSections.vectorDisplay.toFixed(2)} ` +
-                        `lattice=${frameSections.lattice.toFixed(2)} ` +
-                        `line=${frameSections.lineTransform.toFixed(2)} ` +
-                        `plane=${frameSections.planeTransform.toFixed(2)} ` +
-                        `ints=${frameSections.intersections.toFixed(2)} | ` +
-                        `matrices=${this.matrices.length} vectors=${this.vectors.length} lines=${this.lines.length} planes=${this.planes.length}`
-                    );
-                }
-            }
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
@@ -7267,21 +7155,6 @@ class VectoramaApp {
                 this.updateObjectsList();
                 this.updateIntersections();
                 this.scheduleStateSave();
-
-                if (perfDebugEnabled && perfStats.frameCount > 0) {
-                    const avgFrameMs = perfStats.totalFrameMs / perfStats.frameCount;
-                    const avgSection = (key) => perfStats.sectionTotals[key] / perfStats.frameCount;
-                    console.log(
-                        `[PerfDebug:summary] frames=${perfStats.frameCount} avgFrameMs=${avgFrameMs.toFixed(2)} maxFrameMs=${perfStats.maxFrameMs.toFixed(2)} | ` +
-                        `avg build=${avgSection('buildTransform').toFixed(2)} ` +
-                        `vecXform=${avgSection('vectorTransform').toFixed(2)} ` +
-                        `vecDisplay=${avgSection('vectorDisplay').toFixed(2)} ` +
-                        `lattice=${avgSection('lattice').toFixed(2)} ` +
-                        `line=${avgSection('lineTransform').toFixed(2)} ` +
-                        `plane=${avgSection('planeTransform').toFixed(2)} ` +
-                        `ints=${avgSection('intersections').toFixed(2)}`
-                    );
-                }
             }
         };
 
