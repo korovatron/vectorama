@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.18';
+const APP_VERSION = '1.0.19';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1330,9 +1330,14 @@ class VectoramaApp {
             }, withSignal({ passive: true }));
             
             controlPanel.addEventListener('touchmove', (e) => {
+                const targetElement = e.target instanceof Element ? e.target : null;
+                const isInteractiveControl = Boolean(
+                    targetElement && targetElement.closest('input, textarea, select, button, [contenteditable="true"], [role="slider"]')
+                );
+
                 // If panel is not scrollable (no overflow), prevent default to stop rubber banding
                 const isScrollable = controlPanel.scrollHeight > controlPanel.clientHeight;
-                if (!isScrollable) {
+                if (!isScrollable && !isInteractiveControl) {
                     e.preventDefault();
                 }
                 e.stopPropagation(); // Prevent touch from bubbling to canvas/document
