@@ -3280,9 +3280,9 @@ class VectoramaApp {
         this.planes.forEach(plane => {
             if (plane.mesh) this.scene.remove(plane.mesh);
         });
-        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.forEach(face => this.disposeSceneObject(face));
         this.presetFaceMeshes.length = 0;
-        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.forEach(line => this.disposeSceneObject(line));
         this.presetEdgeMeshes.length = 0;
         
         // Swap to the new dimension's data
@@ -3944,11 +3944,11 @@ class VectoramaApp {
         });
 
         // Clear preset face meshes
-        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.forEach(face => this.disposeSceneObject(face));
         this.presetFaceMeshes.length = 0;
         
         // Clear preset edge meshes
-        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.forEach(line => this.disposeSceneObject(line));
         this.presetEdgeMeshes.length = 0;
         
         // Add appropriate visualizations based on mode
@@ -4523,6 +4523,47 @@ class VectoramaApp {
         vec.labelSprite = null;
     }
 
+    disposeObjectResourcesDeep(object) {
+        if (!object) return;
+
+        const disposedMaterials = new Set();
+        object.traverse((child) => {
+            if (child.geometry && typeof child.geometry.dispose === 'function') {
+                child.geometry.dispose();
+            }
+
+            if (!child.material) return;
+
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material) => {
+                if (!material || disposedMaterials.has(material)) return;
+                if (material.map && typeof material.map.dispose === 'function') {
+                    material.map.dispose();
+                }
+                material.dispose();
+                disposedMaterials.add(material);
+            });
+        });
+    }
+
+    disposeVectorArrow(vec) {
+        if (!vec || !vec.arrow) return;
+
+        const oldArrow = vec.arrow;
+        this.scene.remove(oldArrow);
+        this.disposeObjectResourcesDeep(oldArrow);
+        vec.arrow = null;
+    }
+
+    disposeVectorPointVisual(vec) {
+        if (!vec || !vec.pointSphere) return;
+
+        const oldPointVisual = vec.pointSphere;
+        this.scene.remove(oldPointVisual);
+        this.disposeObjectResourcesDeep(oldPointVisual);
+        vec.pointSphere = null;
+    }
+
     renderPresetFaces() {
         if (this.dimension !== '3d') return;
         if (this.presetFaces.length === 0) return;
@@ -4645,10 +4686,10 @@ class VectoramaApp {
     }
 
     clearPresetEdges() {
-        this.presetFaceMeshes.forEach(face => this.scene.remove(face));
+        this.presetFaceMeshes.forEach(face => this.disposeSceneObject(face));
         this.presetFaceMeshes.length = 0;
         this.presetFaces.length = 0;
-        this.presetEdgeMeshes.forEach(line => this.scene.remove(line));
+        this.presetEdgeMeshes.forEach(line => this.disposeSceneObject(line));
         this.presetEdgeMeshes.length = 0;
         this.presetEdges.length = 0;
     }
@@ -5892,12 +5933,12 @@ class VectoramaApp {
 
     updateVectorArrow(vec) {
         // Remove old arrow
-        this.scene.remove(vec.arrow);
+        this.disposeVectorArrow(vec);
         
         const length = vec.currentEnd.length();
         
-        if (length > 0) {
-            const direction = vec.currentEnd.clone().normalize();
+        if (length > 1e-10) {
+            const direction = vec.currentEnd.clone().multiplyScalar(1 / length);
             const thickness = this.getVectorArrowThickness();
             vec.arrow = this.createSmoothArrow(
                 direction,
@@ -5933,8 +5974,8 @@ class VectoramaApp {
                 this.presetEdges.some(edge => edge.startId === id || edge.endId === id) ||
                 this.presetFaces.some(face => face.aId === id || face.bId === id || face.cId === id);
             // Remove all visualizations
-            if (vec.arrow) this.scene.remove(vec.arrow);
-            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            this.disposeVectorArrow(vec);
+            this.disposeVectorPointVisual(vec);
             this.disposeVectorLabel(vec);
             
             this.vectors.splice(index, 1);
@@ -6023,7 +6064,8 @@ class VectoramaApp {
         if (index !== -1) {
             const line = this.lines[index];
             if (line.mesh) {
-                this.scene.remove(line.mesh);
+                this.disposeSceneObject(line.mesh);
+                line.mesh = null;
             }
             this.lines.splice(index, 1);
             
@@ -6049,7 +6091,8 @@ class VectoramaApp {
         if (index !== -1) {
             const plane = this.planes[index];
             if (plane.mesh) {
-                this.scene.remove(plane.mesh);
+                this.disposeSceneObject(plane.mesh);
+                plane.mesh = null;
             }
             this.planes.splice(index, 1);
             
@@ -6319,8 +6362,8 @@ class VectoramaApp {
 
     clearVectors() {
         this.vectors.forEach(vec => {
-            if (vec.arrow) this.scene.remove(vec.arrow);
-            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            this.disposeVectorArrow(vec);
+            this.disposeVectorPointVisual(vec);
             this.disposeVectorLabel(vec);
         });
         this.clearPresetEdges();
@@ -6341,20 +6384,21 @@ class VectoramaApp {
         this.vectors.forEach(vec => {
             const original = vec.originalEnd;
             vec.currentEnd.copy(original);
-            
-            const direction = original.clone().normalize();
             const length = original.length();
-            
-            this.scene.remove(vec.arrow);
-            const thickness = this.getVectorArrowThickness();
-            vec.arrow = this.createSmoothArrow(
-                direction,
-                new THREE.Vector3(0, 0, 0),
-                length,
-                vec.color,
-                thickness.headLength,
-                thickness.headWidth
-            );
+
+            this.disposeVectorArrow(vec);
+            if (length > 1e-10) {
+                const direction = original.clone().multiplyScalar(1 / length);
+                const thickness = this.getVectorArrowThickness();
+                vec.arrow = this.createSmoothArrow(
+                    direction,
+                    new THREE.Vector3(0, 0, 0),
+                    length,
+                    vec.color,
+                    thickness.headLength,
+                    thickness.headWidth
+                );
+            }
             
             // Update point sphere position
             if (vec.pointSphere) {
@@ -6913,11 +6957,63 @@ class VectoramaApp {
             ? Math.atan2(matrix.elements[1], matrix.elements[0])
             : null;
 
+        // Temporary perf debugging (opt-in): set window.__vectoramaPerfDebug = true
+        // or localStorage.setItem('vectorama-perf-debug', '1') in browser console.
+        let perfDebugEnabled = false;
+        try {
+            perfDebugEnabled = Boolean(window.__vectoramaPerfDebug)
+                || localStorage.getItem('vectorama-perf-debug') === '1';
+        } catch {
+            perfDebugEnabled = Boolean(window.__vectoramaPerfDebug);
+        }
+
+        const perfStats = perfDebugEnabled
+            ? {
+                frameCount: 0,
+                totalFrameMs: 0,
+                maxFrameMs: 0,
+                logEveryNFrames: 30,
+                spikeThresholdMs: 24,
+                sectionTotals: {
+                    buildTransform: 0,
+                    vectorTransform: 0,
+                    vectorDisplay: 0,
+                    lattice: 0,
+                    lineTransform: 0,
+                    planeTransform: 0,
+                    intersections: 0
+                }
+            }
+            : null;
+
+        if (perfDebugEnabled) {
+            console.log(
+                `[PerfDebug] animation start | matrix=${selectedMatrix.name || selectedMatrix.id} | ` +
+                `matrices=${this.matrices.length} vectors=${this.vectors.length} lines=${this.lines.length} planes=${this.planes.length}`
+            );
+        }
+
         this.isAnimating = true;
         const duration = this.animationSpeed * 1000;
         const startTime = Date.now();
+        const vectorOrigin = new THREE.Vector3(0, 0, 0);
+        const vectorDirectionScratch = new THREE.Vector3();
 
         const animate = () => {
+            const frameStartMs = perfDebugEnabled ? performance.now() : 0;
+            const frameSections = perfDebugEnabled
+                ? {
+                    buildTransform: 0,
+                    vectorTransform: 0,
+                    vectorDisplay: 0,
+                    lattice: 0,
+                    lineTransform: 0,
+                    planeTransform: 0,
+                    intersections: 0
+                }
+                : null;
+            let sectionStartMs = perfDebugEnabled ? performance.now() : 0;
+
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const eased = this.easeInOutCubic(progress);
@@ -6933,31 +7029,34 @@ class VectoramaApp {
             const interpolatedMatrix = interpolatedTransform.matrix3;
             const interpolatedMatrix4 = interpolatedTransform.matrix4;
 
+            if (perfDebugEnabled) {
+                frameSections.buildTransform = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
+
+            const shouldRebuildArrowMeshes = this.vectorDisplayMode === 'vectors';
+            const vectorThickness = shouldRebuildArrowMeshes ? this.getVectorArrowThickness() : null;
+
             this.vectors.forEach(vec => {
-                const original = vec.originalEnd.clone();
+                vec.currentEnd.copy(vec.originalEnd).applyMatrix3(interpolatedMatrix);
+                const current = vec.currentEnd;
 
-                const current = original.clone().applyMatrix3(interpolatedMatrix);
-                
-                vec.currentEnd.copy(current);
+                if (shouldRebuildArrowMeshes) {
+                    const length = current.length();
+                    this.disposeVectorArrow(vec);
 
-                // Update arrow
-                const direction = current.clone().normalize();
-                const length = current.length();
-                
-                // Remove old arrow from scene first
-                if (vec.arrow) {
-                    this.scene.remove(vec.arrow);
+                    if (length > 1e-10) {
+                        vectorDirectionScratch.copy(current).multiplyScalar(1 / length);
+                        vec.arrow = this.createSmoothArrow(
+                            vectorDirectionScratch,
+                            vectorOrigin,
+                            length,
+                            vec.color,
+                            vectorThickness.headLength,
+                            vectorThickness.headWidth
+                        );
+                    }
                 }
-                
-                const thickness = this.getVectorArrowThickness();
-                vec.arrow = this.createSmoothArrow(
-                    direction,
-                    new THREE.Vector3(0, 0, 0),
-                    length,
-                    vec.color,
-                    thickness.headLength,
-                    thickness.headWidth
-                );
                 
                 // Update point sphere position
                 if (vec.pointSphere) {
@@ -6965,9 +7064,25 @@ class VectoramaApp {
                 }
             });
 
+            if (perfDebugEnabled) {
+                frameSections.vectorTransform = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
+
             // Update visualization based on current mode
             this.updateVectorDisplay();
+
+            if (perfDebugEnabled) {
+                frameSections.vectorDisplay = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
+
             this.updateLatticeOverlay(interpolatedMatrix);
+
+            if (perfDebugEnabled) {
+                frameSections.lattice = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
 
             // Transform lines
             this.lines.forEach(line => {
@@ -6990,6 +7105,11 @@ class VectoramaApp {
                 // Re-render line with transformed values
                 this.renderLine(line);
             });
+
+            if (perfDebugEnabled) {
+                frameSections.lineTransform = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
 
             // Transform planes (only in 3D)
             if (this.dimension === '3d' && matrix4) {
@@ -7031,8 +7151,45 @@ class VectoramaApp {
                 });
             }
 
+            if (perfDebugEnabled) {
+                frameSections.planeTransform = performance.now() - sectionStartMs;
+                sectionStartMs = performance.now();
+            }
+
             // Update intersections in real-time during animation
             this.updateIntersections();
+
+            if (perfDebugEnabled) {
+                frameSections.intersections = performance.now() - sectionStartMs;
+                const frameMs = performance.now() - frameStartMs;
+
+                perfStats.frameCount += 1;
+                perfStats.totalFrameMs += frameMs;
+                perfStats.maxFrameMs = Math.max(perfStats.maxFrameMs, frameMs);
+                Object.keys(frameSections).forEach((key) => {
+                    perfStats.sectionTotals[key] += frameSections[key];
+                });
+
+                const shouldLogFrame = frameMs >= perfStats.spikeThresholdMs
+                    || perfStats.frameCount % perfStats.logEveryNFrames === 0;
+
+                if (shouldLogFrame) {
+                    const avgFrameMs = perfStats.totalFrameMs / perfStats.frameCount;
+                    const tag = frameMs >= perfStats.spikeThresholdMs ? 'spike' : 'sample';
+                    console.log(
+                        `[PerfDebug:${tag}] frame=${perfStats.frameCount} ` +
+                        `ms=${frameMs.toFixed(2)} avg=${avgFrameMs.toFixed(2)} | ` +
+                        `build=${frameSections.buildTransform.toFixed(2)} ` +
+                        `vecXform=${frameSections.vectorTransform.toFixed(2)} ` +
+                        `vecDisplay=${frameSections.vectorDisplay.toFixed(2)} ` +
+                        `lattice=${frameSections.lattice.toFixed(2)} ` +
+                        `line=${frameSections.lineTransform.toFixed(2)} ` +
+                        `plane=${frameSections.planeTransform.toFixed(2)} ` +
+                        `ints=${frameSections.intersections.toFixed(2)} | ` +
+                        `matrices=${this.matrices.length} vectors=${this.vectors.length} lines=${this.lines.length} planes=${this.planes.length}`
+                    );
+                }
+            }
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
@@ -7043,6 +7200,26 @@ class VectoramaApp {
                 this.vectors.forEach(vec => {
                     vec.originalEnd.copy(vec.currentEnd);
                 });
+
+                if (this.vectorDisplayMode !== 'vectors') {
+                    const thickness = this.getVectorArrowThickness();
+                    this.vectors.forEach(vec => {
+                        const length = vec.currentEnd.length();
+                        this.disposeVectorArrow(vec);
+
+                        if (length > 1e-10) {
+                            const direction = vec.currentEnd.clone().multiplyScalar(1 / length);
+                            vec.arrow = this.createSmoothArrow(
+                                direction,
+                                vectorOrigin,
+                                length,
+                                vec.color,
+                                thickness.headLength,
+                                thickness.headWidth
+                            );
+                        }
+                    });
+                }
                 
                 // Update original line positions/directions to transformed values
                 this.lines.forEach(line => {
@@ -7090,6 +7267,21 @@ class VectoramaApp {
                 this.updateObjectsList();
                 this.updateIntersections();
                 this.scheduleStateSave();
+
+                if (perfDebugEnabled && perfStats.frameCount > 0) {
+                    const avgFrameMs = perfStats.totalFrameMs / perfStats.frameCount;
+                    const avgSection = (key) => perfStats.sectionTotals[key] / perfStats.frameCount;
+                    console.log(
+                        `[PerfDebug:summary] frames=${perfStats.frameCount} avgFrameMs=${avgFrameMs.toFixed(2)} maxFrameMs=${perfStats.maxFrameMs.toFixed(2)} | ` +
+                        `avg build=${avgSection('buildTransform').toFixed(2)} ` +
+                        `vecXform=${avgSection('vectorTransform').toFixed(2)} ` +
+                        `vecDisplay=${avgSection('vectorDisplay').toFixed(2)} ` +
+                        `lattice=${avgSection('lattice').toFixed(2)} ` +
+                        `line=${avgSection('lineTransform').toFixed(2)} ` +
+                        `plane=${avgSection('planeTransform').toFixed(2)} ` +
+                        `ints=${avgSection('intersections').toFixed(2)}`
+                    );
+                }
             }
         };
 
@@ -7312,7 +7504,8 @@ class VectoramaApp {
     renderLine(line) {
         // Remove existing mesh if any
         if (line.mesh) {
-            this.scene.remove(line.mesh);
+            this.disposeSceneObject(line.mesh);
+            line.mesh = null;
         }
 
         const tMin = -100;
@@ -7381,7 +7574,8 @@ class VectoramaApp {
         
         // Remove existing mesh if any
         if (plane.mesh) {
-            this.scene.remove(plane.mesh);
+            this.disposeSceneObject(plane.mesh);
+            plane.mesh = null;
         }
 
         const extent = Math.max(5, Math.min(100, this.toFiniteNumber(this.planeExtent, 10)));
@@ -7551,23 +7745,21 @@ class VectoramaApp {
         this.lastCameraDistance = currentDistance;
         
         this.vectors.forEach(vec => {
-            const direction = vec.currentEnd.clone().normalize();
             const length = vec.currentEnd.length();
-            
-            // Remove old arrow from scene
-            if (vec.arrow) {
-                this.scene.remove(vec.arrow);
+
+            this.disposeVectorArrow(vec);
+            if (length > 1e-10) {
+                const direction = vec.currentEnd.clone().multiplyScalar(1 / length);
+                const thickness = this.getVectorArrowThickness();
+                vec.arrow = this.createSmoothArrow(
+                    direction,
+                    new THREE.Vector3(0, 0, 0),
+                    length,
+                    vec.color,
+                    thickness.headLength,
+                    thickness.headWidth
+                );
             }
-            
-            const thickness = this.getVectorArrowThickness();
-            vec.arrow = this.createSmoothArrow(
-                direction,
-                new THREE.Vector3(0, 0, 0),
-                length,
-                vec.color,
-                thickness.headLength,
-                thickness.headWidth
-            );
         });
         
         // Update visualization based on current mode
@@ -7585,13 +7777,14 @@ class VectoramaApp {
             const direction = lineObj.direction;
             
             // Remove old mesh
-            this.scene.remove(lineObj.mesh);
+            const oldMesh = lineObj.mesh;
+            this.scene.remove(oldMesh);
             
             // Create new cylinder with updated thickness
             const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
             
             // Preserve the material properties including textures
-            const oldMaterial = lineObj.mesh.material;
+            const oldMaterial = oldMesh.material;
             const materialProps = {
                 transparent: true,
                 opacity: oldMaterial.opacity,
@@ -7634,6 +7827,11 @@ class VectoramaApp {
             
             // Update the reference
             lineObj.mesh = cylinder;
+
+            if (oldMesh.geometry) {
+                oldMesh.geometry.dispose();
+            }
+            oldMaterial.dispose();
         });
 
         if (this.invariantDisplayMode === 'solid') {
@@ -9398,21 +9596,7 @@ class VectoramaApp {
         if (!object) return;
 
         this.scene.remove(object);
-
-        if (object.geometry) {
-            object.geometry.dispose();
-        }
-
-        if (object.material) {
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.forEach((material) => {
-                if (!material) return;
-                if (material.map) {
-                    material.map.dispose();
-                }
-                material.dispose();
-            });
-        }
+        this.disposeObjectResourcesDeep(object);
     }
 
     clearLatticeOverlay() {
