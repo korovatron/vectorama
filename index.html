@@ -91,55 +91,65 @@
                         <strong>+</strong> Add Plane
                     </div>
                     <div class="dropdown-separator"></div>
-                    <div class="dropdown-header">Matrix Presets</div>
-                    <div class="dropdown-item" data-action="rotation-45">
-                        Rotation 45°
-                    </div>
-                    <div class="dropdown-item" data-action="rotation-90">
-                        Rotation 90°
-                    </div>
-                    <div class="dropdown-item" data-action="scale-2x">
-                        Scale 2×
-                    </div>
-                    <div class="dropdown-item" data-action="shear-x">
-                        Shear X
-                    </div>
-                    <div class="dropdown-item" data-action="reflection-x">
-                        Reflection X
-                    </div>
-                    <div class="dropdown-item" data-action="reflection-y">
-                        Reflection Y
+                    <button type="button" class="dropdown-header dropdown-accordion-header" data-dropdown-section="matrix-presets" aria-expanded="false">
+                        <span class="dropdown-accordion-arrow">&#9654;&#xFE0E;</span>
+                        <span class="dropdown-accordion-label">Matrix Presets</span>
+                    </button>
+                    <div class="dropdown-accordion-content" data-dropdown-section-content="matrix-presets">
+                        <div class="dropdown-item" data-action="rotation-45">
+                            Rotation 45°
+                        </div>
+                        <div class="dropdown-item" data-action="rotation-90">
+                            Rotation 90°
+                        </div>
+                        <div class="dropdown-item" data-action="scale-2x">
+                            Scale 2×
+                        </div>
+                        <div class="dropdown-item" data-action="shear-x">
+                            Shear X
+                        </div>
+                        <div class="dropdown-item" data-action="reflection-x">
+                            Reflection X
+                        </div>
+                        <div class="dropdown-item" data-action="reflection-y">
+                            Reflection Y
+                        </div>
                     </div>
                     <div class="dropdown-separator"></div>
-                    <div class="dropdown-header">Vector Presets</div>
-                    <!-- 2D Presets -->
-                    <div class="dropdown-item preset-2d" data-action="preset-square">
-                        Unit Square
-                    </div>
-                    <div class="dropdown-item preset-2d" data-action="preset-triangle">
-                        Triangle
-                    </div>
-                    <div class="dropdown-item preset-2d" data-action="preset-pentagon">
-                        Pentagon
-                    </div>
-                    <div class="dropdown-item preset-2d" data-action="preset-star">
-                        Star
-                    </div>
-                    <div class="dropdown-item preset-2d" data-action="preset-circle">
-                        Circle
-                    </div>
-                    <!-- 3D Presets -->
-                    <div class="dropdown-item preset-3d" data-action="preset-cube" style="display: none;">
-                        Unit Cube
-                    </div>
-                    <div class="dropdown-item preset-3d" data-action="preset-tetrahedron" style="display: none;">
-                        Tetrahedron
-                    </div>
-                    <div class="dropdown-item preset-3d" data-action="preset-octahedron" style="display: none;">
-                        Octahedron
-                    </div>
-                    <div class="dropdown-item preset-3d" data-action="preset-sphere" style="display: none;">
-                        Sphere
+                    <button type="button" class="dropdown-header dropdown-accordion-header" data-dropdown-section="vector-presets" aria-expanded="false">
+                        <span class="dropdown-accordion-arrow">&#9654;&#xFE0E;</span>
+                        <span class="dropdown-accordion-label">Vector Presets</span>
+                    </button>
+                    <div class="dropdown-accordion-content" data-dropdown-section-content="vector-presets">
+                        <!-- 2D Presets -->
+                        <div class="dropdown-item preset-2d" data-action="preset-square">
+                            Unit Square
+                        </div>
+                        <div class="dropdown-item preset-2d" data-action="preset-triangle">
+                            Triangle
+                        </div>
+                        <div class="dropdown-item preset-2d" data-action="preset-pentagon">
+                            Pentagon
+                        </div>
+                        <div class="dropdown-item preset-2d" data-action="preset-star">
+                            Star
+                        </div>
+                        <div class="dropdown-item preset-2d" data-action="preset-circle">
+                            Circle
+                        </div>
+                        <!-- 3D Presets -->
+                        <div class="dropdown-item preset-3d" data-action="preset-cube" style="display: none;">
+                            Unit Cube
+                        </div>
+                        <div class="dropdown-item preset-3d" data-action="preset-tetrahedron" style="display: none;">
+                            Tetrahedron
+                        </div>
+                        <div class="dropdown-item preset-3d" data-action="preset-octahedron" style="display: none;">
+                            Octahedron
+                        </div>
+                        <div class="dropdown-item preset-3d" data-action="preset-sphere" style="display: none;">
+                            Sphere
+                        </div>
                     </div>
                 </div>
                 

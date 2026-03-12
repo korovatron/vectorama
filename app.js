@@ -277,6 +277,10 @@ class VectoramaApp {
             lines: true,
             vectors: true
         };
+        this.addDropdownSectionCollapsed = {
+            'matrix-presets': true,
+            'vector-presets': true
+        };
 
         this.cameraState2D = null;
         this.cameraState3D = null;
@@ -1441,8 +1445,16 @@ class VectoramaApp {
         document.getElementById('add-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             const dropdown = document.getElementById('add-dropdown');
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            const isOpening = dropdown.style.display === 'none';
+            if (isOpening) {
+                this.collapseAllAddDropdownSections();
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
         }, withSignal());
+
+        this.initAddDropdownAccordions(withSignal);
         
         // Add dropdown - item click handler
         document.querySelectorAll('#add-dropdown .dropdown-item').forEach(item => {
@@ -1717,6 +1729,50 @@ class VectoramaApp {
         });
 
         this.updateTransformationDropdownLabels();
+    }
+
+    initAddDropdownAccordions(withSignal) {
+        const headers = document.querySelectorAll('#add-dropdown .dropdown-accordion-header');
+        headers.forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sectionKey = header.getAttribute('data-dropdown-section');
+                this.toggleAddDropdownSection(sectionKey);
+            }, withSignal());
+        });
+
+        this.applyAddDropdownAccordionState();
+    }
+
+    toggleAddDropdownSection(sectionKey) {
+        if (!Object.prototype.hasOwnProperty.call(this.addDropdownSectionCollapsed, sectionKey)) {
+            return;
+        }
+
+        this.addDropdownSectionCollapsed[sectionKey] = !this.addDropdownSectionCollapsed[sectionKey];
+        this.applyAddDropdownAccordionState();
+    }
+
+    collapseAllAddDropdownSections() {
+        Object.keys(this.addDropdownSectionCollapsed).forEach(sectionKey => {
+            this.addDropdownSectionCollapsed[sectionKey] = true;
+        });
+        this.applyAddDropdownAccordionState();
+    }
+
+    applyAddDropdownAccordionState() {
+        Object.entries(this.addDropdownSectionCollapsed).forEach(([sectionKey, isCollapsed]) => {
+            const header = document.querySelector(`#add-dropdown .dropdown-accordion-header[data-dropdown-section="${sectionKey}"]`);
+            const content = document.querySelector(`#add-dropdown .dropdown-accordion-content[data-dropdown-section-content="${sectionKey}"]`);
+
+            if (header) {
+                header.setAttribute('aria-expanded', String(!isCollapsed));
+            }
+
+            if (content) {
+                content.classList.toggle('collapsed', isCollapsed);
+            }
+        });
     }
 
     updateTransformationDropdownLabels() {
@@ -4803,7 +4859,7 @@ class VectoramaApp {
         // Info button (i icon)
         const infoBtn = document.createElement('button');
         infoBtn.className = 'matrix-info-btn';
-        infoBtn.title = 'Show eigenvalue information';
+        infoBtn.title = 'Show matrix analysis (eigenvalues, determinant, trace, characteristic equation)';
         infoBtn.textContent = 'i';
         infoBtn.addEventListener('click', () => {
             this.showMatrixInfo(matrix.id);
