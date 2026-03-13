@@ -3229,7 +3229,7 @@ class VectoramaApp {
             };
         } else {
             // Enable full 3D camera control
-            this.camera.position.set(3, 3, 3);
+            this.camera.position.set(2.5, 2.4, 3.5);
             this.camera.lookAt(0, 0, 0);
             this.controls.enableRotate = true; // Enable rotation in 3D
             this.controls.target.set(0, 0, 0);
@@ -3421,7 +3421,7 @@ class VectoramaApp {
     resetView() {
         const targetPosition = this.dimension === '2d'
             ? new THREE.Vector3(0, 0, 10)
-            : new THREE.Vector3(3, 3, 3);
+            : new THREE.Vector3(2.5, 2.4, 3.5);
         const targetLookAt = new THREE.Vector3(0, 0, 0);
 
         const lookAtObject = new THREE.Object3D();
