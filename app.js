@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
@@ -1588,6 +1590,29 @@ class VectoramaApp {
                 return;
             }
 
+            // ArrowUp/ArrowDown adjust drag Y only during active 3D vector placement.
+            // Otherwise they pan the camera vertically as before.
+            if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+                const is3DVectorDragActive = this.dimension === '3d' && this.isDragging && !this.isAnimating;
+                if (is3DVectorDragActive) {
+                    e.preventDefault();
+                    const keyboardSteps = e.code === 'ArrowUp' ? -1 : 1;
+                    this.apply3DDragYStepDelta(keyboardSteps);
+                    return;
+                }
+
+                e.preventDefault();
+                const distance = this.camera.position.distanceTo(this.controls.target);
+                const panAmount = distance * 0.1;
+
+                if (e.code === 'ArrowUp') {
+                    this.panCamera(0, panAmount, 0);
+                } else {
+                    this.panCamera(0, -panAmount, 0);
+                }
+                return;
+            }
+
             // Check for zoom in keys: + (Equal key) or NumpadAdd
             if (e.code === 'Equal' || e.code === 'NumpadAdd') {
                 e.preventDefault();
@@ -1598,19 +1623,15 @@ class VectoramaApp {
                 e.preventDefault();
                 this.zoomCamera(1.1); // Zoom out (increase distance by 10%)
             }
-            // Arrow keys for panning
-            else if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+            // Arrow keys for horizontal panning
+            else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
                 e.preventDefault();
                 
                 // Pan distance proportional to current zoom level
                 const distance = this.camera.position.distanceTo(this.controls.target);
                 const panAmount = distance * 0.1; // 10% of current distance
                 
-                if (e.code === 'ArrowUp') {
-                    this.panCamera(0, panAmount, 0);
-                } else if (e.code === 'ArrowDown') {
-                    this.panCamera(0, -panAmount, 0);
-                } else if (e.code === 'ArrowLeft') {
+                if (e.code === 'ArrowLeft') {
                     this.panCamera(-panAmount, 0, 0);
                 } else if (e.code === 'ArrowRight') {
                     this.panCamera(panAmount, 0, 0);
@@ -1968,8 +1989,17 @@ class VectoramaApp {
         };
 
         const indicatorGroup = new THREE.Group();
+        const previewLineWidthPx = 3.2;
 
-        const planeRay = this.createAngleRay(origin, planeDirection, rayLength, indicatorColor);
+        const planeRay = this.createAngleRay(
+            origin,
+            planeDirection,
+            rayLength,
+            indicatorColor,
+            false,
+            1,
+            previewLineWidthPx
+        );
         if (planeRay) {
             if (planeRay.material) {
                 setPreviewMaterialOpacity(planeRay.material, 0.65);
@@ -1983,7 +2013,10 @@ class VectoramaApp {
             vectorDirection,
             angle,
             radius,
-            indicatorColor
+            indicatorColor,
+            false,
+            1,
+            previewLineWidthPx
         );
         if (arc) {
             if (arc.material) {
@@ -1993,7 +2026,15 @@ class VectoramaApp {
         }
 
         const verticalDirection = point.y >= 0 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, -1, 0);
-        const dropGuide = this.createAngleRay(projectedToPlane, verticalDirection, yMagnitude, indicatorColor);
+        const dropGuide = this.createAngleRay(
+            projectedToPlane,
+            verticalDirection,
+            yMagnitude,
+            indicatorColor,
+            false,
+            1,
+            previewLineWidthPx
+        );
         if (dropGuide) {
             if (dropGuide.material) {
                 setPreviewMaterialOpacity(dropGuide.material, 0.55);
@@ -2005,7 +2046,15 @@ class VectoramaApp {
         if (projectedLength > 1e-6) {
             const toOriginDirection = projectedToPlane.clone().multiplyScalar(-1).normalize();
 
-            const projectionGuide = this.createAngleRay(projectedToPlane, toOriginDirection, projectedLength, indicatorColor);
+            const projectionGuide = this.createAngleRay(
+                projectedToPlane,
+                toOriginDirection,
+                projectedLength,
+                indicatorColor,
+                false,
+                1,
+                previewLineWidthPx
+            );
             if (projectionGuide) {
                 if (projectionGuide.material) {
                     setPreviewMaterialOpacity(projectionGuide.material, 0.5);
@@ -2024,7 +2073,10 @@ class VectoramaApp {
                 toOriginDirection,
                 verticalDirection,
                 rightAngleSize,
-                indicatorColor
+                indicatorColor,
+                false,
+                1,
+                previewLineWidthPx
             );
             if (rightAngleMarker) {
                 if (rightAngleMarker.material) {
@@ -3752,24 +3804,22 @@ class VectoramaApp {
         }
     }
 
-    onCanvasWheel(event) {
+    apply3DDragYStepDelta(stepDelta, pointerEvent = null) {
         if (!this.isDragging || this.isAnimating || this.dimension !== '3d') {
             return;
         }
 
-        event.preventDefault();
-
-        const step = this.getGridSnapSpacing();
-        const wheelSteps = this.consumeWheelDetentSteps3D(event);
-        if (wheelSteps === 0) {
+        const steps = Math.trunc(this.toFiniteNumber(stepDelta, 0));
+        if (steps === 0) {
             return;
         }
 
-        // Wheel down increases deltaY (positive) and should lower y.
-        this.dragPreviewY3D = this.snapValueToGrid(this.dragPreviewY3D - (wheelSteps * step));
+        const step = this.getGridSnapSpacing();
+        // Positive step values move downward to mirror wheel delta direction.
+        this.dragPreviewY3D = this.snapValueToGrid(this.dragPreviewY3D - (steps * step));
 
         if (!this.dragPreviewPoint3D) {
-            this.update3DDragPreviewFromMouse(event);
+            this.update3DDragPreviewFromMouse(pointerEvent);
             this.scheduleStateSave();
             return;
         }
@@ -3782,8 +3832,23 @@ class VectoramaApp {
 
         this.updateTempVector(this.dragPreviewPoint3D.x, this.dragPreviewPoint3D.y, this.dragPreviewPoint3D.z);
         this.update3DDragElevationIndicator(this.dragPreviewPoint3D);
-        this.updateDragVectorOverlay(this.dragPreviewPoint3D, event);
+        this.updateDragVectorOverlay(this.dragPreviewPoint3D, pointerEvent);
         this.scheduleStateSave();
+    }
+
+    onCanvasWheel(event) {
+        if (!this.isDragging || this.isAnimating || this.dimension !== '3d') {
+            return;
+        }
+
+        event.preventDefault();
+
+        const wheelSteps = this.consumeWheelDetentSteps3D(event);
+        if (wheelSteps === 0) {
+            return;
+        }
+
+        this.apply3DDragYStepDelta(wheelSteps, event);
     }
 
     onCanvasMouseUp(event) {
@@ -11838,11 +11903,73 @@ class VectoramaApp {
         this.angleVisualization = null;
     }
 
-    createAngleRay(origin, direction, length, color, solidStyle = false) {
+    createScreenSpacePolyline(points, color, lineWidthPx = 1, options = {}) {
+        if (!points || points.length < 2) return null;
+
+        const {
+            renderOrder = 20,
+            opacity = 0.95,
+            depthTest = true,
+            depthWrite = false
+        } = options;
+
+        const widthPx = Math.max(1, this.toFiniteNumber(lineWidthPx, 1));
+        if (widthPx <= 1.01 || !this.renderer) {
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: new THREE.Color(color),
+                transparent: true,
+                opacity,
+                depthTest,
+                depthWrite
+            });
+
+            const line = new THREE.Line(geometry, material);
+            line.renderOrder = renderOrder;
+            return line;
+        }
+
+        const flatPositions = new Float32Array(points.length * 3);
+        for (let i = 0; i < points.length; i++) {
+            const offset = i * 3;
+            flatPositions[offset] = points[i].x;
+            flatPositions[offset + 1] = points[i].y;
+            flatPositions[offset + 2] = points[i].z;
+        }
+
+        const geometry = new LineGeometry();
+        geometry.setPositions(flatPositions);
+
+        const material = new LineMaterial({
+            color: new THREE.Color(color),
+            transparent: true,
+            opacity,
+            linewidth: widthPx,
+            depthTest,
+            depthWrite
+        });
+
+        const viewportSize = this.renderer.getSize(new THREE.Vector2());
+        material.resolution.set(viewportSize.x, viewportSize.y);
+
+        const line = new Line2(geometry, material);
+        line.renderOrder = renderOrder;
+
+        const resolution = new THREE.Vector2();
+        line.onBeforeRender = (renderer) => {
+            const size = renderer.getSize(resolution);
+            material.resolution.set(size.x, size.y);
+        };
+
+        return line;
+    }
+
+    createAngleRay(origin, direction, length, color, solidStyle = false, thicknessMultiplier = 1, lineWidthPx = 1) {
         const endPoint = origin.clone().add(direction.clone().multiplyScalar(length));
 
         if (solidStyle) {
-            const rayRadius = Math.max(0.012, this.getArrowThickness().headWidth * 0.1);
+            const multiplier = Math.max(0.5, this.toFiniteNumber(thicknessMultiplier, 1));
+            const rayRadius = Math.max(0.012, this.getArrowThickness().headWidth * 0.1) * multiplier;
             const ray = this.createDistanceConnector(origin, endPoint, color, rayRadius);
             if (!ray) return null;
             ray.mesh.renderOrder = 20;
@@ -11851,21 +11978,15 @@ class VectoramaApp {
         }
 
         const points = [origin.clone(), endPoint];
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-            color: new THREE.Color(color),
-            transparent: true,
+        return this.createScreenSpacePolyline(points, color, lineWidthPx, {
+            renderOrder: 20,
             opacity: 0.95,
             depthTest: true,
             depthWrite: false
         });
-
-        const ray = new THREE.Line(geometry, material);
-        ray.renderOrder = 20;
-        return ray;
     }
 
-    createAngleArc(origin, startDirection, endDirection, angle, radius, color, solidStyle = false) {
+    createAngleArc(origin, startDirection, endDirection, angle, radius, color, solidStyle = false, thicknessMultiplier = 1, lineWidthPx = 1) {
         if (angle < 0.01) return null;
 
         const normal = new THREE.Vector3().crossVectors(startDirection, endDirection);
@@ -11883,7 +12004,8 @@ class VectoramaApp {
 
         if (solidStyle) {
             const tubePath = new THREE.CatmullRomCurve3(points);
-            const tubeRadius = Math.max(0.01, this.getArrowThickness().headWidth * 0.08);
+            const multiplier = Math.max(0.5, this.toFiniteNumber(thicknessMultiplier, 1));
+            const tubeRadius = Math.max(0.01, this.getArrowThickness().headWidth * 0.08) * multiplier;
             const geometry = new THREE.TubeGeometry(tubePath, Math.max(16, segmentCount * 2), tubeRadius, 10, false);
             const material = new THREE.MeshBasicMaterial({
                 color: new THREE.Color(color),
@@ -11898,21 +12020,15 @@ class VectoramaApp {
             return arc;
         }
 
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-            color: new THREE.Color(color),
-            transparent: true,
+        return this.createScreenSpacePolyline(points, color, lineWidthPx, {
+            renderOrder: 21,
             opacity: 0.95,
             depthTest: true,
             depthWrite: false
         });
-
-        const arc = new THREE.Line(geometry, material);
-        arc.renderOrder = 21;
-        return arc;
     }
 
-    createRightAngleMarker(vertex, directionA, directionB, size, color) {
+    createRightAngleMarker(vertex, directionA, directionB, size, color, solidStyle = false, thicknessMultiplier = 1, lineWidthPx = 1) {
         const dirA = directionA.clone().normalize();
         const dirB = directionB.clone().normalize();
 
@@ -11927,18 +12043,30 @@ class VectoramaApp {
         const p2 = p1.clone().add(perpB.clone().multiplyScalar(size));
         const p3 = vertex.clone().add(perpB.clone().multiplyScalar(size));
 
-        const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2, p3]);
-        const material = new THREE.LineBasicMaterial({
-            color: new THREE.Color(color),
-            transparent: true,
+        if (solidStyle) {
+            const multiplier = Math.max(0.5, this.toFiniteNumber(thicknessMultiplier, 1));
+            const markerPath = new THREE.CatmullRomCurve3([p1, p2, p3], false, 'centripetal');
+            const tubeRadius = Math.max(0.01, this.getArrowThickness().headWidth * 0.08) * multiplier;
+            const geometry = new THREE.TubeGeometry(markerPath, 16, tubeRadius, 8, false);
+            const material = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(color),
+                transparent: true,
+                opacity: 0.95,
+                depthTest: false,
+                depthWrite: false
+            });
+
+            const marker = new THREE.Mesh(geometry, material);
+            marker.renderOrder = 1004;
+            return marker;
+        }
+
+        return this.createScreenSpacePolyline([p1, p2, p3], color, lineWidthPx, {
+            renderOrder: 1004,
             opacity: 0.95,
             depthTest: false,
             depthWrite: false
         });
-
-        const marker = new THREE.Line(geometry, material);
-        marker.renderOrder = 1004;
-        return marker;
     }
 
     createAngleTextLabel(text, color) {

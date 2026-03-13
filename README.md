@@ -41,7 +41,7 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 #### Adding Vectors
 - Right-click + drag on the canvas to create vectors in both 2D and 3D
-- In 3D, while right-dragging, use the mouse wheel to raise/lower the vector's y coordinate in grid steps
+- In 3D, while right-dragging, use the mouse wheel or Arrow Up/Down keys to raise/lower the vector's y coordinate in grid steps
 - Vectors snap to grid points when released
 
 #### Transforming Vectors
