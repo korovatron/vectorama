@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.24';
+const APP_VERSION = '1.0.25';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -4171,6 +4171,86 @@ class VectoramaApp {
         return `Rotation ${angleText}° about ${axisLabel}`;
     }
 
+    computeMatrixRank(values, epsilon = 1e-6) {
+        if (!Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+            return 0;
+        }
+
+        const rowCount = values.length;
+        const colCount = values[0].length;
+        const matrix = values.map(row =>
+            Array.from({ length: colCount }, (_, colIndex) => this.toFiniteNumber(row[colIndex], 0))
+        );
+
+        let rank = 0;
+        let pivotCol = 0;
+
+        for (let pivotRow = 0; pivotRow < rowCount && pivotCol < colCount; pivotRow++) {
+            let bestRow = pivotRow;
+            let bestAbs = Math.abs(matrix[bestRow][pivotCol]);
+
+            for (let row = pivotRow + 1; row < rowCount; row++) {
+                const candidateAbs = Math.abs(matrix[row][pivotCol]);
+                if (candidateAbs > bestAbs) {
+                    bestAbs = candidateAbs;
+                    bestRow = row;
+                }
+            }
+
+            if (bestAbs <= epsilon) {
+                pivotCol++;
+                pivotRow--;
+                continue;
+            }
+
+            if (bestRow !== pivotRow) {
+                [matrix[pivotRow], matrix[bestRow]] = [matrix[bestRow], matrix[pivotRow]];
+            }
+
+            const pivotValue = matrix[pivotRow][pivotCol];
+            for (let col = pivotCol; col < colCount; col++) {
+                matrix[pivotRow][col] /= pivotValue;
+            }
+
+            for (let row = 0; row < rowCount; row++) {
+                if (row === pivotRow) continue;
+
+                const factor = matrix[row][pivotCol];
+                if (Math.abs(factor) <= epsilon) continue;
+
+                for (let col = pivotCol; col < colCount; col++) {
+                    matrix[row][col] -= factor * matrix[pivotRow][col];
+                }
+            }
+
+            rank++;
+            pivotCol++;
+        }
+
+        return rank;
+    }
+
+    getSingularTransformationLabel(values) {
+        const dimension = Array.isArray(values) ? values.length : 0;
+        const rank = this.computeMatrixRank(values);
+
+        let collapseTarget = '';
+        if (dimension === 2) {
+            if (rank === 1) collapseTarget = 'line';
+            else if (rank === 0) collapseTarget = 'point';
+        } else if (dimension === 3) {
+            if (rank === 2) collapseTarget = 'plane';
+            else if (rank === 1) collapseTarget = 'line';
+            else if (rank === 0) collapseTarget = 'point';
+        }
+
+        if (!collapseTarget) {
+            return `Singular Rank ${rank}`;
+        }
+
+        return `Singular Rank ${rank} - collapse to ${collapseTarget}`;
+    }
+
     getMatrixTransformationLabel(matrix) {
         if (!matrix || !Array.isArray(matrix.values)) {
             return '';
@@ -4278,6 +4358,26 @@ class VectoramaApp {
             return `Shear parallel to y-axis (factor ${formatFactor(c)})`;
         }
 
+        if (approx(c, 0) && !approx(b, 0) && !approx(a, 0)) {
+            const shearFactorX = b / a;
+
+            if (approx(a, d)) {
+                return `Shear parallel to x-axis (factor ${formatFactor(shearFactorX)}), then uniform scale by ${formatFactor(a)}`;
+            }
+
+            return `Scale x by ${formatFactor(a)}, y by ${formatFactor(d)} with x-shear factor ${formatFactor(shearFactorX)}`;
+        }
+
+        if (approx(b, 0) && !approx(c, 0) && !approx(d, 0)) {
+            const shearFactorY = c / d;
+
+            if (approx(a, d)) {
+                return `Shear parallel to y-axis (factor ${formatFactor(shearFactorY)}), then uniform scale by ${formatFactor(d)}`;
+            }
+
+            return `Scale x by ${formatFactor(a)}, y by ${formatFactor(d)} with y-shear factor ${formatFactor(shearFactorY)}`;
+        }
+
         const xAxis = new THREE.Vector2(a, c);
         const yAxis = new THREE.Vector2(b, d);
         const hasUnitAxes =
@@ -4305,7 +4405,7 @@ class VectoramaApp {
         }
 
         if (Math.abs(determinant) < epsilon) {
-            return 'Singular transformation';
+            return this.getSingularTransformationLabel(values);
         }
 
         return '';
@@ -4392,7 +4492,7 @@ class VectoramaApp {
 
         if (isUnitDiagonal && shearEntries.length > 0) {
             if (Math.abs(determinant) < epsilon) {
-                return 'Singular transformation';
+                return this.getSingularTransformationLabel(values);
             }
 
             const groupedShears = {
@@ -4471,7 +4571,7 @@ class VectoramaApp {
         }
 
         if (Math.abs(determinant) < epsilon) {
-            return 'Singular transformation';
+            return this.getSingularTransformationLabel(values);
         }
 
         const formatSignedAngle = (degrees) => {
@@ -5016,7 +5116,12 @@ class VectoramaApp {
                     const c = parseInt(e.target.getAttribute('data-col'));
                     matrix.values[r][c] = parseFloat(e.target.value) || 0;
                     this.updateMatrixTransformationLabel(transformationLabel, matrix);
-                    this.visualizeInvariantSpaces();
+
+                    const didRetargetOpenPanel = this.syncOpenEigenvaluePanelToMatrix(matrix.id);
+                    if (!didRetargetOpenPanel) {
+                        this.visualizeInvariantSpaces();
+                    }
+
                     this.scheduleStateSave();
                 });
                 grid.appendChild(input);
@@ -6340,20 +6445,24 @@ class VectoramaApp {
         return { a, b, c, d };
     }
 
-    applyMatrix(id) {
-        // Check if eigenvalue panel is currently displayed
+    syncOpenEigenvaluePanelToMatrix(id) {
         const panel = document.getElementById('eigenvalue-panel');
-        const isPanelVisible = panel.style.display !== 'none';
-        
-        // If panel is visible, update it to show this matrix's info
-        if (isPanelVisible) {
-            this.eigenvaluePanelMatrixId = id;
-            if (this.invariantDisplayMode !== 'off') {
-                this.visualizeInvariantSpaces(id);
-            } else {
-                this.updateEigenvaluePanel(id);
-            }
+        if (!panel || panel.style.display === 'none') {
+            return false;
         }
+
+        this.eigenvaluePanelMatrixId = id;
+        if (this.invariantDisplayMode !== 'off') {
+            this.visualizeInvariantSpaces(id);
+        } else {
+            this.updateEigenvaluePanel(id);
+        }
+
+        return true;
+    }
+
+    applyMatrix(id) {
+        this.syncOpenEigenvaluePanelToMatrix(id);
         
         // Apply this matrix transformation to all vectors
         this.animateTransformation(id);
