@@ -5071,7 +5071,7 @@ class VectoramaApp {
             this.matrixSequencePlaybackDisplayElement = null;
         }
 
-        if (groupKey === 'matrices' && items.length > 1) {
+        if (groupKey === 'matrices' && items.length >= 1) {
             this.renderMatrixSequenceItem(itemsContainer);
         }
         
