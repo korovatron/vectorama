@@ -1363,16 +1363,6 @@ body {
     box-shadow: 0 0 0 2px rgba(144, 74, 226, 0.2);
 }
 
-.matrix-sequence-input::selection {
-    background: #D62828;
-    color: #FFE066;
-}
-
-.matrix-sequence-input::-moz-selection {
-    background: #D62828;
-    color: #FFE066;
-}
-
 .matrix-sequence-input.matrix-sequence-input-hidden {
     display: none;
 }

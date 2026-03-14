@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.26';
+const APP_VERSION = '1.0.27';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -188,6 +188,7 @@ class VectoramaApp {
         this.matrixSequencePlaybackDisplayElement = null;
         this.matrixSequencePlaybackActive = false;
         this.matrixSequencePlaybackRange = null;
+        this.matrixSequenceInfoPanelOpen = false;
         
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -1414,7 +1415,9 @@ class VectoramaApp {
         if (closeEigenvaluePanelBtn) {
             closeEigenvaluePanelBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (this.eigenvaluePanelMatrixId) {
+                if (this.matrixSequenceInfoPanelOpen) {
+                    this.showMatrixSequenceInfo();
+                } else if (this.eigenvaluePanelMatrixId) {
                     this.showMatrixInfo(this.eigenvaluePanelMatrixId);
                 }
             }, withSignal());
@@ -3194,6 +3197,11 @@ class VectoramaApp {
             skipStateSave = false
         } = options;
 
+        // Cancel any in-progress matrix composition playback before switching
+        if (this.matrixSequencePlaybackActive) {
+            this.clearMatrixSequenceStepHighlight();
+        }
+
         // Save old dimension before changing
         const oldDimension = this.dimension;
         if (oldDimension !== dimension && this.latticeDisplayMode === 'on') {
@@ -3421,6 +3429,7 @@ class VectoramaApp {
         
         // Reset eigenvalue panel and invariant spaces when switching dimensions
         this.eigenvaluePanelMatrixId = null;
+        this.matrixSequenceInfoPanelOpen = false;
         this.invariantDisplayMode = 'off';
         this.clearInvariantSpaces();
         this.updateLatticeOverlay();
@@ -4984,6 +4993,10 @@ class VectoramaApp {
         this.updatePlanePanel();
         this.updateAngleVisualization();
         this.updatePlaneExtentControl();
+
+        if (this.matrixSequenceInfoPanelOpen) {
+            this.updateMatrixSequenceInfoPanel();
+        }
     }
     
     renderCollapsibleGroup(container, groupKey, groupName, items, renderFunction) {
@@ -5094,7 +5107,7 @@ class VectoramaApp {
     renderMatrixSequenceItem(container) {
         const item = document.createElement('div');
         item.className = 'matrix-item matrix-sequence-item';
-        item.style.borderLeftColor = 'var(--accent-color)';
+        item.style.borderLeftColor = '#904AE2';
 
         const transformationLabel = document.createElement('div');
         transformationLabel.className = 'matrix-transform-label visible';
@@ -5147,6 +5160,11 @@ class VectoramaApp {
             } else {
                 this.matrixSequenceInput3D = this.matrixSequenceInput;
             }
+
+            if (this.matrixSequenceInfoPanelOpen) {
+                this.updateMatrixSequenceInfoPanel();
+            }
+
             this.scheduleStateSave();
         });
         this.matrixSequenceInputElement = sequenceInput;
@@ -5179,6 +5197,13 @@ class VectoramaApp {
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
         applyBtn.addEventListener('click', () => this.applyMatrixSequenceFromInput());
         controls.appendChild(applyBtn);
+
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'matrix-info-btn';
+        infoBtn.title = 'Show composition analysis (equivalent matrix, determinant, trace)';
+        infoBtn.textContent = 'i';
+        infoBtn.addEventListener('click', () => this.showMatrixSequenceInfo());
+        controls.appendChild(infoBtn);
 
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
@@ -6572,6 +6597,11 @@ class VectoramaApp {
             return false;
         }
 
+        if (this.matrixSequenceInfoPanelOpen) {
+            this.updateMatrixSequenceInfoPanel();
+            return true;
+        }
+
         this.eigenvaluePanelMatrixId = id;
         if (this.invariantDisplayMode !== 'off') {
             this.visualizeInvariantSpaces(id);
@@ -6614,6 +6644,7 @@ class VectoramaApp {
         for (const char of upperInput) {
             if (allowedLetters.has(char)) {
                 sanitized += char;
+                if (sanitized.length >= 15) break;
             }
         }
 
@@ -6683,6 +6714,270 @@ class VectoramaApp {
         };
     }
 
+    multiplySquareMatrixValues(leftValues, rightValues) {
+        if (!Array.isArray(leftValues) || !Array.isArray(rightValues)) {
+            return null;
+        }
+
+        const size = leftValues.length;
+        if (size === 0 || rightValues.length !== size) {
+            return null;
+        }
+
+        const result = Array.from({ length: size }, () => Array(size).fill(0));
+
+        for (let row = 0; row < size; row++) {
+            for (let col = 0; col < size; col++) {
+                let sum = 0;
+                for (let k = 0; k < size; k++) {
+                    const left = this.toFiniteNumber(leftValues[row]?.[k], 0);
+                    const right = this.toFiniteNumber(rightValues[k]?.[col], 0);
+                    sum += left * right;
+                }
+                result[row][col] = sum;
+            }
+        }
+
+        return result;
+    }
+
+    computeDeterminantFromValues(values) {
+        if (!Array.isArray(values) || values.length === 0) {
+            return 0;
+        }
+
+        if (values.length === 2) {
+            const a = this.toFiniteNumber(values[0]?.[0], 0);
+            const b = this.toFiniteNumber(values[0]?.[1], 0);
+            const c = this.toFiniteNumber(values[1]?.[0], 0);
+            const d = this.toFiniteNumber(values[1]?.[1], 0);
+            return a * d - b * c;
+        }
+
+        if (values.length === 3) {
+            const a = this.toFiniteNumber(values[0]?.[0], 0);
+            const b = this.toFiniteNumber(values[0]?.[1], 0);
+            const c = this.toFiniteNumber(values[0]?.[2], 0);
+            const d = this.toFiniteNumber(values[1]?.[0], 0);
+            const e = this.toFiniteNumber(values[1]?.[1], 0);
+            const f = this.toFiniteNumber(values[1]?.[2], 0);
+            const g = this.toFiniteNumber(values[2]?.[0], 0);
+            const h = this.toFiniteNumber(values[2]?.[1], 0);
+            const i = this.toFiniteNumber(values[2]?.[2], 0);
+            return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+        }
+
+        return 0;
+    }
+
+    computeTraceFromValues(values) {
+        if (!Array.isArray(values) || values.length === 0) {
+            return 0;
+        }
+
+        let trace = 0;
+        for (let i = 0; i < values.length; i++) {
+            trace += this.toFiniteNumber(values[i]?.[i], 0);
+        }
+        return trace;
+    }
+
+    formatMatrixValuesForPanel(values, formatNum) {
+        if (!Array.isArray(values) || values.length === 0) {
+            return '';
+        }
+
+        const formatted = values.map((row) =>
+            row.map((val) => formatNum(this.toFiniteNumber(val, 0)))
+        );
+
+        // Pad each column to the same width so brackets always align
+        const colWidths = formatted[0].map((_, colIdx) =>
+            Math.max(...formatted.map((row) => row[colIdx].length))
+        );
+
+        const paddedRows = formatted.map((row) =>
+            row.map((cell, colIdx) => cell.padStart(colWidths[colIdx]))
+        );
+
+        const n = paddedRows.length;
+        return paddedRows.map((row, i) => {
+            const inner = row.join('  ');
+            const lBracket = i === 0 ? '\u250c' : i === n - 1 ? '\u2514' : '\u2502';
+            const rBracket = i === 0 ? '\u2510' : i === n - 1 ? '\u2518' : '\u2502';
+            return `${lBracket} ${inner} ${rBracket}`;
+        }).join('\n');
+    }
+
+    computeSequenceEquivalentData(parsedSequence) {
+        const typedOrderNames = Array.isArray(parsedSequence?.typedOrderNames)
+            ? parsedSequence.typedOrderNames
+            : [];
+        const applyOrderNames = Array.isArray(parsedSequence?.applyOrderNames)
+            ? parsedSequence.applyOrderNames
+            : [];
+
+        const matrixByName = new Map();
+        this.matrices.forEach((matrix) => {
+            const matrixName = String(matrix.name || '').toUpperCase().trim();
+            if (matrixName) {
+                matrixByName.set(matrixName, matrix);
+            }
+        });
+
+        const size = this.dimension === '2d' ? 2 : 3;
+        let equivalentValues = Array.from({ length: size }, (_, row) =>
+            Array.from({ length: size }, (_, col) => (row === col ? 1 : 0))
+        );
+
+        for (const name of typedOrderNames) {
+            const matrix = matrixByName.get(name);
+            if (!matrix || !Array.isArray(matrix.values) || matrix.values.length !== size) {
+                return { error: `Matrix "${name}" is not available in this dimension.` };
+            }
+
+            const multiplied = this.multiplySquareMatrixValues(equivalentValues, matrix.values);
+            if (!multiplied) {
+                return { error: 'Failed to compute the composed matrix.' };
+            }
+            equivalentValues = multiplied;
+        }
+
+        const determinant = this.computeDeterminantFromValues(equivalentValues);
+        const trace = this.computeTraceFromValues(equivalentValues);
+        const transformationLabel = this.dimension === '2d'
+            ? this.getMatrixTransformationLabel2D(equivalentValues)
+            : this.getMatrixTransformationLabel3D(equivalentValues);
+
+        return {
+            typedOrderText: typedOrderNames.join(''),
+            applyOrderText: applyOrderNames.join(' -> '),
+            productText: typedOrderNames.join('·'),
+            equivalentValues,
+            determinant,
+            trace,
+            transformationLabel
+        };
+    }
+
+    updateMatrixSequenceInfoPanel() {
+        const panel = document.getElementById('eigenvalue-panel');
+        const valuesDiv = document.getElementById('eigenvalue-values');
+        const headerSpan = panel?.querySelector('.eigenvalue-header span');
+
+        if (!panel || !valuesDiv || !headerSpan) {
+            return;
+        }
+
+        if (!this.matrixSequenceInfoPanelOpen) {
+            if (!this.eigenvaluePanelMatrixId) {
+                panel.style.display = 'none';
+            }
+            return;
+        }
+
+        const formatNum = (val) => {
+            if (Math.abs(val) < 0.001) return '0';
+            const nearestInt = Math.round(val);
+            if (Math.abs(val - nearestInt) < 0.0001) {
+                return nearestInt.toString();
+            }
+            return this.formatDisplayNumber(val, 3);
+        };
+
+        const addRow = (label, value, options = {}) => {
+            const row = document.createElement('div');
+            row.className = 'eigenvalue-item';
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'eigenvalue-label';
+            labelDiv.textContent = label;
+
+            const valueDiv = document.createElement('div');
+            valueDiv.className = `eigenvalue-value${options.mono ? ' eigenvector' : ''}`;
+            valueDiv.textContent = value;
+
+            if (options.pre) {
+                valueDiv.style.whiteSpace = 'pre';
+                valueDiv.style.wordBreak = 'normal';
+                valueDiv.style.lineHeight = '1.35';
+            }
+
+            if (options.wrap) {
+                valueDiv.style.wordBreak = 'break-word';
+                valueDiv.style.textAlign = 'left';
+            }
+
+            row.appendChild(labelDiv);
+            row.appendChild(valueDiv);
+            valuesDiv.appendChild(row);
+        };
+
+        headerSpan.textContent = 'Matrix Composition';
+        panel.style.display = 'block';
+        valuesDiv.innerHTML = '';
+
+        const parsed = this.parseMatrixSequenceInput(this.matrixSequenceInput);
+        if (parsed.error) {
+            addRow('Sequence:', this.matrixSequenceInput || '(empty)', { mono: true });
+            addRow('Info:', parsed.error, { wrap: true });
+            return;
+        }
+
+        const composed = this.computeSequenceEquivalentData(parsed);
+        if (composed.error) {
+            addRow('Info:', composed.error, { wrap: true });
+            return;
+        }
+
+        const detAbs = Math.abs(composed.determinant);
+        const detIsZero = detAbs < 1e-8;
+
+        addRow('Sequence:', composed.typedOrderText, { mono: true });
+        addRow('Applies:', composed.applyOrderText, { mono: true });
+
+        const separator = document.createElement('div');
+        separator.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        separator.style.margin = '8px 0';
+        valuesDiv.appendChild(separator);
+
+        addRow('Matrix:', this.formatMatrixValuesForPanel(composed.equivalentValues, formatNum), { mono: true, pre: true });
+        addRow('det:', formatNum(composed.determinant));
+        addRow('tr:', formatNum(composed.trace));
+        addRow('Status:', detIsZero ? 'Singular' : 'Invertible');
+
+        if (composed.transformationLabel) {
+            addRow('Type:', composed.transformationLabel);
+        }
+    }
+
+    showMatrixSequenceInfo() {
+        // Hide other info panels
+        document.getElementById('vector-info-panel').style.display = 'none';
+        document.getElementById('line-info-panel').style.display = 'none';
+        document.getElementById('plane-info-panel').style.display = 'none';
+        this.vectorInfoPanelId = null;
+        this.lineInfoPanelId = null;
+        this.planeInfoPanelId = null;
+        this.angleVisualizationState = null;
+        this.clearAngleVisualization();
+
+        if (this.matrixSequenceInfoPanelOpen) {
+            this.matrixSequenceInfoPanelOpen = false;
+            this.eigenvaluePanelMatrixId = null;
+            this.invariantDisplayMode = 'off';
+            this.clearInvariantSpaces();
+        } else {
+            this.matrixSequenceInfoPanelOpen = true;
+            this.eigenvaluePanelMatrixId = null;
+            this.invariantDisplayMode = 'off';
+            this.clearInvariantSpaces();
+            this.closePanelOnMobile();
+        }
+
+        this.updateMatrixSequenceInfoPanel();
+    }
+
     applyMatrixSequenceFromInput() {
         if (this.isAnimating) {
             alert('Please wait for the current transformation to finish.');
@@ -6738,14 +7033,11 @@ class VectoramaApp {
             const charSpan = document.createElement('span');
             charSpan.className = 'matrix-sequence-playback-char';
             charSpan.textContent = value[i];
-
             if (i >= activeStart && i < activeEnd) {
                 charSpan.classList.add('active');
             }
-
             displayEl.appendChild(charSpan);
         }
-
         displayEl.classList.add('visible');
     }
 
@@ -6794,6 +7086,11 @@ class VectoramaApp {
     }
 
     runMatrixSequence(parsedSequence, index = 0) {
+        // Bail out if playback was cancelled (e.g. dimension switch mid-sequence)
+        if (!this.matrixSequencePlaybackActive && index > 0) {
+            return;
+        }
+
         const matrixIds = Array.isArray(parsedSequence?.applyOrderIds)
             ? parsedSequence.applyOrderIds
             : [];
@@ -6832,6 +7129,7 @@ class VectoramaApp {
         document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('line-info-panel').style.display = 'none';
         document.getElementById('plane-info-panel').style.display = 'none';
+        this.matrixSequenceInfoPanelOpen = false;
         this.vectorInfoPanelId = null;
         this.lineInfoPanelId = null;
         this.planeInfoPanelId = null;
@@ -6873,6 +7171,7 @@ class VectoramaApp {
         document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('plane-info-panel').style.display = 'none';
         this.eigenvaluePanelMatrixId = null;
+        this.matrixSequenceInfoPanelOpen = false;
         this.vectorInfoPanelId = null;
         this.planeInfoPanelId = null;
         
@@ -6913,6 +7212,7 @@ class VectoramaApp {
         document.getElementById('vector-info-panel').style.display = 'none';
         document.getElementById('line-info-panel').style.display = 'none';
         this.eigenvaluePanelMatrixId = null;
+        this.matrixSequenceInfoPanelOpen = false;
         this.vectorInfoPanelId = null;
         this.lineInfoPanelId = null;
         
@@ -6953,6 +7253,7 @@ class VectoramaApp {
         document.getElementById('line-info-panel').style.display = 'none';
         document.getElementById('plane-info-panel').style.display = 'none';
         this.eigenvaluePanelMatrixId = null;
+        this.matrixSequenceInfoPanelOpen = false;
         this.lineInfoPanelId = null;
         this.planeInfoPanelId = null;
 
@@ -7503,8 +7804,10 @@ class VectoramaApp {
                 this.clearInvariantSpaces();
                 
                 // Hide eigenvalue panel
-                const panel = document.getElementById('eigenvalue-panel');
-                if (panel) panel.style.display = 'none';
+                if (!this.matrixSequenceInfoPanelOpen) {
+                    const panel = document.getElementById('eigenvalue-panel');
+                    if (panel) panel.style.display = 'none';
+                }
                 this.eigenvaluePanelMatrixId = null;
             }
 
@@ -7517,6 +7820,11 @@ class VectoramaApp {
             }
             
             this.updateObjectsList();
+
+            if (this.matrixSequenceInfoPanelOpen) {
+                this.updateMatrixSequenceInfoPanel();
+            }
+
             this.scheduleStateSave();
         }
     }
