@@ -1333,6 +1333,94 @@ body {
     display: block;
 }
 
+.matrix-sequence-item {
+    border-left-style: dashed;
+}
+
+.matrix-item .matrix-sequence-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.matrix-sequence-input {
+    width: 100%;
+    height: 30px;
+    padding: 6px 8px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.2;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.matrix-sequence-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(144, 74, 226, 0.2);
+}
+
+.matrix-sequence-input::selection {
+    background: #D62828;
+    color: #FFE066;
+}
+
+.matrix-sequence-input::-moz-selection {
+    background: #D62828;
+    color: #FFE066;
+}
+
+.matrix-sequence-input.matrix-sequence-input-hidden {
+    display: none;
+}
+
+.matrix-sequence-playback-display {
+    display: none;
+    width: 100%;
+    height: 30px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    user-select: none;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.matrix-sequence-playback-display.playback-mode {
+    display: flex;
+}
+
+.matrix-sequence-playback-char {
+    display: inline-block;
+    padding: 0 1px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    transition: font-size 0.12s ease, transform 0.12s ease, color 0.12s ease, background-color 0.12s ease;
+}
+
+.matrix-sequence-playback-char.active {
+    padding: 1px 3px;
+    font-size: 18px;
+    color: #FFE066;
+    background: #D62828;
+    border-radius: 3px;
+    transform: translateY(-1px);
+}
+
+.matrix-sequence-item .matrix-controls {
+    justify-content: center;
+}
+
 .matrix-item .matrix-controls {
     display: flex;
     flex-direction: column;
@@ -2032,6 +2120,23 @@ body {
     .matrix-item .matrix-transform-label {
         margin-bottom: 4px;
         font-size: 11px;
+    }
+
+    .matrix-sequence-input {
+        height: 28px;
+        font-size: 11px;
+    }
+
+    .matrix-sequence-playback-display {
+        height: 28px;
+    }
+
+    .matrix-sequence-playback-char {
+        font-size: 11px;
+    }
+
+    .matrix-sequence-playback-char.active {
+        font-size: 16px;
     }
 }
 

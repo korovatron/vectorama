@@ -166,6 +166,8 @@ class VectoramaApp {
         this.usedMatrixLetters3D = new Set();
         this.selectedMatrixId2D = null;
         this.selectedMatrixId3D = null;
+        this.matrixSequenceInput2D = '';
+        this.matrixSequenceInput3D = '';
         this.colorIndex2D = 0;
         this.colorIndex3D = 0;
         
@@ -176,11 +178,16 @@ class VectoramaApp {
         this.planes = this.planes3D; // Will always reference 3D planes
         this.usedMatrixLetters = this.usedMatrixLetters2D;
         this.selectedMatrixId = this.selectedMatrixId2D;
+        this.matrixSequenceInput = this.matrixSequenceInput2D;
         this.colorIndex = this.colorIndex2D;
         this.eigenvaluePanelMatrixId = null; // Track which matrix's info is showing in eigenvalue panel
         this.lineInfoPanelId = null; // Track which line's info is showing
         this.planeInfoPanelId = null; // Track which plane's info is showing
         this.vectorInfoPanelId = null; // Track which vector's info is showing
+        this.matrixSequenceInputElement = null;
+        this.matrixSequencePlaybackDisplayElement = null;
+        this.matrixSequencePlaybackActive = false;
+        this.matrixSequencePlaybackRange = null;
         
         this.isAnimating = false;
         this.animationSpeed = 2.0;
@@ -2785,6 +2792,7 @@ class VectoramaApp {
             this.presetFaceMeshes2D = this.presetFaceMeshes;
             this.usedMatrixLetters2D = this.usedMatrixLetters;
             this.selectedMatrixId2D = this.selectedMatrixId;
+            this.matrixSequenceInput2D = this.matrixSequenceInput;
             this.colorIndex2D = this.colorIndex;
         } else {
             this.vectors3D = this.vectors;
@@ -2797,6 +2805,7 @@ class VectoramaApp {
             this.presetFaceMeshes3D = this.presetFaceMeshes;
             this.usedMatrixLetters3D = this.usedMatrixLetters;
             this.selectedMatrixId3D = this.selectedMatrixId;
+            this.matrixSequenceInput3D = this.matrixSequenceInput;
             this.colorIndex3D = this.colorIndex;
         }
     }
@@ -2823,6 +2832,8 @@ class VectoramaApp {
             colorIndex3D: this.colorIndex3D,
             selectedMatrixId2D: this.selectedMatrixId2D,
             selectedMatrixId3D: this.selectedMatrixId3D,
+            matrixSequenceInput2D: this.matrixSequenceInput2D,
+            matrixSequenceInput3D: this.matrixSequenceInput3D,
             usedMatrixLetters2D: Array.from(this.usedMatrixLetters2D),
             usedMatrixLetters3D: Array.from(this.usedMatrixLetters3D),
             vectors2D: this.vectors2D.map(v => this.serializeVector(v)),
@@ -2974,6 +2985,8 @@ class VectoramaApp {
 
         this.selectedMatrixId2D = state.selectedMatrixId2D ?? (this.matrices2D[0]?.id ?? null);
         this.selectedMatrixId3D = state.selectedMatrixId3D ?? (this.matrices3D[0]?.id ?? null);
+        this.matrixSequenceInput2D = typeof state.matrixSequenceInput2D === 'string' ? state.matrixSequenceInput2D : '';
+        this.matrixSequenceInput3D = typeof state.matrixSequenceInput3D === 'string' ? state.matrixSequenceInput3D : '';
         this.colorIndex2D = this.toFiniteNumber(state.colorIndex2D, 0);
         this.colorIndex3D = this.toFiniteNumber(state.colorIndex3D, 0);
 
@@ -2990,6 +3003,7 @@ class VectoramaApp {
         this.presetFaceMeshes = this.presetFaceMeshes2D;
         this.usedMatrixLetters = this.usedMatrixLetters2D;
         this.selectedMatrixId = this.selectedMatrixId2D;
+        this.matrixSequenceInput = this.matrixSequenceInput2D;
         this.colorIndex = this.colorIndex2D;
 
         const counters = state.counters || {};
@@ -3306,6 +3320,7 @@ class VectoramaApp {
             this.presetFaceMeshes2D = this.presetFaceMeshes;
             this.usedMatrixLetters2D = this.usedMatrixLetters;
             this.selectedMatrixId2D = this.selectedMatrixId;
+            this.matrixSequenceInput2D = this.matrixSequenceInput;
             this.colorIndex2D = this.colorIndex;
         } else {
             this.vectors3D = this.vectors;
@@ -3318,6 +3333,7 @@ class VectoramaApp {
             this.presetFaceMeshes3D = this.presetFaceMeshes;
             this.usedMatrixLetters3D = this.usedMatrixLetters;
             this.selectedMatrixId3D = this.selectedMatrixId;
+            this.matrixSequenceInput3D = this.matrixSequenceInput;
             this.colorIndex3D = this.colorIndex;
         }
         
@@ -3350,6 +3366,7 @@ class VectoramaApp {
             this.presetFaceMeshes = this.presetFaceMeshes2D;
             this.usedMatrixLetters = this.usedMatrixLetters2D;
             this.selectedMatrixId = this.selectedMatrixId2D;
+            this.matrixSequenceInput = this.matrixSequenceInput2D;
             this.colorIndex = this.colorIndex2D;
         } else {
             this.vectors = this.vectors3D;
@@ -3362,6 +3379,7 @@ class VectoramaApp {
             this.presetFaceMeshes = this.presetFaceMeshes3D;
             this.usedMatrixLetters = this.usedMatrixLetters3D;
             this.selectedMatrixId = this.selectedMatrixId3D;
+            this.matrixSequenceInput = this.matrixSequenceInput3D;
             this.colorIndex = this.colorIndex3D;
         }
         
@@ -5034,6 +5052,15 @@ class VectoramaApp {
         if (isCollapsed) {
             itemsContainer.classList.add('collapsed');
         }
+
+        if (groupKey === 'matrices') {
+            this.matrixSequenceInputElement = null;
+            this.matrixSequencePlaybackDisplayElement = null;
+        }
+
+        if (groupKey === 'matrices' && items.length > 1) {
+            this.renderMatrixSequenceItem(itemsContainer);
+        }
         
         items.forEach(item => {
             renderFunction.call(this, itemsContainer, item);
@@ -5062,6 +5089,100 @@ class VectoramaApp {
         groupContainer.appendChild(itemsContainer);
         
         container.appendChild(groupContainer);
+    }
+
+    renderMatrixSequenceItem(container) {
+        const item = document.createElement('div');
+        item.className = 'matrix-item matrix-sequence-item';
+        item.style.borderLeftColor = 'var(--accent-color)';
+
+        const transformationLabel = document.createElement('div');
+        transformationLabel.className = 'matrix-transform-label visible';
+        transformationLabel.textContent = 'Matrix Composition (right to left)';
+        item.appendChild(transformationLabel);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'matrix-main-row';
+
+        const matrixContent = document.createElement('div');
+        matrixContent.className = 'matrix-content matrix-sequence-content';
+
+        const sequenceInput = document.createElement('input');
+        sequenceInput.className = 'matrix-sequence-input';
+        sequenceInput.type = 'text';
+        sequenceInput.autocomplete = 'off';
+        sequenceInput.spellcheck = false;
+        sequenceInput.placeholder = 'Example: ABC';
+        sequenceInput.title = 'Only existing matrix letters are accepted. AB means A*B, so B applies first then A';
+
+        const initialSequenceValue = this.sanitizeMatrixSequenceInput(this.matrixSequenceInput || '');
+        if (initialSequenceValue !== this.matrixSequenceInput) {
+            this.matrixSequenceInput = initialSequenceValue;
+            if (this.dimension === '2d') {
+                this.matrixSequenceInput2D = initialSequenceValue;
+            } else {
+                this.matrixSequenceInput3D = initialSequenceValue;
+            }
+        }
+
+        sequenceInput.value = initialSequenceValue;
+        sequenceInput.addEventListener('input', (e) => {
+            const inputEl = e.target;
+            const rawValue = inputEl.value;
+            const caretStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : rawValue.length;
+            const sanitizedValue = this.sanitizeMatrixSequenceInput(rawValue);
+
+            if (rawValue !== sanitizedValue) {
+                const rawBeforeCaret = rawValue.slice(0, caretStart);
+                const sanitizedBeforeCaret = this.sanitizeMatrixSequenceInput(rawBeforeCaret);
+                const nextCaret = sanitizedBeforeCaret.length;
+
+                inputEl.value = sanitizedValue;
+                inputEl.setSelectionRange(nextCaret, nextCaret);
+            }
+
+            this.matrixSequenceInput = inputEl.value;
+            if (this.dimension === '2d') {
+                this.matrixSequenceInput2D = this.matrixSequenceInput;
+            } else {
+                this.matrixSequenceInput3D = this.matrixSequenceInput;
+            }
+            this.scheduleStateSave();
+        });
+        this.matrixSequenceInputElement = sequenceInput;
+        matrixContent.appendChild(sequenceInput);
+
+        const sequencePlaybackDisplay = document.createElement('div');
+        sequencePlaybackDisplay.className = 'matrix-sequence-playback-display';
+        this.matrixSequencePlaybackDisplayElement = sequencePlaybackDisplay;
+        matrixContent.appendChild(sequencePlaybackDisplay);
+
+        if (this.matrixSequencePlaybackActive && this.matrixSequencePlaybackRange) {
+            this.setMatrixSequencePlaybackMode(true);
+            this.renderMatrixSequencePlaybackDisplay(
+                this.matrixSequencePlaybackRange.start,
+                this.matrixSequencePlaybackRange.end
+            );
+        } else {
+            this.setMatrixSequencePlaybackMode(false);
+            this.renderMatrixSequencePlaybackDisplay();
+        }
+
+        mainRow.appendChild(matrixContent);
+
+        const controls = document.createElement('div');
+        controls.className = 'matrix-controls';
+
+        const applyBtn = document.createElement('button');
+        applyBtn.className = 'matrix-apply-btn';
+        applyBtn.title = 'Apply sequence (rightmost matrix applies first)';
+        applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
+        applyBtn.addEventListener('click', () => this.applyMatrixSequenceFromInput());
+        controls.appendChild(applyBtn);
+
+        mainRow.appendChild(controls);
+        item.appendChild(mainRow);
+        container.appendChild(item);
     }
     
     renderMatrixItem(container, matrix) {
@@ -6468,6 +6589,244 @@ class VectoramaApp {
         this.animateTransformation(id);
     }
 
+    getAvailableMatrixSequenceLetters() {
+        const letters = new Set();
+
+        this.matrices.forEach((matrix) => {
+            const matrixName = String(matrix.name || '').toUpperCase().trim();
+            if (/^[A-Z]$/.test(matrixName)) {
+                letters.add(matrixName);
+            }
+        });
+
+        return letters;
+    }
+
+    sanitizeMatrixSequenceInput(rawInput) {
+        const allowedLetters = this.getAvailableMatrixSequenceLetters();
+        const upperInput = String(rawInput || '').toUpperCase();
+
+        if (!upperInput || allowedLetters.size === 0) {
+            return '';
+        }
+
+        let sanitized = '';
+        for (const char of upperInput) {
+            if (allowedLetters.has(char)) {
+                sanitized += char;
+            }
+        }
+
+        return sanitized;
+    }
+
+    parseMatrixSequenceInput(rawInput) {
+        const normalizedInput = (rawInput || '').toUpperCase().trim();
+        if (!normalizedInput) {
+            return {
+                error: 'Enter at least one matrix name (for example AB or A B C).'
+            };
+        }
+
+        const matrixByName = new Map();
+        this.matrices.forEach((matrix) => {
+            const matrixName = String(matrix.name || '').toUpperCase().trim();
+            if (matrixName) {
+                matrixByName.set(matrixName, matrix);
+            }
+        });
+
+        if (matrixByName.size === 0) {
+            return { error: 'No matrices are available.' };
+        }
+
+        const hasDelimiters = /[\s,;*·]/.test(normalizedInput);
+        let typedOrderNames = [];
+
+        if (hasDelimiters) {
+            const delimiterNormalized = normalizedInput.replace(/[,*;·]/g, ' ');
+            typedOrderNames = delimiterNormalized.split(/\s+/).filter(Boolean);
+        } else {
+            const availableNames = Array.from(matrixByName.keys()).sort((a, b) => b.length - a.length);
+            let cursor = 0;
+
+            while (cursor < normalizedInput.length) {
+                const matchedName = availableNames.find((name) => normalizedInput.startsWith(name, cursor));
+                if (!matchedName) {
+                    const unknownTail = normalizedInput.slice(cursor);
+                    return {
+                        error: `Could not parse matrix sequence near "${unknownTail}".`
+                    };
+                }
+
+                typedOrderNames.push(matchedName);
+                cursor += matchedName.length;
+            }
+        }
+
+        if (typedOrderNames.length === 0) {
+            return { error: 'Enter at least one matrix name.' };
+        }
+
+        const firstMissing = typedOrderNames.find((name) => !matrixByName.has(name));
+        if (firstMissing) {
+            return { error: `Matrix "${firstMissing}" was not found.` };
+        }
+
+        const applyOrderNames = typedOrderNames.slice().reverse();
+        const applyOrderIds = applyOrderNames.map((name) => matrixByName.get(name).id);
+
+        return {
+            typedOrderNames,
+            applyOrderNames,
+            applyOrderIds
+        };
+    }
+
+    applyMatrixSequenceFromInput() {
+        if (this.isAnimating) {
+            alert('Please wait for the current transformation to finish.');
+            return;
+        }
+
+        const parsed = this.parseMatrixSequenceInput(this.matrixSequenceInput);
+        if (parsed.error) {
+            this.clearMatrixSequenceStepHighlight();
+            alert(parsed.error);
+            return;
+        }
+
+        this.runMatrixSequence(parsed, 0);
+    }
+
+    setMatrixSequencePlaybackMode(isActive) {
+        this.matrixSequencePlaybackActive = Boolean(isActive);
+
+        const inputEl = this.matrixSequenceInputElement;
+        const displayEl = this.matrixSequencePlaybackDisplayElement;
+        if (!inputEl || !displayEl) {
+            return;
+        }
+
+        inputEl.classList.toggle('matrix-sequence-input-hidden', this.matrixSequencePlaybackActive);
+        displayEl.classList.toggle('playback-mode', this.matrixSequencePlaybackActive);
+    }
+
+    renderMatrixSequencePlaybackDisplay(activeStart = null, activeEnd = null) {
+        const displayEl = this.matrixSequencePlaybackDisplayElement;
+        const inputEl = this.matrixSequenceInputElement;
+        if (!displayEl || !inputEl) {
+            return;
+        }
+
+        const value = String(inputEl.value || '');
+        const hasActiveRange =
+            Number.isInteger(activeStart) &&
+            Number.isInteger(activeEnd) &&
+            activeStart >= 0 &&
+            activeEnd > activeStart &&
+            activeEnd <= value.length;
+
+        if (!value || !hasActiveRange) {
+            displayEl.innerHTML = '';
+            displayEl.classList.remove('visible');
+            return;
+        }
+
+        displayEl.innerHTML = '';
+        for (let i = 0; i < value.length; i++) {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'matrix-sequence-playback-char';
+            charSpan.textContent = value[i];
+
+            if (i >= activeStart && i < activeEnd) {
+                charSpan.classList.add('active');
+            }
+
+            displayEl.appendChild(charSpan);
+        }
+
+        displayEl.classList.add('visible');
+    }
+
+    highlightMatrixSequenceStep(parsedSequence, applyIndex) {
+        const inputEl = this.matrixSequenceInputElement;
+        const typedOrderNames = Array.isArray(parsedSequence?.typedOrderNames)
+            ? parsedSequence.typedOrderNames
+            : [];
+
+        if (!inputEl || typedOrderNames.length === 0) {
+            return;
+        }
+
+        const typedIndex = typedOrderNames.length - 1 - applyIndex;
+        if (typedIndex < 0 || typedIndex >= typedOrderNames.length) {
+            return;
+        }
+
+        let start = 0;
+        for (let i = 0; i < typedIndex; i++) {
+            start += typedOrderNames[i].length;
+        }
+        const end = start + typedOrderNames[typedIndex].length;
+
+        try {
+            inputEl.focus({ preventScroll: true });
+        } catch {
+            inputEl.focus();
+        }
+        inputEl.setSelectionRange(start, end);
+        this.matrixSequencePlaybackRange = { start, end };
+        this.setMatrixSequencePlaybackMode(true);
+        this.renderMatrixSequencePlaybackDisplay(start, end);
+    }
+
+    clearMatrixSequenceStepHighlight() {
+        const inputEl = this.matrixSequenceInputElement;
+        if (inputEl) {
+            const cursorPos = inputEl.value.length;
+            inputEl.setSelectionRange(cursorPos, cursorPos);
+        }
+
+        this.matrixSequencePlaybackRange = null;
+        this.renderMatrixSequencePlaybackDisplay();
+        this.setMatrixSequencePlaybackMode(false);
+    }
+
+    runMatrixSequence(parsedSequence, index = 0) {
+        const matrixIds = Array.isArray(parsedSequence?.applyOrderIds)
+            ? parsedSequence.applyOrderIds
+            : [];
+
+        if (index >= matrixIds.length) {
+            this.clearMatrixSequenceStepHighlight();
+            return;
+        }
+
+        this.highlightMatrixSequenceStep(parsedSequence, index);
+
+        const matrixId = matrixIds[index];
+        this.syncOpenEigenvaluePanelToMatrix(matrixId);
+
+        const started = this.animateTransformation(matrixId, () => {
+            this.runMatrixSequence(parsedSequence, index + 1);
+        });
+
+        if (!started) {
+            this.clearMatrixSequenceStepHighlight();
+
+            if (index !== 0) {
+                return;
+            }
+
+            const hasTransformableObjects = this.vectors.length > 0 || this.lines.length > 0 || this.planes.length > 0;
+            const canAnimateLatticeOnly = this.shouldShowLatticeOverlay();
+            if (!hasTransformableObjects && !canAnimateLatticeOnly) {
+                alert('Add a vector, line, plane, or lattice overlay before applying a matrix sequence.');
+            }
+        }
+    }
+
     showMatrixInfo(id) {
         // Hide other info panels
         document.getElementById('vector-info-panel').style.display = 'none';
@@ -7101,8 +7460,32 @@ class VectoramaApp {
         
         if (index !== -1) {
             const matrix = this.matrices[index];
+            const removedMatrixName = String(matrix.name || '').toUpperCase().trim();
+            let shouldClearCompositionInput = false;
+
+            if (removedMatrixName && this.matrixSequenceInput) {
+                const parsedSequence = this.parseMatrixSequenceInput(this.matrixSequenceInput);
+
+                if (!parsedSequence.error && parsedSequence.typedOrderNames.includes(removedMatrixName)) {
+                    shouldClearCompositionInput = true;
+                } else {
+                    const escapedName = removedMatrixName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const tokenPattern = new RegExp(`(^|[\\s,;*·])${escapedName}($|[\\s,;*·])`);
+                    shouldClearCompositionInput = tokenPattern.test(this.matrixSequenceInput.toUpperCase());
+                }
+            }
+
             this.usedMatrixLetters.delete(matrix.name);
             this.matrices.splice(index, 1);
+
+            if (shouldClearCompositionInput) {
+                this.matrixSequenceInput = '';
+                if (this.dimension === '2d') {
+                    this.matrixSequenceInput2D = '';
+                } else {
+                    this.matrixSequenceInput3D = '';
+                }
+            }
             
             // If this was the selected matrix, select the first one or null
             if (this.selectedMatrixId === id) {
@@ -7165,10 +7548,10 @@ class VectoramaApp {
         }, 300);
     }
 
-    animateTransformation(matrixId = null) {
+    animateTransformation(matrixId = null, onComplete = null) {
         const hasTransformableObjects = this.vectors.length > 0 || this.lines.length > 0 || this.planes.length > 0;
         const canAnimateLatticeOnly = this.shouldShowLatticeOverlay();
-        if (this.isAnimating || (!hasTransformableObjects && !canAnimateLatticeOnly)) return;
+        if (this.isAnimating || (!hasTransformableObjects && !canAnimateLatticeOnly)) return false;
         
         // Auto-close panel on mobile/narrow screens to see the animation
         this.closePanelOnMobile();
@@ -7181,13 +7564,13 @@ class VectoramaApp {
         const targetMatrixId = matrixId || this.selectedMatrixId;
         if (!targetMatrixId) {
             alert('Please specify a matrix to apply');
-            return;
+            return false;
         }
         
         const selectedMatrix = this.getMatrixById(targetMatrixId);
         if (!selectedMatrix) {
             alert('Matrix not found');
-            return;
+            return false;
         }
         
         // Convert matrix values to THREE.Matrix3
@@ -7417,10 +7800,15 @@ class VectoramaApp {
                 this.updateObjectsList();
                 this.updateIntersections();
                 this.scheduleStateSave();
+
+                if (typeof onComplete === 'function') {
+                    onComplete();
+                }
             }
         };
 
         animate();
+        return true;
     }
 
     easeInOutCubic(t) {
