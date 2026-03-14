@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.25';
+const APP_VERSION = '1.0.26';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -10584,6 +10584,40 @@ class VectoramaApp {
         detDiv.appendChild(detLabelDiv);
         detDiv.appendChild(detValueDiv);
         valuesDiv.appendChild(detDiv);
+
+        // Display geometric interpretation of determinant
+        const detAbs = Math.abs(determinant);
+        const detIsZero = detAbs < 1e-8;
+        const measureName = this.dimension === '2d' ? 'Area' : 'Volume';
+
+        const detScaleValue = detIsZero ? '0 (collapsed)' : formatNum(detAbs);
+        const detOrientationValue = detIsZero
+            ? 'not defined (singular)'
+            : (determinant > 0 ? 'preserved' : 'reversed');
+
+        const detScaleDiv = document.createElement('div');
+        detScaleDiv.className = 'eigenvalue-item';
+        const detScaleLabelDiv = document.createElement('div');
+        detScaleLabelDiv.className = 'eigenvalue-label';
+        detScaleLabelDiv.textContent = `${measureName} scale:`;
+        const detScaleValueDiv = document.createElement('div');
+        detScaleValueDiv.className = 'eigenvalue-value';
+        detScaleValueDiv.textContent = detScaleValue;
+        detScaleDiv.appendChild(detScaleLabelDiv);
+        detScaleDiv.appendChild(detScaleValueDiv);
+        valuesDiv.appendChild(detScaleDiv);
+
+        const detOrientationDiv = document.createElement('div');
+        detOrientationDiv.className = 'eigenvalue-item';
+        const detOrientationLabelDiv = document.createElement('div');
+        detOrientationLabelDiv.className = 'eigenvalue-label';
+        detOrientationLabelDiv.textContent = 'Orientation:';
+        const detOrientationValueDiv = document.createElement('div');
+        detOrientationValueDiv.className = 'eigenvalue-value';
+        detOrientationValueDiv.textContent = detOrientationValue;
+        detOrientationDiv.appendChild(detOrientationLabelDiv);
+        detOrientationDiv.appendChild(detOrientationValueDiv);
+        valuesDiv.appendChild(detOrientationDiv);
         
         // Calculate and display trace
         let trace;
