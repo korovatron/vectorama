@@ -1334,7 +1334,7 @@ body {
 }
 
 .matrix-sequence-item {
-    border-left-style: dashed;
+    border-left-style: solid;
 }
 
 .matrix-item .matrix-sequence-content {
