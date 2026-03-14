@@ -1809,6 +1809,7 @@ class VectoramaApp {
             : {
                 'rotation-45': 'Rotation 45° about z-axis',
                 'rotation-90': 'Rotation 90° about z-axis',
+                'rotation-scale-x': 'Rotation + scale about x-axis',
                 'scale-2x': 'Uniform scale by 2',
                 'shear-x': 'Shear parallel to x-axis: x\u2032 = x + y',
                 'reflection-x': 'Reflection in xz-plane',
@@ -4473,6 +4474,88 @@ class VectoramaApp {
             return 'Singular transformation';
         }
 
+        const formatSignedAngle = (degrees) => {
+            const normalized = this.normalizeSignedAngleDegrees(degrees);
+            const nearestInt = Math.round(normalized);
+            const angleText = Math.abs(normalized - nearestInt) < 0.2
+                ? String(nearestInt)
+                : this.formatDisplayNumber(normalized, 1);
+            return `${angleText}°`;
+        };
+
+        const getAxisRotationScaleLabel = (config) => {
+            const {
+                axis,
+                planeName,
+                axialFactor,
+                p00,
+                p01,
+                p10,
+                p11,
+                decouplingTerms
+            } = config;
+
+            if (decouplingTerms.some(term => !approx(term, 0))) {
+                return '';
+            }
+
+            // Plane action has rotation + scale form [[p, -q], [q, p]].
+            if (!approx(p00, p11) || !approx(p01, -p10)) {
+                return '';
+            }
+
+            // Keep simpler diagonal-scale labels when there is no rotational component.
+            if (approx(p01, 0) && approx(p10, 0)) {
+                return '';
+            }
+
+            const transverseFactor = Math.sqrt(p00 * p00 + p10 * p10);
+            if (transverseFactor < epsilon) {
+                return '';
+            }
+
+            const angleDegrees = Math.atan2(p10, p00) * (180 / Math.PI);
+            const angleText = formatSignedAngle(angleDegrees);
+
+            return `Rotation + scale about ${axis}-axis: axial ${formatFactor(axialFactor)}, transverse ${formatFactor(transverseFactor)}, angle ${angleText} in ${planeName}-plane`;
+        };
+
+        const rotationScaleLabel =
+            getAxisRotationScaleLabel({
+                axis: 'x',
+                planeName: 'yz',
+                axialFactor: a11,
+                p00: a22,
+                p01: a23,
+                p10: a32,
+                p11: a33,
+                decouplingTerms: [a12, a13, a21, a31]
+            }) ||
+            getAxisRotationScaleLabel({
+                axis: 'y',
+                planeName: 'xz',
+                axialFactor: a22,
+                p00: a11,
+                p01: a13,
+                p10: a31,
+                p11: a33,
+                decouplingTerms: [a12, a21, a23, a32]
+            }) ||
+            getAxisRotationScaleLabel({
+                axis: 'z',
+                planeName: 'xy',
+                axialFactor: a33,
+                p00: a11,
+                p01: a12,
+                p10: a21,
+                p11: a22,
+                decouplingTerms: [a13, a23, a31, a32]
+            });
+
+        if (rotationScaleLabel) {
+            return rotationScaleLabel;
+        }
+
         return '';
     }
 
@@ -6598,6 +6681,11 @@ class VectoramaApp {
                     values[1][0] = 1; values[1][1] = 0; values[1][2] = 0;
                     values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
                     break;
+                case 'rotation-scale-x':
+                    values[0][0] = 1; values[0][1] = 0; values[0][2] = 0;
+                    values[1][0] = 0; values[1][1] = 2; values[1][2] = 1;
+                    values[2][0] = 0; values[2][1] = -1; values[2][2] = 2;
+                    break;
                 case 'scale-2x':
                     values[0][0] = 2; values[0][1] = 0; values[0][2] = 0;
                     values[1][0] = 0; values[1][1] = 2; values[1][2] = 0;
@@ -8720,14 +8808,20 @@ class VectoramaApp {
         const eigenvalues = this.solveCubic(1, -c2, -c1, -c0);
         
         const result = [];
+        const complexEigenvalues = [];
         const processedEigenvalues = new Map(); // Map eigenvalue -> {vectors: [], count: number}
         
         // Group eigenvalues by value and count multiplicities
         for (const lambda of eigenvalues) {
             const realValue = lambda.real;
             
-            // Skip if imaginary part is too large
+            // Preserve complex roots for info panel display.
             if (Math.abs(lambda.imag) > epsilon) {
+                complexEigenvalues.push({
+                    value: realValue,
+                    imaginary: lambda.imag,
+                    isComplex: true
+                });
                 continue;
             }
             
@@ -8782,6 +8876,9 @@ class VectoramaApp {
                 }
             }
         }
+
+        // Keep complex roots visible in matrix analysis (e.g. rotation matrices).
+        result.push(...complexEigenvalues);
         
         return result;
     }
@@ -10320,9 +10417,11 @@ class VectoramaApp {
             // Handle complex eigenvalues
             if (eigen.isComplex) {
                 const realPart = formatNum(eigen.value);
-                const imagPart = formatNum(Math.abs(eigen.imaginary));
+                const imagMagnitude = Math.abs(eigen.imaginary);
+                const imagIsOne = Math.abs(imagMagnitude - 1) < 0.0001;
+                const imagPart = imagIsOne ? 'i' : `${formatNum(imagMagnitude)}i`;
                 const sign = eigen.imaginary >= 0 ? '+' : '−';
-                valueDiv.textContent = `${realPart} ${sign} ${imagPart}i`;
+                valueDiv.textContent = `${realPart} ${sign} ${imagPart}`;
             } else {
                 valueDiv.textContent = formatNum(eigen.value);
             }
