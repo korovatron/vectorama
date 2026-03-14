@@ -1455,12 +1455,21 @@ body {
 }
 
 @media (hover: hover) {
-    .matrix-item .matrix-apply-btn:hover,
-    .matrix-item .matrix-info-btn:hover,
-    .vector-item .matrix-info-btn:hover {
+    .matrix-item .matrix-apply-btn:not(:disabled):hover,
+    .matrix-item .matrix-info-btn:not(:disabled):hover,
+    .vector-item .matrix-info-btn:not(:disabled):hover {
         filter: brightness(1.15);
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
     }
+}
+
+.matrix-item .matrix-apply-btn:disabled,
+.matrix-item .matrix-info-btn:disabled,
+.vector-item .matrix-info-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+    box-shadow: none;
 }
 
 .matrix-item .matrix-apply-btn {

@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.28';
+const APP_VERSION = '1.0.29';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -116,8 +116,8 @@ const lightIcon = document.getElementById('light-icon');
 const darkIcon = document.getElementById('dark-icon');
 const APP_STATE_STORAGE_KEY = 'vectorama-app-state-v1';
 
-// Load theme from localStorage or default to dark
-const savedTheme = localStorage.getItem('theme') || 'dark';
+// Load theme from localStorage or default to light
+const savedTheme = localStorage.getItem('theme') || 'light';
 if (savedTheme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
     lightIcon.classList.add('theme-active');
@@ -5139,6 +5139,18 @@ class VectoramaApp {
         }
 
         sequenceInput.value = initialSequenceValue;
+        let applyBtn = null;
+        let infoBtn = null;
+        const updateSequenceActionButtons = () => {
+            const hasSequence = this.matrixSequenceInput.length > 0;
+            if (applyBtn) {
+                applyBtn.disabled = !hasSequence;
+            }
+            if (infoBtn) {
+                infoBtn.disabled = !hasSequence;
+            }
+        };
+
         sequenceInput.addEventListener('input', (e) => {
             const inputEl = e.target;
             const rawValue = inputEl.value;
@@ -5160,6 +5172,8 @@ class VectoramaApp {
             } else {
                 this.matrixSequenceInput3D = this.matrixSequenceInput;
             }
+
+            updateSequenceActionButtons();
 
             if (this.matrixSequenceInfoPanelOpen) {
                 this.updateMatrixSequenceInfoPanel();
@@ -5191,19 +5205,21 @@ class VectoramaApp {
         const controls = document.createElement('div');
         controls.className = 'matrix-controls';
 
-        const applyBtn = document.createElement('button');
+        applyBtn = document.createElement('button');
         applyBtn.className = 'matrix-apply-btn';
         applyBtn.title = 'Apply sequence (rightmost matrix applies first)';
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
         applyBtn.addEventListener('click', () => this.applyMatrixSequenceFromInput());
         controls.appendChild(applyBtn);
 
-        const infoBtn = document.createElement('button');
+        infoBtn = document.createElement('button');
         infoBtn.className = 'matrix-info-btn';
         infoBtn.title = 'Show composition analysis (equivalent matrix, determinant, trace)';
         infoBtn.textContent = 'i';
         infoBtn.addEventListener('click', () => this.showMatrixSequenceInfo());
         controls.appendChild(infoBtn);
+
+        updateSequenceActionButtons();
 
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
