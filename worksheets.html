@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vectorama Lessons</title>
+    <style>
+        :root {
+            --title-bg: #1A2F42;
+            --panel-bg: rgba(255, 255, 255, 0.08);
+            --panel-border: rgba(255, 255, 255, 0.2);
+            --text-main: #ffffff;
+            --text-muted: #c9d8e5;
+            --link-bg: rgba(255, 255, 255, 0.1);
+            --link-bg-hover: rgba(255, 255, 255, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--title-bg);
+            color: var(--text-main);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.5;
+            padding: 40px 20px;
+        }
+
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(30px, 4vw, 42px);
+            letter-spacing: 0.4px;
+        }
+
+        .intro {
+            margin: 0 0 20px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 24px;
+            color: var(--text-main);
+            text-decoration: none;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            background: var(--link-bg);
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            background: var(--link-bg-hover);
+        }
+
+        .section {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .section h2 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            letter-spacing: 0.2px;
+        }
+
+        .worksheet-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 10px;
+        }
+
+        .worksheet-list a {
+            display: block;
+            text-decoration: none;
+            color: var(--text-main);
+            background: var(--link-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-weight: 600;
+        }
+
+        .worksheet-list a:hover {
+            background: var(--link-bg-hover);
+        }
+
+    </style>
+</head>
+<body>
+    <main class="page">
+        <h1>Vectorama Lessons</h1>
+
+        <a class="back-link" href="index.html">Back to Vectorama</a>
+
+        <section class="section" aria-label="PDF worksheets">
+            <h2>PDF Worksheets</h2>
+            <ul class="worksheet-list">
+                <li>
+                    <a href="worksheets/Investigating_2D_Transformations.pdf" target="_blank" rel="noopener noreferrer">
+                        Investigating 2D Transformations
+                    </a>
+                </li>
+                <li>
+                    <a href="worksheets/Investigating_2D_Transformations_Answers.pdf" target="_blank" rel="noopener noreferrer">
+                        Investigating 2D Transformations - Answers
+                    </a>
+                </li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

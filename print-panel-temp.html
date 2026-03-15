@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vectorama Panel Print Mock</title>
+    <style>
+        :root {
+            --paper: #ffffff;
+            --ink: #000000;
+            --muted: #8b8b8b;
+            --line: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            padding: 24px;
+        }
+
+        .screenshot-wrap {
+            width: 330px;
+        }
+
+        .control-panel {
+            width: 100%;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            box-shadow: none;
+            padding: 16px;
+        }
+
+        .panel-logo {
+            width: 190px;
+            max-width: 100%;
+            margin: 0 auto 14px;
+            display: block;
+            filter: grayscale(1) brightness(0);
+        }
+
+        .panel-separator {
+            border-top: 1px solid var(--line);
+            margin: 12px 0;
+        }
+
+        .top-button-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .top-btn,
+        .add-button,
+        .dropdown-fake {
+            height: 40px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background: var(--paper);
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.1;
+        }
+
+        .add-button {
+            justify-content: space-between;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+
+        .add-plus-icon,
+        .btn-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--ink);
+            flex-shrink: 0;
+        }
+
+        .chevron {
+            width: 10px;
+            height: 10px;
+            color: var(--ink);
+            flex-shrink: 0;
+        }
+
+        .toggle-option {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1;
+            font-weight: 700;
+        }
+
+        .toggle-option.active {
+            color: var(--ink);
+        }
+
+        .toggle-separator {
+            color: var(--muted);
+            margin: 0 4px;
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .vec-icon {
+            color: var(--muted);
+            width: 20px;
+            height: 20px;
+        }
+
+        .vec-icon.vec-active {
+            color: var(--ink);
+        }
+
+        .vec-separator {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .objects-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 12px;
+            font-weight: 700;
+            background: var(--paper);
+        }
+
+        .objects-header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .objects-header .caret {
+            color: var(--ink);
+            font-size: 10px;
+        }
+
+        .objects-title {
+            letter-spacing: 0.2px;
+        }
+
+        .objects-add-btn {
+            width: 22px;
+            height: 22px;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: var(--paper);
+            color: var(--ink);
+            font-size: 16px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .matrix-item {
+            margin-top: 8px;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--line);
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        .matrix-main-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .matrix-content {
+            flex: 1;
+        }
+
+        .matrix-name {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--ink);
+        }
+
+        .matrix-grid-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .matrix-bracket {
+            font-size: 28px;
+            line-height: 1;
+            color: var(--ink);
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 38px);
+            gap: 4px;
+        }
+
+        .matrix-grid input {
+            width: 38px;
+            height: 28px;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: var(--paper);
+            color: var(--ink);
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
+        .matrix-grid input::-webkit-outer-spin-button,
+        .matrix-grid input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .matrix-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .matrix-action-btn,
+        .remove-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: var(--paper);
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .matrix-action-btn svg {
+            width: 10px;
+            height: 12px;
+            color: var(--ink);
+        }
+
+        .notes {
+            margin-top: 12px;
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.35;
+        }
+    </style>
+</head>
+<body>
+    <div class="screenshot-wrap">
+        <div class="control-panel">
+            <img src="images/panelLogo.png" alt="Vectorama" class="panel-logo" draggable="false">
+
+            <div class="top-button-row">
+                <div class="add-button">
+                    <svg class="add-plus-icon" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <line x1="6" y1="1.8" x2="6" y2="10.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line>
+                        <line x1="1.8" y1="6" x2="10.2" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line>
+                    </svg>
+                    <span>Add</span>
+                    <svg class="chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="2,4 6,8 10,4"></polyline>
+                    </svg>
+                </div>
+
+                <div class="top-btn">RESET<br>AXES</div>
+
+                <div class="top-btn" title="Toggle 2D/3D">
+                    <span class="toggle-option active">2D</span>
+                    <span class="toggle-separator">|</span>
+                    <span class="toggle-option">3D</span>
+                </div>
+            </div>
+
+            <div class="top-button-row">
+                <div class="top-btn" title="Toggle Intersections">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="14.8" y1="0.2" x2="3.2" y2="21.0" />
+                        <line x1="9.2" y1="0.2" x2="20.8" y2="21.0" />
+                        <line x1="1.2" y1="16" x2="22.8" y2="16" />
+                        <circle cx="12" cy="5" r="2.2" fill="currentColor" stroke="none" />
+                        <circle cx="6" cy="16" r="2.2" fill="currentColor" stroke="none" />
+                        <circle cx="18" cy="16" r="2.2" fill="currentColor" stroke="none" />
+                    </svg>
+                </div>
+
+                <div class="top-btn" title="Toggle Grid + Axis Labels">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" />
+                        <line x1="9" y1="3" x2="9" y2="21" stroke-width="1.5" />
+                        <line x1="15" y1="3" x2="15" y2="21" stroke-width="1.5" />
+                        <line x1="3" y1="9" x2="21" y2="9" stroke-width="1.5" />
+                        <line x1="3" y1="15" x2="21" y2="15" stroke-width="1.5" />
+                    </svg>
+                </div>
+
+                <div class="top-btn" title="Cycle Vector Display Mode">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg class="vec-icon" id="vec-arrow" width="20" height="20" viewBox="0 0 16 16" aria-hidden="true">
+                            <defs>
+                                <marker id="arrowhead-temp" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+                                    <polygon points="0 0, 4 2, 0 4" fill="currentColor"></polygon>
+                                </marker>
+                            </defs>
+                            <line x1="2" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrowhead-temp)"></line>
+                        </svg>
+                        <span class="vec-separator">|</span>
+                        <svg class="vec-icon vec-active" id="vec-point" width="20" height="20" viewBox="0 0 16 16" aria-hidden="true">
+                            <circle cx="8" cy="8" r="3" fill="currentColor"></circle>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-separator"></div>
+
+            <div class="objects-header" role="heading" aria-level="3">
+                <div class="objects-header-left">
+                    <span class="caret">v</span>
+                    <span class="objects-title">MATRICES (1)</span>
+                </div>
+                <button class="objects-add-btn" aria-label="Add matrix">+</button>
+            </div>
+
+            <div class="matrix-item">
+                <div class="matrix-main-row">
+                    <div class="matrix-content">
+                        <div class="matrix-name">A =</div>
+                        <div class="matrix-grid-container">
+                            <span class="matrix-bracket">[</span>
+                            <div class="matrix-grid matrix-2x2">
+                                <input type="text" value="1" readonly>
+                                <input type="text" value="0" readonly>
+                                <input type="text" value="0" readonly>
+                                <input type="text" value="1" readonly>
+                            </div>
+                            <span class="matrix-bracket">]</span>
+                        </div>
+                    </div>
+                    <div class="matrix-controls">
+                        <div class="matrix-action-btn" title="Apply matrix">
+                            <svg viewBox="0 0 10 12" aria-hidden="true">
+                                <polygon points="0,0 0,12 10,6" fill="currentColor"></polygon>
+                            </svg>
+                        </div>
+                        <div class="matrix-action-btn" title="Matrix info">i</div>
+                        <div class="remove-btn" title="Delete matrix">x</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes">
+                Temporary black-and-white panel mock for print screenshots.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

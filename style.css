@@ -165,6 +165,46 @@ body {
     filter: brightness(1.1);
 }
 
+.title-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.worksheets-link-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.worksheets-link {
+    color: var(--text-primary);
+    font-size: 0.95em;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s;
+}
+
+.worksheets-link:hover {
+    opacity: 0.85;
+}
+
+.new-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #ffcc00;
+    color: #1A2F42;
+    font-size: 0.62em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
 .copyright {
     position: absolute;
     bottom: calc(20px + var(--safe-area-bottom, 0px));
