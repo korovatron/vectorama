@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.29';
+const APP_VERSION = '1.0.30';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1223,9 +1223,12 @@ class VectoramaApp {
             [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
         ];
         
+        const cubeColorHexes = this.getPresetVectorColorSequence('preset-cube', cubeVertices);
         const cubeVectors = [];
-        cubeVertices.forEach(coords => {
-            const colorHex = this.vectorColors[this.colorIndex3D % this.vectorColors.length];
+        cubeVertices.forEach((coords, index) => {
+            const colorHex = Array.isArray(cubeColorHexes)
+                ? cubeColorHexes[index]
+                : this.vectorColors[this.colorIndex3D % this.vectorColors.length];
             this.colorIndex3D++;
             
             const vector3D = {
@@ -3973,14 +3976,25 @@ class VectoramaApp {
         }
     }
 
-    addVector(x, y, z = 0) {
+    addVector(x, y, z = 0, options = {}) {
+        const {
+            colorHex: overrideColorHex = null,
+            advanceColorIndex = overrideColorHex === null
+        } = options;
         const origin = new THREE.Vector3(0, 0, 0);
         const direction = new THREE.Vector3(x, y, z).normalize();
         const length = Math.sqrt(x * x + y * y + z * z);
         
         // Use next color from graphiti's color palette
-        const colorHex = this.vectorColors[this.colorIndex % this.vectorColors.length];
-        this.colorIndex++;
+        const colorHex = overrideColorHex || this.vectorColors[this.colorIndex % this.vectorColors.length];
+        if (advanceColorIndex) {
+            this.colorIndex++;
+            if (this.dimension === '2d') {
+                this.colorIndex2D = this.colorIndex;
+            } else {
+                this.colorIndex3D = this.colorIndex;
+            }
+        }
         const color = new THREE.Color(colorHex);
         
         const thickness = this.getVectorArrowThickness();
@@ -4022,6 +4036,61 @@ class VectoramaApp {
         this.scheduleStateSave();
 
         return vector;
+    }
+
+    resetVectorColorSequence() {
+        this.colorIndex = 0;
+
+        if (this.dimension === '2d') {
+            this.colorIndex2D = 0;
+        } else {
+            this.colorIndex3D = 0;
+        }
+    }
+
+    getPresetVectorColorSequence(preset, vectors) {
+        let explicitColors = null;
+        let fallbackColors = [];
+
+        switch (preset) {
+            case 'preset-square':
+                explicitColors = {
+                    '0,0,0': '#000000',
+                    '1,0,0': '#CC0000',
+                    '1,1,0': '#F39C12',
+                    '0,1,0': '#009900'
+                };
+                fallbackColors = ['#A569BD', '#A0522D', '#B9770E'];
+                break;
+            case 'preset-cube':
+                explicitColors = {
+                    '0,0,0': '#000000',
+                    '1,0,0': '#CC0000',
+                    '1,1,0': '#F39C12',
+                    '0,1,0': '#009900',
+                    '0,0,1': '#0000CC',
+                    '1,0,1': '#8E44AD',
+                    '1,1,1': '#00CCCC',
+                    '0,1,1': '#A0522D'
+                };
+                fallbackColors = ['#AF7AC5', '#A67C52', '#D4AC0D', '#7F8C8D'];
+                break;
+            default:
+                return null;
+        }
+        let fallbackIndex = 0;
+
+        return vectors.map(coords => {
+            const key = `${coords[0]},${coords[1]},${coords[2]}`;
+
+            if (Object.prototype.hasOwnProperty.call(explicitColors, key)) {
+                return explicitColors[key];
+            }
+
+            const fallbackColor = fallbackColors[fallbackIndex % fallbackColors.length];
+            fallbackIndex++;
+            return fallbackColor;
+        });
     }
 
     updateVectorList() {
@@ -7533,6 +7602,7 @@ class VectoramaApp {
     addPresetVectors(preset) {
         // Clear existing vectors first
         this.clearVectors();
+        this.resetVectorColorSequence();
         
         // Define preset vector coordinates
         let vectors = [];
@@ -7749,8 +7819,19 @@ class VectoramaApp {
                 break;
         }
         
+        const presetColorHexes = this.getPresetVectorColorSequence(preset, vectors);
+
         // Add all vectors and remember IDs for hidden preset edges
-        const addedVectors = vectors.map(v => this.addVector(v[0], v[1], v[2]));
+        const addedVectors = vectors.map((vectorCoords, index) => {
+            if (Array.isArray(presetColorHexes)) {
+                return this.addVector(vectorCoords[0], vectorCoords[1], vectorCoords[2], {
+                    colorHex: presetColorHexes[index],
+                    advanceColorIndex: true
+                });
+            }
+
+            return this.addVector(vectorCoords[0], vectorCoords[1], vectorCoords[2]);
+        });
 
         const presetEdges = edgeIndexPairs.map(([startIndex, endIndex]) => ({
             startId: addedVectors[startIndex].id,
