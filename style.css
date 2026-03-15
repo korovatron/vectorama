@@ -585,6 +585,18 @@ body {
     line-height: 1;
 }
 
+#dimension-toggle-btn:disabled {
+    background: #243549;
+    border-color: #4a5564;
+    opacity: 0.65;
+}
+
+#dimension-toggle-btn:disabled .dim-option,
+#dimension-toggle-btn:disabled .dim-option.dim-active,
+#dimension-toggle-btn:disabled .dim-separator {
+    color: #7d8794;
+}
+
 .theme-icon {
     color: #666;
     transition: color 0.2s;

@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.36';
+const APP_VERSION = '1.0.37';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1665,6 +1665,7 @@ class VectoramaApp {
         this.updateLatticeControlsUI();
         this.updatePlaneExtentControl();
         this.updateVectorDisplayModeUI();
+        this.updateDimensionToggleUI();
     }
 
     toggleShortcutsOverlay(forceState = null) {
@@ -3075,6 +3076,17 @@ class VectoramaApp {
         }
     }
 
+    updateDimensionToggleUI() {
+        const dimensionToggleButton = document.getElementById('dimension-toggle-btn');
+        if (!dimensionToggleButton) return;
+
+        const isDisabled = this.isAnimating;
+        dimensionToggleButton.disabled = isDisabled;
+        dimensionToggleButton.title = isDisabled
+            ? '2D/3D switch is disabled while a transformation is animating'
+            : 'Toggle 2D/3D';
+    }
+
     updateLatticeControlsUI() {
         const latticeToggleButton = document.getElementById('lattice-toggle-btn');
         const latticeResetButton = document.getElementById('lattice-reset-btn');
@@ -3649,6 +3661,10 @@ class VectoramaApp {
     }
     
     toggleDimension() {
+        if (this.isAnimating) {
+            return;
+        }
+
         // Toggle between 2D and 3D
         const newDimension = this.dimension === '2d' ? '3d' : '2d';
         this.switchDimension(newDimension);
@@ -7975,6 +7991,7 @@ class VectoramaApp {
             : null;
 
         this.isAnimating = true;
+        this.updateDimensionToggleUI();
         const duration = this.animationSpeed * 1000;
         const startTime = Date.now();
         const vectorOrigin = new THREE.Vector3(0, 0, 0);
@@ -8100,6 +8117,7 @@ class VectoramaApp {
                 requestAnimationFrame(animate);
             } else {
                 this.isAnimating = false;
+                this.updateDimensionToggleUI();
                 
                 // Update original positions to transformed positions
                 this.vectors.forEach(vec => {
