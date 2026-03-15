@@ -1,7 +1,8 @@
-const CACHE_NAME = 'vectorama-version-1.0.31';
+const CACHE_NAME = 'vectorama-version-1.0.32';
 const LOCAL_ASSETS = [
   './',
   './index.html',
+  './worksheets.html',
   './style.css',
   './app.js',
   './manifest.json',
@@ -91,10 +92,12 @@ self.addEventListener('fetch', (event) => {
   const isStaticAsset = ['script', 'style', 'image', 'font'].includes(request.destination);
   const isJsDelivr = url.origin === 'https://cdn.jsdelivr.net';
 
-  // Fast startup path: never wait on weak network for app shell navigation.
-  if (isNavigation) {
+  // For same-origin navigations, serve the requested page cache-first.
+  // This preserves multi-page routes like worksheets.html while still
+  // keeping fast startup and background refresh behavior.
+  if (isNavigation && isSameOrigin) {
     event.respondWith((async () => {
-      const { response, background } = await cacheFirstWithBackgroundRefresh(toScopeUrl('./index.html'), { ignoreSearch: true });
+      const { response, background } = await cacheFirstWithBackgroundRefresh(request, { ignoreSearch: true });
       if (background) {
         event.waitUntil(background);
       }
