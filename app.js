@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.32';
+const APP_VERSION = '1.0.33';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1813,20 +1813,14 @@ class VectoramaApp {
         const labelsByDimension = this.dimension === '2d'
             ? {
                 'rotation-45': 'Rotation 45° anticlockwise',
-                'rotation-90': 'Rotation 90° anticlockwise',
-                'scale-2x': 'Uniform scale by 2',
                 'shear-x': 'Shear parallel to x-axis (factor 1)',
-                'reflection-x': 'Reflection in x-axis',
-                'reflection-y': 'Reflection in y-axis'
+                'reflection-x': 'Reflection in x-axis'
             }
             : {
                 'rotation-45': 'Rotation 45° about z-axis',
-                'rotation-90': 'Rotation 90° about z-axis',
                 'rotation-scale-x': 'Rotation + scale about x-axis',
-                'scale-2x': 'Uniform scale by 2',
                 'shear-x': 'Shear parallel to x-axis: x\u2032 = x + y',
-                'reflection-x': 'Reflection in xz-plane',
-                'reflection-y': 'Reflection in yz-plane'
+                'reflection-x': 'Reflection in xz-plane'
             };
 
         Object.entries(labelsByDimension).forEach(([action, label]) => {
@@ -7499,14 +7493,6 @@ class VectoramaApp {
                     values[0][0] = cos45; values[0][1] = -sin45;
                     values[1][0] = sin45; values[1][1] = cos45;
                     break;
-                case 'rotation-90':
-                    values[0][0] = 0; values[0][1] = -1;
-                    values[1][0] = 1; values[1][1] = 0;
-                    break;
-                case 'scale-2x':
-                    values[0][0] = 2; values[0][1] = 0;
-                    values[1][0] = 0; values[1][1] = 2;
-                    break;
                 case 'shear-x':
                     values[0][0] = 1; values[0][1] = 1;
                     values[1][0] = 0; values[1][1] = 1;
@@ -7514,10 +7500,6 @@ class VectoramaApp {
                 case 'reflection-x':
                     values[0][0] = 1; values[0][1] = 0;
                     values[1][0] = 0; values[1][1] = -1;
-                    break;
-                case 'reflection-y':
-                    values[0][0] = -1; values[0][1] = 0;
-                    values[1][0] = 0; values[1][1] = 1;
                     break;
             }
         } else {
@@ -7530,20 +7512,10 @@ class VectoramaApp {
                     values[1][0] = sin45; values[1][1] = cos45; values[1][2] = 0;
                     values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
                     break;
-                case 'rotation-90':
-                    values[0][0] = 0; values[0][1] = -1; values[0][2] = 0;
-                    values[1][0] = 1; values[1][1] = 0; values[1][2] = 0;
-                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
-                    break;
                 case 'rotation-scale-x':
                     values[0][0] = 1; values[0][1] = 0; values[0][2] = 0;
                     values[1][0] = 0; values[1][1] = 2; values[1][2] = 1;
                     values[2][0] = 0; values[2][1] = -1; values[2][2] = 2;
-                    break;
-                case 'scale-2x':
-                    values[0][0] = 2; values[0][1] = 0; values[0][2] = 0;
-                    values[1][0] = 0; values[1][1] = 2; values[1][2] = 0;
-                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 2;
                     break;
                 case 'shear-x':
                     values[0][0] = 1; values[0][1] = 1; values[0][2] = 0;
@@ -7553,11 +7525,6 @@ class VectoramaApp {
                 case 'reflection-x':
                     values[0][0] = 1; values[0][1] = 0; values[0][2] = 0;
                     values[1][0] = 0; values[1][1] = -1; values[1][2] = 0;
-                    values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
-                    break;
-                case 'reflection-y':
-                    values[0][0] = -1; values[0][1] = 0; values[0][2] = 0;
-                    values[1][0] = 0; values[1][1] = 1; values[1][2] = 0;
                     values[2][0] = 0; values[2][1] = 0; values[2][2] = 1;
                     break;
             }

@@ -194,6 +194,8 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    top: 1px;
     padding: 2px 7px;
     border-radius: 999px;
     background: #ffcc00;
@@ -224,7 +226,12 @@ body {
     color: #fff;
     text-decoration: none;
     white-space: nowrap;
-    transition: color 0.2s;
+}
+
+.copyright a:not(.contact-icon-link) {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s;
 }
 
 .more-contact-group {
@@ -264,8 +271,8 @@ body {
     fill: currentColor;
 }
 
-.copyright a:hover {
-    color: #fff;
+.copyright a:not(.contact-icon-link):hover {
+    opacity: 0.85;
 }
 
 .break-mobile {
