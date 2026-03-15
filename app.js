@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.35';
+const APP_VERSION = '1.0.36';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -9479,11 +9479,21 @@ class VectoramaApp {
             const farZoomStartDistance = 14;
             const farZoomRatio = Math.max(1, distanceToTarget / farZoomStartDistance);
             const farZoomAttenuation = 1 / Math.pow(farZoomRatio, 1.5);
+            const minPointPixels = this.vectorSizeMode === 'small' ? 8 : 10;
+            const minWorldScale = this.getWorldHeightForPixelSize(
+                minPointPixels,
+                this.controls.target,
+                this.camera,
+                this.renderer
+            );
             
             this.vectors.forEach(vec => {
                 if (vec.pointSphere) {
                     if (vec.pointSphere.isSprite) {
-                        const spriteScale = screenConstantScale * 0.34 * farZoomAttenuation;
+                        const spriteScale = Math.max(
+                            screenConstantScale * 0.34 * farZoomAttenuation,
+                            minWorldScale
+                        );
                         vec.pointSphere.scale.set(spriteScale, spriteScale, 1);
                     } else {
                         const meshScale = screenConstantScale * farZoomAttenuation;
