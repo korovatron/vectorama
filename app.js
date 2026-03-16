@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.38';
+const APP_VERSION = '1.0.40';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -9740,6 +9740,8 @@ class VectoramaApp {
         // For each unique eigenvalue, find eigenvectors
         for (const [eigenvalue, data] of processedEigenvalues) {
             const existingVectors = data.vectors;
+            // Regression guard: geometric multiplicity cannot exceed nullspace dimension.
+            const maxIndependentVectors = this.estimateEigenNullity3D(m, eigenvalue);
             
             // Try to find up to 'count' linearly independent eigenvectors
             for (let i = 0; i < data.count; i++) {
@@ -9755,7 +9757,7 @@ class VectoramaApp {
                         }
                     }
                     
-                    if (!isDuplicate) {
+                    if (!isDuplicate && existingVectors.length < maxIndependentVectors) {
                         existingVectors.push(v);
                         result.push({ value: eigenvalue, vector: v });
                     } else {
@@ -9778,6 +9780,64 @@ class VectoramaApp {
         result.push(...complexEigenvalues);
         
         return result;
+    }
+
+    estimateEigenNullity3D(m, lambda) {
+        // Estimate nullity of (A - λI) via lightweight elimination.
+        const matrix = [
+            [m[0] - lambda, m[3], m[6]],
+            [m[1], m[4] - lambda, m[7]],
+            [m[2], m[5], m[8] - lambda]
+        ];
+
+        const maxAbs = Math.max(
+            ...matrix[0].map(Math.abs),
+            ...matrix[1].map(Math.abs),
+            ...matrix[2].map(Math.abs)
+        );
+        const epsilon = Math.max(1e-8, maxAbs * 1e-8);
+
+        let rank = 0;
+        let pivotRow = 0;
+
+        for (let col = 0; col < 3 && pivotRow < 3; col++) {
+            let bestRow = -1;
+            let bestAbs = 0;
+
+            for (let r = pivotRow; r < 3; r++) {
+                const absVal = Math.abs(matrix[r][col]);
+                if (absVal > bestAbs) {
+                    bestAbs = absVal;
+                    bestRow = r;
+                }
+            }
+
+            if (bestRow < 0 || bestAbs <= epsilon) {
+                continue;
+            }
+
+            if (bestRow !== pivotRow) {
+                const tmp = matrix[pivotRow];
+                matrix[pivotRow] = matrix[bestRow];
+                matrix[bestRow] = tmp;
+            }
+
+            const pivot = matrix[pivotRow][col];
+            for (let r = pivotRow + 1; r < 3; r++) {
+                const factor = matrix[r][col] / pivot;
+                if (Math.abs(factor) <= epsilon) continue;
+
+                for (let c = col; c < 3; c++) {
+                    matrix[r][c] -= factor * matrix[pivotRow][c];
+                }
+            }
+
+            rank++;
+            pivotRow++;
+        }
+
+        // Real eigenvalues should have nullity >= 1; clamp defensively for numeric noise.
+        return Math.max(1, 3 - rank);
     }
 
     solveCubic(a, b, c, d) {
@@ -9876,53 +9936,47 @@ class VectoramaApp {
             }
         }
         
-        // Check if we have a degenerate case (2D or higher eigenspace)
-        // This happens when rows are proportional or some rows are zero
+        // Check if nullspace has dimension >= 2 (rank <= 1).
+        // A single zero row does NOT imply a 2D eigenspace when the other two rows are independent.
+        const nonZeroRows = [];
+        if (mag1 > epsilon) nonZeroRows.push(row1);
+        if (mag2 > epsilon) nonZeroRows.push(row2);
+        if (mag3 > epsilon) nonZeroRows.push(row3);
+
         let isDegenerate = false;
         let normalRow = null;
-        
-        // Check if at least two non-zero rows are proportional
-        if (mag1 > epsilon && mag2 > epsilon && 
-            Math.abs(row1.clone().normalize().dot(row2.clone().normalize())) > 0.99) {
+
+        if (nonZeroRows.length === 1) {
+            // One independent linear constraint => 2D eigenspace.
             isDegenerate = true;
-            normalRow = row1;
-        } else if (mag1 > epsilon && mag3 > epsilon && 
-            Math.abs(row1.clone().normalize().dot(row3.clone().normalize())) > 0.99) {
-            isDegenerate = true;
-            normalRow = row1;
-        } else if (mag2 > epsilon && mag3 > epsilon && 
-            Math.abs(row2.clone().normalize().dot(row3.clone().normalize())) > 0.99) {
-            isDegenerate = true;
-            normalRow = row2;
-        } else if (mag1 < epsilon && mag2 > epsilon) {
-            // Row 1 is zero, use row 2
-            isDegenerate = true;
-            normalRow = row2;
-        } else if (mag1 < epsilon && mag3 > epsilon) {
-            // Row 1 is zero, use row 3
-            isDegenerate = true;
-            normalRow = row3;
-        } else if (mag2 < epsilon && mag1 > epsilon) {
-            // Row 2 is zero, use row 1
-            isDegenerate = true;
-            normalRow = row1;
-        } else if (mag2 < epsilon && mag3 > epsilon) {
-            // Row 2 is zero, use row 3
-            isDegenerate = true;
-            normalRow = row3;
-        } else if (mag3 < epsilon && mag1 > epsilon) {
-            // Row 3 is zero, use row 1
-            isDegenerate = true;
-            normalRow = row1;
-        } else if (mag3 < epsilon && mag2 > epsilon) {
-            // Row 3 is zero, use row 2
-            isDegenerate = true;
-            normalRow = row2;
+            normalRow = nonZeroRows[0];
+        } else if (nonZeroRows.length >= 2) {
+            // If every non-zero row is parallel to the first one, rank is still 1.
+            const base = nonZeroRows[0];
+            const baseMagSq = base.lengthSq();
+            const parallelTolerance = 1e-5;
+            let allParallel = true;
+
+            for (let i = 1; i < nonZeroRows.length; i++) {
+                const other = nonZeroRows[i];
+                const scale = baseMagSq * other.lengthSq();
+                const crossLenSq = new THREE.Vector3().crossVectors(base, other).lengthSq();
+
+                if (crossLenSq > (parallelTolerance * parallelTolerance * scale)) {
+                    allParallel = false;
+                    break;
+                }
+            }
+
+            if (allParallel) {
+                isDegenerate = true;
+                normalRow = base;
+            }
         }
         
         if (isDegenerate && normalRow) {
-            // All rows are the same or proportional or some are zero - 2D or 3D eigenspace
-            // Find any vector perpendicular to the non-zero row
+            // Rank-1 case: rows impose one independent constraint => 2D eigenspace.
+            // Find any vector perpendicular to the constraint normal.
             normalRow = normalRow.clone().normalize();
             
             // Try to find a vector perpendicular to both normal and all avoidDirections
@@ -10038,11 +10092,7 @@ class VectoramaApp {
         // If cross products didn't work, try to solve the system directly
         // Find which components are constrained and which are free
         
-        // Collect non-zero rows
-        const nonZeroRows = [];
-        if (mag1 > epsilon) nonZeroRows.push(row1);
-        if (mag2 > epsilon) nonZeroRows.push(row2);
-        if (mag3 > epsilon) nonZeroRows.push(row3);
+        // Reuse the non-zero row collection from above.
         
         if (nonZeroRows.length === 0) {
             // All rows zero - shouldn't happen as we checked this above
@@ -10077,6 +10127,31 @@ class VectoramaApp {
             }
         }
         
+        const tryValidatedEigenvector = (candidate) => {
+            if (!candidate || candidate.lengthSq() < epsilon) {
+                return null;
+            }
+
+            const v = candidate.clone().normalize();
+            const residual = new THREE.Vector3(
+                a11 * v.x + a12 * v.y + a13 * v.z,
+                a21 * v.x + a22 * v.y + a23 * v.z,
+                a31 * v.x + a32 * v.y + a33 * v.z
+            );
+
+            if (residual.length() >= 0.01) {
+                return null;
+            }
+
+            for (const avoid of avoidDirections) {
+                if (Math.abs(v.dot(avoid)) > 0.99) {
+                    return null;
+                }
+            }
+
+            return v;
+        };
+
         // Fallback: try standard basis vectors
         // If one component is very small in all rows, set it to 1 and solve for others
         
@@ -10086,7 +10161,10 @@ class VectoramaApp {
             // Since a13, a23 ≈ 0: a11*x + a12*y ≈ 0, a21*x + a22*y ≈ 0
             const det = a11 * a22 - a12 * a21;
             if (Math.abs(det) > epsilon) {
-                return new THREE.Vector3(a22, -a21, 0).normalize();
+                const validated = tryValidatedEigenvector(new THREE.Vector3(a22, -a21, 0));
+                if (validated) {
+                    return validated;
+                }
             }
         }
         
@@ -10094,7 +10172,10 @@ class VectoramaApp {
         if (Math.abs(a12) < epsilon && Math.abs(a32) < epsilon) {
             const det = a11 * a33 - a13 * a31;
             if (Math.abs(det) > epsilon) {
-                return new THREE.Vector3(a33, 0, -a31).normalize();
+                const validated = tryValidatedEigenvector(new THREE.Vector3(a33, 0, -a31));
+                if (validated) {
+                    return validated;
+                }
             }
         }
         
@@ -10102,7 +10183,10 @@ class VectoramaApp {
         if (Math.abs(a21) < epsilon && Math.abs(a31) < epsilon) {
             const det = a22 * a33 - a23 * a32;
             if (Math.abs(det) > epsilon) {
-                return new THREE.Vector3(0, a33, -a32).normalize();
+                const validated = tryValidatedEigenvector(new THREE.Vector3(0, a33, -a32));
+                if (validated) {
+                    return validated;
+                }
             }
         }
         

@@ -2,6 +2,13 @@
 
 A comprehensive web application for teaching and visualizing vectors, matrix transformations, lines, planes, and linear algebra concepts in both 2D and 3D.
 
+## Changelog
+
+### 1.0.40 (2026-03-16)
+- Fixed a 3D repeated-eigenvalue regression that could incorrectly show a 2D eigenspace plane.
+- Added stricter fallback eigenvector validation and a nullity cap guard for repeated eigenvalues.
+- Bumped app/service-worker versions so updated eigensolver logic is reliably served.
+
 ## Features
 
 ### Transform Mode
