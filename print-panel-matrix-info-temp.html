@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vectorama Matrix Info Print Mock</title>
+    <style>
+        :root {
+            --paper: #ffffff;
+            --ink: #000000;
+            --muted: #666666;
+            --line: #000000;
+            --panel-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            padding: 24px;
+        }
+
+        .screenshot-wrap {
+            width: 360px;
+        }
+
+        .eigenvalue-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--line);
+            border-radius: 6px;
+            padding: 12px 14px;
+            min-width: 260px;
+            max-width: 360px;
+        }
+
+        .eigenvalue-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .eigenvalue-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            line-height: 1.4;
+        }
+
+        .eigenvalue-header {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--ink);
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 6px;
+        }
+
+        .info-panel-close-btn {
+            border: 1px solid var(--line);
+            background: var(--paper);
+            color: var(--ink);
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            font-size: 12px;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-weight: 700;
+        }
+
+        .eigenvalue-values {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .eigenvalue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .eigenvalue-label {
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        .eigenvalue-value {
+            text-align: right;
+            color: var(--ink);
+            flex: 1;
+            font-size: 12px;
+        }
+
+        .eigenvector,
+        .matrix-value {
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            font-size: 12px;
+        }
+
+        .matrix-value {
+            white-space: pre;
+            line-height: 1.25;
+            text-align: right;
+        }
+
+        .separator {
+            border-top: 1px solid var(--line);
+            margin: 8px 0;
+        }
+
+        .section-title {
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.2px;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+
+        .notes {
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="screenshot-wrap">
+        <div class="eigenvalue-panel">
+            <div class="eigenvalue-content">
+                <div class="eigenvalue-row eigenvalue-header">
+                    <span>A: Eigenvalues</span>
+                    <button class="info-panel-close-btn" aria-label="Close matrix info panel">x</button>
+                </div>
+
+                <div class="eigenvalue-values">
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">&lambda;<sub>1</sub>:</div>
+                        <div class="eigenvalue-value">5</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">&lambda;<sub>2</sub>:</div>
+                        <div class="eigenvalue-value">2</div>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">Matrix A:</div>
+                        <div class="eigenvalue-value matrix-value">[[4, 1],
+ [2, 3]]</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">det A:</div>
+                        <div class="eigenvalue-value">10</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">Area scale:</div>
+                        <div class="eigenvalue-value">10</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">Orientation:</div>
+                        <div class="eigenvalue-value">preserved</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">tr A:</div>
+                        <div class="eigenvalue-value">7</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">p(&lambda;):</div>
+                        <div class="eigenvalue-value eigenvector">&lambda;<sup>2</sup> - 7&lambda; + 10</div>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="section-title">Eigenvectors</div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">v1:</div>
+                        <div class="eigenvalue-value eigenvector">(1, 1)</div>
+                    </div>
+                    <div class="eigenvalue-item">
+                        <div class="eigenvalue-label">v2:</div>
+                        <div class="eigenvalue-value eigenvector">(1, -2)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="notes">
+            Temporary print mock for the matrix info panel using A = [[4, 1], [2, 3]].
+        </div>
+    </div>
+</body>
+</html>
