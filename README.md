@@ -4,6 +4,9 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ## Changelog
 
+### 1.0.42 (2026-03-16)
+- 2D matrix info now appears for the zero matrix by reporting representative eigenvectors for the identity-like λ=0 case.
+
 ### 1.0.40 (2026-03-16)
 - Fixed a 3D repeated-eigenvalue regression that could incorrectly show a 2D eigenspace plane.
 - Added stricter fallback eigenvector validation and a nullity cap guard for repeated eigenvalues.

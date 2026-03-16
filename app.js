@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.40';
+const APP_VERSION = '1.0.42';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -9599,10 +9599,8 @@ class VectoramaApp {
         if (isIdentityLike) {
             // For identity-like matrices, all directions are eigenvectors
             // Show two perpendicular representative eigenvectors
-            if (Math.abs(lambda1) > epsilon) {
-                eigenvalues.push({ value: lambda1, vector: new THREE.Vector2(1, 0) });
-                eigenvalues.push({ value: lambda1, vector: new THREE.Vector2(0, 1) });
-            }
+            eigenvalues.push({ value: lambda1, vector: new THREE.Vector2(1, 0) });
+            eigenvalues.push({ value: lambda1, vector: new THREE.Vector2(0, 1) });
             return eigenvalues;
         }
         
