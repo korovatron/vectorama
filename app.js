@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.45';
+const APP_VERSION = '1.0.46';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -224,6 +224,7 @@ class VectoramaApp {
         
         this.invariantLines = []; // Store invariant line objects (eigenvectors)
         this.invariantPlanes = []; // Store invariant plane objects (eigenspaces)
+        this.invariantSphere = null; // Sphere/disc used when entire space is an eigenspace
         this.rainbowTime = 0; // Time variable for rainbow pulsing effect
         this.invariantDisplayMode = 'off'; // 'off', 'solid', 'pulse'
         this.lastInvariantLineTextureRepeat = null; // Track last stripe density for solid eigenline textures
@@ -10794,6 +10795,14 @@ class VectoramaApp {
             this.scene.remove(planeObj.mesh);
         });
         this.invariantPlanes = [];
+
+        // Remove full-space sphere/disc if present
+        if (this.invariantSphere) {
+            this.scene.remove(this.invariantSphere.mesh);
+            this.invariantSphere.mesh.geometry.dispose();
+            this.invariantSphere.mesh.material.dispose();
+            this.invariantSphere = null;
+        }
     }
 
     visualizeInvariantSpaces(matrixId = null) {
@@ -10833,114 +10842,76 @@ class VectoramaApp {
     }
     
     visualizeIdentityLikeEigenspace(matrix) {
-        // For scalar multiples of identity, show standard basis vectors as invariant lines
-        const lineRadius = this.getInvariantLineRadius();
-        const lineLength = 200;
-        
         if (this.dimension === '2d') {
-            // Show x and y axes as invariant lines
-            const directions = [
-                new THREE.Vector3(1, 0, 0), // x-axis
-                new THREE.Vector3(0, 1, 0)  // y-axis
-            ];
-            
-            directions.forEach((direction, index) => {
-                const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
-                
-                let material;
-                if (this.invariantDisplayMode === 'solid') {
-                    const texture = this.createDashedTexture();
-                    material = new THREE.MeshBasicMaterial({
-                        map: texture,
-                        transparent: true,
-                        opacity: 0.95,
-                        depthTest: false,
-                        depthWrite: false
-                    });
-                } else {
-                    material = new THREE.MeshBasicMaterial({
-                        color: 0xff00ff,
-                        transparent: true,
-                        opacity: 0.95,
-                        depthTest: false,
-                        depthWrite: false
-                    });
-                }
+            // Render a filled disc — every direction in the plane is an eigenspace
+            const radius = 15;
+            const geometry = new THREE.CircleGeometry(radius, 64);
 
-                material.polygonOffset = true;
-                material.polygonOffsetFactor = 12;
-                material.polygonOffsetUnits = 12;
-
-                if (this.dimension === '3d') {
-                    material.depthTest = false;
-                    material.depthWrite = false;
-                }
-                
-                const cylinder = new THREE.Mesh(geometry, material);
-                
-                const quaternion = new THREE.Quaternion();
-                const yAxis = new THREE.Vector3(0, 1, 0);
-                quaternion.setFromUnitVectors(yAxis, direction);
-                cylinder.quaternion.copy(quaternion);
-                cylinder.renderOrder = this.getInvariantLineRenderOrder();
-                
-                this.scene.add(cylinder);
-                this.invariantLines.push({
-                    mesh: cylinder,
-                    direction: direction.clone(),
-                    index: index
+            let material;
+            if (this.invariantDisplayMode === 'solid') {
+                const texture = this.createCheckerboardTexture();
+                material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.35,
+                    depthTest: false,
+                    depthWrite: false
                 });
-            });
+            } else {
+                material = new THREE.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.5,
+                    depthTest: false,
+                    depthWrite: false
+                });
+            }
+
+            material.polygonOffset = true;
+            material.polygonOffsetFactor = 12;
+            material.polygonOffsetUnits = 12;
+
+            const disc = new THREE.Mesh(geometry, material);
+            disc.renderOrder = this.getInvariantLineRenderOrder();
+            // Both modes start collapsed — animation expands them
+            disc.scale.setScalar(0.001);
+            this.scene.add(disc);
+            this.invariantSphere = { mesh: disc };
         } else {
-            // Show x, y, and z axes as invariant lines
-            const directions = [
-                new THREE.Vector3(1, 0, 0), // x-axis
-                new THREE.Vector3(0, 1, 0), // y-axis
-                new THREE.Vector3(0, 0, 1)  // z-axis
-            ];
-            
-            directions.forEach((direction, index) => {
-                const geometry = new THREE.CylinderGeometry(lineRadius, lineRadius, lineLength, 8);
-                
-                let material;
-                if (this.invariantDisplayMode === 'solid') {
-                    const texture = this.createDashedTexture();
-                    material = new THREE.MeshBasicMaterial({
-                        map: texture,
-                        transparent: true,
-                        opacity: 0.95,
-                        depthTest: true,
-                        depthWrite: true
-                    });
-                } else {
-                    material = new THREE.MeshBasicMaterial({
-                        color: 0xff00ff,
-                        transparent: true,
-                        opacity: 0.95,
-                        depthTest: true,
-                        depthWrite: true
-                    });
-                }
+            // Render a translucent sphere — every direction in space is an eigenspace
+            const radius = 15;
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
 
-                material.polygonOffset = false;
-                material.polygonOffsetFactor = 0;
-                material.polygonOffsetUnits = 0;
-                
-                const cylinder = new THREE.Mesh(geometry, material);
-                
-                const quaternion = new THREE.Quaternion();
-                const yAxis = new THREE.Vector3(0, 1, 0);
-                quaternion.setFromUnitVectors(yAxis, direction);
-                cylinder.quaternion.copy(quaternion);
-                cylinder.renderOrder = this.getInvariantLineRenderOrder();
-                
-                this.scene.add(cylinder);
-                this.invariantLines.push({
-                    mesh: cylinder,
-                    direction: direction.clone(),
-                    index: index
+            let material;
+            if (this.invariantDisplayMode === 'solid') {
+                const texture = this.createCheckerboardTexture();
+                material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.FrontSide,
+                    transparent: true,
+                    opacity: 0.2,
+                    depthTest: true,
+                    depthWrite: false
                 });
-            });
+            } else {
+                material = new THREE.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    side: THREE.FrontSide,
+                    transparent: true,
+                    opacity: 0.4,
+                    depthTest: true,
+                    depthWrite: false
+                });
+            }
+
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.renderOrder = this.getInvariantLineRenderOrder();
+            // Both modes start collapsed — animation expands them
+            sphere.scale.setScalar(0.001);
+            this.scene.add(sphere);
+            this.invariantSphere = { mesh: sphere };
         }
     }
     
@@ -11214,6 +11185,9 @@ class VectoramaApp {
 
         if (this.invariantDisplayMode === 'solid') {
             this.updateInvariantLineTextureScale();
+            // Advance time and animate the full-space sphere/disc if present, then return
+            this.rainbowTime += 0.01;
+            this.updateInvariantSphereAnimation();
             return;
         }
         
@@ -11257,6 +11231,44 @@ class VectoramaApp {
                 planeObj.mesh.material.opacity = baseOpacity + pulseOpacity;
             }
         });
+
+        this.updateInvariantSphereAnimation();
+    }
+
+    updateInvariantSphereAnimation() {
+        // Balloon expand — scale 0→1 sawtooth, fading as it grows
+        if (!this.invariantSphere) return;
+
+        const camDist = this.camera.position.distanceTo(this.controls.target);
+
+        // Compute the visible world-space radius at the current zoom so the sphere
+        // always expands exactly to the viewport edge before restarting.
+        const fovRad = this.camera.fov * Math.PI / 180;
+        const visibleHalfHeight = camDist * Math.tan(fovRad / 2);
+        const aspect = this.camera.aspect || 1;
+        const visibleHalfWidth = visibleHalfHeight * aspect;
+        // Use the smaller dimension so sphere never pokes out of frame
+        const viewportRadius = Math.min(visibleHalfHeight, visibleHalfWidth);
+
+        // Geometry radius is 15; max scale fills viewport
+        const geometryRadius = 15;
+        const maxScale = Math.max(viewportRadius / geometryRadius, 0.1);
+
+        // Fixed cycle speed — maxScale already ensures the sphere always
+        // expands to exactly the viewport edge, so no zoom-dependent scaling needed.
+        const phase = (this.rainbowTime * 0.4) % 1.0;
+
+        this.invariantSphere.mesh.scale.setScalar(Math.max(phase * maxScale, 0.001));
+
+        // Fade out as the sphere expands — bright at origin, invisible at full size
+        const maxOpacity = this.dimension === '2d' ? 0.55 : 0.4;
+        this.invariantSphere.mesh.material.opacity = maxOpacity * (1.0 - phase);
+
+        // Rainbow colour cycles for pulse; solid keeps its texture, no colour change needed
+        if (this.invariantDisplayMode === 'pulse') {
+            const hue = this.rainbowTime % 1.0;
+            this.invariantSphere.mesh.material.color = new THREE.Color().setHSL(hue, 0.9, 0.65);
+        }
     }
 
     // Simplify eigenvector for display without forcing incorrect integer rounding.
