@@ -4,6 +4,9 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ## Changelog
 
+### 1.0.45 (2026-03-16)
+- Corrected matrix-info eigenvector display for irrational 2D eigendirections by avoiding fallback integer rounding that could show misleading vectors.
+
 ### 1.0.42 (2026-03-16)
 - 2D matrix info now appears for the zero matrix by reporting representative eigenvectors for the identity-like λ=0 case.
 

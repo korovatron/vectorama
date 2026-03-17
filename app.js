@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.44';
+const APP_VERSION = '1.0.45';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -11259,10 +11259,12 @@ class VectoramaApp {
         });
     }
 
-    // Simplify eigenvector to integer form for display
+    // Simplify eigenvector for display without forcing incorrect integer rounding.
     simplifyEigenvector(vector) {
         const epsilon = 1e-5;
-        const components = [vector.x, vector.y, vector.z || 0];
+        const components = [vector.x, vector.y, vector.z || 0].map((value) =>
+            Math.abs(value) < epsilon ? 0 : value
+        );
         
         // Find the smallest non-zero component (in absolute value)
         let minAbs = Infinity;
@@ -11305,16 +11307,22 @@ class VectoramaApp {
             }
         }
         
-        // Fallback: just use the ratios rounded to nearest integer
-        const rounded = ratios.map(r => Math.round(r));
-        const gcd = (a, b) => b === 0 ? Math.abs(a) : gcd(b, a % b);
-        let divisor = gcd(gcd(Math.abs(rounded[0]), Math.abs(rounded[1])), Math.abs(rounded[2]));
-        if (divisor === 0) divisor = 1;
-        
+        // Fallback for irrational/noisy ratios: preserve direction with decimals.
+        const maxAbs = Math.max(...components.map(val => Math.abs(val)));
+        if (maxAbs < epsilon) {
+            return { x: 0, y: 0, z: 0 };
+        }
+
+        let normalized = components.map(val => val / maxAbs);
+        const firstNonZero = normalized.find(val => Math.abs(val) > epsilon);
+        if (firstNonZero < 0) {
+            normalized = normalized.map(val => -val);
+        }
+
         return {
-            x: rounded[0] / divisor,
-            y: rounded[1] / divisor,
-            z: rounded[2] / divisor
+            x: normalized[0],
+            y: normalized[1],
+            z: normalized[2]
         };
     }
 
