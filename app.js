@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.47';
+const APP_VERSION = '1.0.48';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -11379,6 +11379,25 @@ class VectoramaApp {
             panel.style.display = 'none';
             return;
         }
+
+        // In 2D, preserve multiplicity in the panel for repeated real eigenvalues.
+        // computeEigenvalues2D intentionally returns one entry for defective repeated roots
+        // to avoid duplicate eigenspace rendering, but the panel should still show λ1 and λ2.
+        let panelEigenData = eigendata.slice();
+        if (this.dimension === '2d') {
+            const a2 = selectedMatrix.values[0][0];
+            const b2 = selectedMatrix.values[0][1];
+            const c2 = selectedMatrix.values[1][0];
+            const d2 = selectedMatrix.values[1][1];
+            const trace2 = a2 + d2;
+            const det2 = a2 * d2 - b2 * c2;
+            const discriminant2 = trace2 * trace2 - 4 * det2;
+            const repeatedRealRoot = Math.abs(discriminant2) < 1e-8;
+
+            if (repeatedRealRoot && panelEigenData.length === 1 && !panelEigenData[0].isComplex) {
+                panelEigenData.push({ ...panelEigenData[0] });
+            }
+        }
         
         // Update header with matrix name
         if (matrixName) {
@@ -11403,7 +11422,7 @@ class VectoramaApp {
         };
         
         // Display all eigenvalues first
-        eigendata.forEach((eigen, index) => {
+        panelEigenData.forEach((eigen, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'eigenvalue-item';
             
@@ -11604,7 +11623,7 @@ class VectoramaApp {
         valuesDiv.appendChild(charDiv);
         
         // Only show eigenvectors section if we have real eigenvectors
-        const hasRealEigenvectors = eigendata.some(e => !e.isComplex && e.vector);
+        const hasRealEigenvectors = panelEigenData.some(e => !e.isComplex && e.vector);
         
         if (hasRealEigenvectors) {
             // Add separator and eigenvectors header
@@ -11624,7 +11643,7 @@ class VectoramaApp {
             valuesDiv.appendChild(eigenvectorsHeader);
             
             // Display all eigenvectors (only for real eigenvalues)
-            eigendata.forEach((eigen, index) => {
+            panelEigenData.forEach((eigen, index) => {
                 if (eigen.isComplex || !eigen.vector) return;
                 
                 const vector = eigen.vector;
