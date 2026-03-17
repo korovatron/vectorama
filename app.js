@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.46';
+const APP_VERSION = '1.0.47';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -11364,6 +11364,7 @@ class VectoramaApp {
         
         const matrixName = selectedMatrix.name;
         const matrix = this.getTransformationMatrix(targetId);
+        const isFullSpaceEigenspace = this.isIdentityLike(matrix);
         
         // Compute eigenvalues based on dimension
         let eigendata;
@@ -11668,6 +11669,25 @@ class VectoramaApp {
             invariantHeader.style.borderBottom = 'none';
             invariantHeader.style.paddingBottom = '6px';
             valuesDiv.appendChild(invariantHeader);
+
+            if (isFullSpaceEigenspace) {
+                const fullSpaceDiv = document.createElement('div');
+                fullSpaceDiv.className = 'eigenvalue-item';
+
+                const fullSpaceLabelDiv = document.createElement('div');
+                fullSpaceLabelDiv.className = 'eigenvalue-label';
+                fullSpaceLabelDiv.textContent = 'Note:';
+
+                const fullSpaceValueDiv = document.createElement('div');
+                fullSpaceValueDiv.className = 'eigenvalue-value eigenvector';
+                fullSpaceValueDiv.textContent = this.dimension === '2d'
+                    ? 'Eigenspace = all of R²'
+                    : 'Eigenspace = all of R³';
+
+                fullSpaceDiv.appendChild(fullSpaceLabelDiv);
+                fullSpaceDiv.appendChild(fullSpaceValueDiv);
+                valuesDiv.appendChild(fullSpaceDiv);
+            }
             
             // Invariant display mode radio buttons
             const invariantControls = document.createElement('div');
