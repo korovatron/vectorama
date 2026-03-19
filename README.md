@@ -46,6 +46,9 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ## Usage
 
+### Solutions Buttons Password
+- Current unlock password for `worksheets.html`: **DrinkSlurm**
+
 ### Switching Modes
 - Use the **Transform** / **Geometry** buttons at the top to switch between modes
 - Each mode has its own 2D/3D dimension controls
@@ -105,4 +108,8 @@ Requires a modern browser with:
 
 ## License
 
-MIT
+PolyForm Noncommercial License 1.0.0
+
+See [LICENSE](LICENSE) for full terms.
+
+Commercial use is not permitted without separate permission.
