@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.51';
+const APP_VERSION = '1.0.52';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -296,6 +296,10 @@ class VectoramaApp {
         this.cameraState2D = null;
         this.cameraState3D = null;
         this.stateSaveTimeout = null;
+        this.undoStack = [];
+        this.redoStack = [];
+        this.maxHistoryEntries = 80;
+        this.isApplyingHistoryState = false;
         
         // Unique ID counters
         this.nextVectorId = 1;
@@ -314,12 +318,20 @@ class VectoramaApp {
         this.createAxes();
         this.animate();
 
-        const restoredFromState = this.restoreAppState();
+        let restoredFromState = false;
+        try {
+            restoredFromState = this.restoreAppState();
+        } catch (e) {
+            console.warn('[Vectorama] restoreAppState threw unexpectedly; starting fresh.', e);
+            try { localStorage.removeItem(APP_STATE_STORAGE_KEY); } catch {}
+        }
         if (!restoredFromState) {
             // Initialize with default content
             this.initializeDefaultContent();
             this.captureCurrentCameraState();
         }
+        this.commitHistorySnapshot({ clearRedo: true });
+        this.updateHistoryControlsUI();
         
         // Visualize invariant spaces for initial identity matrix after scene is ready
         requestAnimationFrame(() => {
@@ -1600,7 +1612,29 @@ class VectoramaApp {
         // Keyboard zoom and pan controls
         document.addEventListener('keydown', (e) => {
             // Only handle if app is initialized and not typing in an input field
-            if (!window.vectoramaApp || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            const isTextInputTarget =
+                e.target.tagName === 'INPUT' ||
+                e.target.tagName === 'TEXTAREA' ||
+                e.target.tagName === 'SELECT' ||
+                e.target.isContentEditable;
+
+            if (!window.vectoramaApp || isTextInputTarget) {
+                return;
+            }
+
+            const isModifierPressed = e.ctrlKey || e.metaKey;
+            const isUndoShortcut = isModifierPressed && !e.shiftKey && e.code === 'KeyZ';
+            const isRedoShortcut = isModifierPressed && (e.code === 'KeyY' || (e.shiftKey && e.code === 'KeyZ'));
+
+            if (isUndoShortcut) {
+                e.preventDefault();
+                this.undo();
+                return;
+            }
+
+            if (isRedoShortcut) {
+                e.preventDefault();
+                this.redo();
                 return;
             }
 
@@ -1652,6 +1686,16 @@ class VectoramaApp {
                 }
             }
         }, withSignal());
+
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => this.undo(), withSignal());
+        }
+
+        const redoBtn = document.getElementById('redo-btn');
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => this.redo(), withSignal());
+        }
         
         // Prevent context menu on right click
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault(), withSignal());
@@ -1667,6 +1711,7 @@ class VectoramaApp {
         this.updatePlaneExtentControl();
         this.updateVectorDisplayModeUI();
         this.updateDimensionToggleUI();
+        this.updateHistoryControlsUI();
     }
 
     toggleShortcutsOverlay(forceState = null) {
@@ -2530,7 +2575,7 @@ class VectoramaApp {
 
     deserializeMatrices(matrices = [], defaultSize = 2) {
         return matrices.map((matrix, index) => {
-            const size = Math.max(2, Math.min(3, Array.isArray(matrix?.values) ? matrix.values.length : defaultSize));
+            const size = defaultSize;
             const values = [];
             for (let row = 0; row < size; row++) {
                 values[row] = [];
@@ -2821,6 +2866,9 @@ class VectoramaApp {
             dimension: this.dimension,
             vectorDisplayMode: this.vectorDisplayMode,
             currentGridSpacing: this.currentGridSpacing,
+            gridVisible: this.gridVisible,
+            intersectionsVisible: this.intersectionsVisible,
+            latticeDisplayMode: this.latticeDisplayMode,
             latticeDensity2D: this.latticeDensity2D,
             latticeCurrentTransform2D: this.serializeMatrix3(this.latticeCurrentTransform2D),
             latticeCurrentTransform3D: this.serializeMatrix3(this.latticeCurrentTransform3D),
@@ -2868,10 +2916,315 @@ class VectoramaApp {
         };
     }
 
+    cloneAppStateSnapshot(snapshot) {
+        return JSON.parse(JSON.stringify(snapshot));
+    }
+
+    areSnapshotsEquivalent(a, b) {
+        if (!a || !b) return false;
+
+        try {
+            return JSON.stringify(a) === JSON.stringify(b);
+        } catch {
+            return false;
+        }
+    }
+
+    commitHistorySnapshot(options = {}) {
+        const { clearRedo = true, snapshot: providedSnapshot = null } = options;
+        if (this.isApplyingHistoryState) {
+            return;
+        }
+
+        const snapshot = providedSnapshot || this.buildAppStateSnapshot();
+        const lastSnapshot = this.undoStack[this.undoStack.length - 1] || null;
+
+        if (lastSnapshot && this.areSnapshotsEquivalent(lastSnapshot, snapshot)) {
+            this.updateHistoryControlsUI();
+            return;
+        }
+
+        this.undoStack.push(this.cloneAppStateSnapshot(snapshot));
+
+        if (this.undoStack.length > this.maxHistoryEntries) {
+            this.undoStack.shift();
+        }
+
+        if (clearRedo) {
+            this.redoStack = [];
+        }
+
+        this.updateHistoryControlsUI();
+    }
+
+    updateHistoryControlsUI() {
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
+        const canUndo = this.undoStack.length > 1;
+        const canRedo = this.redoStack.length > 0;
+
+        if (undoBtn) {
+            undoBtn.disabled = !canUndo;
+            undoBtn.title = canUndo ? 'Undo (Ctrl/Cmd+Z)' : 'Nothing to undo';
+        }
+
+        if (redoBtn) {
+            redoBtn.disabled = !canRedo;
+            redoBtn.title = canRedo ? 'Redo (Ctrl/Cmd+Y)' : 'Nothing to redo';
+        }
+    }
+
+    applyAppStateSnapshot(state) {
+        if (!state || typeof state !== 'object') return false;
+
+        // Remove all current Three.js scene objects before overwriting the data
+        // arrays. Without this, old arrows/spheres/meshes stay in the scene while
+        // the new deserialized objects (which have no mesh refs yet) are swapped in,
+        // causing duplicate rendering and accumulating performance overhead on undo.
+        [...(this.vectors2D || []), ...(this.vectors3D || [])].forEach(vec => {
+            if (vec.arrow) this.scene.remove(vec.arrow);
+            if (vec.pointSphere) this.scene.remove(vec.pointSphere);
+            if (vec.labelSprite) this.scene.remove(vec.labelSprite);
+        });
+        [...(this.lines2D || []), ...(this.lines3D || [])].forEach(line => {
+            if (line.mesh) this.scene.remove(line.mesh);
+        });
+        (this.planes3D || []).forEach(plane => {
+            if (plane.mesh) this.scene.remove(plane.mesh);
+        });
+        [...(this.presetEdgeMeshes2D || []), ...(this.presetEdgeMeshes3D || [])].forEach(m => this.disposeSceneObject(m));
+        [...(this.presetFaceMeshes2D || []), ...(this.presetFaceMeshes3D || [])].forEach(m => this.disposeSceneObject(m));
+
+        this.groupCollapsed = this.getDefaultGroupCollapsedState();
+
+        this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
+        // Session defaults (not persisted)
+        this.vectorSizeMode = 'small';
+        this.gridVisible = state.gridVisible !== false;
+        this.intersectionsVisible = state.intersectionsVisible !== false;
+        this.planeExtent = 10;
+        this.dragPreviewPoint3D = null;
+        this.dragPreviewY3D = 0;
+        this.dragWheelAccumulator3D = 0;
+        this.dragWheelDetentPixels3D = 100;
+        this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
+        this.latticeDisplayMode = 'off'; // restored after switchDimension to avoid forceDisableAndResetLattice
+        
+        
+        
+        this.latticeGridRestoreState = null;
+        this.latticeGridSessionActive = false; // restored after switchDimension
+        this.latticeGridUserOverride = false;
+        this.latticeBaseSpacing2D = null;
+        this.latticeAdaptiveTierIndex2D = null;
+        this.latticeDensityManualOverride2D = false;
+        this.latticeLastZoomDistance2D = null;
+        this.latticeBaseSpacing3D = null;
+        this.latticeAdaptiveTierIndex3D = null;
+        this.latticeDensityManualOverride3D = false;
+        this.latticeLastZoomDistance3D = null;
+        if (state.latticeDensity2D !== undefined) {
+            this.latticeDensity2D = this.normalizeLatticeDensity(state.latticeDensity2D, this.latticeDensity2D);
+        } else {
+            this.latticeDensity2D = this.mapLegacyLatticeExtentToDensity(state.latticeExtent2D);
+        }
+        this.latticeAutoDensity2D = this.latticeDensity2D;
+        this.latticeAutoDensity3D = this.latticeDensity2D;
+        this.latticeBasePoints2D = null;
+        this.latticeEdgePairs2D = null;
+        this.latticeBasePoints3D = null;
+        this.latticeEdgePairs3D = null;
+        // lattice transforms restored after switchDimension (below)
+        
+
+        this.vectors2D = this.deserializeVectors(state.vectors2D || []);
+        this.vectors3D = this.deserializeVectors(state.vectors3D || []);
+        this.matrices2D = this.deserializeMatrices(state.matrices2D || [], 2);
+        this.matrices3D = this.deserializeMatrices(state.matrices3D || [], 3);
+        this.lines2D = this.deserializeLines(state.lines2D || []);
+        this.lines3D = this.deserializeLines(state.lines3D || []);
+        this.planes3D = this.deserializePlanes(state.planes3D || []);
+
+        this.presetEdges2D = Array.isArray(state.presetEdges2D) ? state.presetEdges2D.map(edge => ({
+            startId: this.toFiniteNumber(edge?.startId, 0),
+            endId: this.toFiniteNumber(edge?.endId, 0)
+        })) : [];
+        this.presetEdges3D = Array.isArray(state.presetEdges3D) ? state.presetEdges3D.map(edge => ({
+            startId: this.toFiniteNumber(edge?.startId, 0),
+            endId: this.toFiniteNumber(edge?.endId, 0)
+        })) : [];
+        this.presetFaces2D = Array.isArray(state.presetFaces2D) ? state.presetFaces2D.map(face => ({
+            aId: this.toFiniteNumber(face?.aId, 0),
+            bId: this.toFiniteNumber(face?.bId, 0),
+            cId: this.toFiniteNumber(face?.cId, 0)
+        })) : [];
+        this.presetFaces3D = Array.isArray(state.presetFaces3D) ? state.presetFaces3D.map(face => ({
+            aId: this.toFiniteNumber(face?.aId, 0),
+            bId: this.toFiniteNumber(face?.bId, 0),
+            cId: this.toFiniteNumber(face?.cId, 0)
+        })) : [];
+
+        this.presetEdgeMeshes2D = [];
+        this.presetEdgeMeshes3D = [];
+        this.presetFaceMeshes2D = [];
+        this.presetFaceMeshes3D = [];
+
+        this.usedMatrixLetters2D = new Set(Array.isArray(state.usedMatrixLetters2D)
+            ? state.usedMatrixLetters2D
+            : this.matrices2D.map(matrix => matrix.name).filter(Boolean));
+        this.usedMatrixLetters3D = new Set(Array.isArray(state.usedMatrixLetters3D)
+            ? state.usedMatrixLetters3D
+            : this.matrices3D.map(matrix => matrix.name).filter(Boolean));
+
+        this.selectedMatrixId2D = state.selectedMatrixId2D ?? (this.matrices2D[0]?.id ?? null);
+        this.selectedMatrixId3D = state.selectedMatrixId3D ?? (this.matrices3D[0]?.id ?? null);
+        this.matrixSequenceInput2D = typeof state.matrixSequenceInput2D === 'string' ? state.matrixSequenceInput2D : '';
+        this.matrixSequenceInput3D = typeof state.matrixSequenceInput3D === 'string' ? state.matrixSequenceInput3D : '';
+        this.colorIndex2D = this.toFiniteNumber(state.colorIndex2D, 0);
+        this.colorIndex3D = this.toFiniteNumber(state.colorIndex3D, 0);
+
+        this.cameraState2D = this.deserializeCameraState(state.cameraState2D);
+        this.cameraState3D = this.deserializeCameraState(state.cameraState3D);
+
+        this.vectors = this.vectors2D;
+        this.matrices = this.matrices2D;
+        this.lines = this.lines2D;
+        this.planes = this.planes3D;
+        this.presetEdges = this.presetEdges2D;
+        this.presetEdgeMeshes = this.presetEdgeMeshes2D;
+        this.presetFaces = this.presetFaces2D;
+        this.presetFaceMeshes = this.presetFaceMeshes2D;
+        this.usedMatrixLetters = this.usedMatrixLetters2D;
+        this.selectedMatrixId = this.selectedMatrixId2D;
+        this.matrixSequenceInput = this.matrixSequenceInput2D;
+        this.colorIndex = this.colorIndex2D;
+
+        const counters = state.counters || {};
+        const maxVectorId = Math.max(0, ...this.vectors2D.map(v => v.id), ...this.vectors3D.map(v => v.id));
+        const maxMatrixId = Math.max(0, ...this.matrices2D.map(m => m.id), ...this.matrices3D.map(m => m.id));
+        const maxLineId = Math.max(0, ...this.lines2D.map(l => l.id), ...this.lines3D.map(l => l.id));
+        const maxPlaneId = Math.max(0, ...this.planes3D.map(p => p.id));
+
+        this.nextVectorId = Math.max(this.toFiniteNumber(counters.nextVectorId, 1), maxVectorId + 1);
+        this.nextMatrixId = Math.max(this.toFiniteNumber(counters.nextMatrixId, 1), maxMatrixId + 1);
+        this.nextLineId = Math.max(this.toFiniteNumber(counters.nextLineId, 1), maxLineId + 1);
+        this.nextPlaneId = Math.max(this.toFiniteNumber(counters.nextPlaneId, 1), maxPlaneId + 1);
+
+        this.updateVectorDisplayModeUI();
+        this.updateVectorSizeModeUI();
+        this.updateInfoPanelsSizeModeUI();
+        this.updateGridToggleUI();
+        this.updateIntersectionsToggleUI();
+        this.updateLatticeControlsUI();
+        this.updatePlaneExtentControl();
+        this.updateDragVectorOverlay(null);
+
+        // Force dimension to '2d' before calling switchDimension so that
+        // switchDimension's "save old dimension state" phase always treats the
+        // staged this.vectors/matrices/lines refs as the 2D copies (which is
+        // what we set above). Without this, switching while already in 3D mode
+        // would overwrite this.matrices3D with the 2D matrices, causing
+        // renderMatrixItem to access missing rows and crash.
+        this.dimension = '2d';
+        const targetDimension = this.normalizeDimension(state.dimension);
+        this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
+        // Restore lattice state now that switchDimension has finished.
+        // Setting latticeDisplayMode before switchDimension would cause
+        // forceDisableAndResetLattice to fire when switching 2d->3d.
+        const restoredLatticeOn = state.latticeDisplayMode === 'on';
+        this.latticeDisplayMode = restoredLatticeOn ? 'on' : 'off';
+        this.latticeGridSessionActive = restoredLatticeOn;
+        if (restoredLatticeOn) { this.gridVisible = false; }
+        this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
+        this.latticeCurrentTransform3D = this.deserializeMatrix3(state.latticeCurrentTransform3D);
+        this.updateObjectsList();
+        this.updateIntersections();
+        this.updateLatticeOverlay();
+        this.updateLatticeControlsUI();
+        this.clearMatrixSequenceStepHighlight();
+        this.updateHistoryControlsUI();
+
+        return true;
+    }
+
+    undo() {
+        this.flushPendingStateSave();
+
+        if (this.isAnimating || this.undoStack.length <= 1) {
+            return;
+        }
+
+        const currentSnapshot = this.undoStack.pop();
+        if (!currentSnapshot) {
+            return;
+        }
+
+        this.redoStack.push(this.cloneAppStateSnapshot(currentSnapshot));
+        const targetSnapshot = this.undoStack[this.undoStack.length - 1];
+        if (!targetSnapshot) {
+            this.updateHistoryControlsUI();
+            return;
+        }
+
+        this.isApplyingHistoryState = true;
+        try {
+            this.applyAppStateSnapshot(this.cloneAppStateSnapshot(targetSnapshot));
+        } finally {
+            // Cancel any debounced save that applyAppStateSnapshot may have
+            // scheduled — if it fires after isApplyingHistoryState resets it
+            // would call commitHistorySnapshot({clearRedo:true}) and wipe redo.
+            if (this.stateSaveTimeout) {
+                clearTimeout(this.stateSaveTimeout);
+                this.stateSaveTimeout = null;
+            }
+            this.isApplyingHistoryState = false;
+            this.updateHistoryControlsUI();
+        }
+        // Persist the undone state to localStorage without touching the stacks.
+        try {
+            localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(this.buildAppStateSnapshot()));
+        } catch (e) {
+            console.warn('Failed to persist state after undo:', e);
+        }
+    }
+
+    redo() {
+        this.flushPendingStateSave();
+
+        if (this.isAnimating || this.redoStack.length === 0) {
+            return;
+        }
+
+        const nextSnapshot = this.redoStack.pop();
+        if (!nextSnapshot) {
+            return;
+        }
+
+        this.undoStack.push(this.cloneAppStateSnapshot(nextSnapshot));
+
+        this.isApplyingHistoryState = true;
+        try {
+            this.applyAppStateSnapshot(this.cloneAppStateSnapshot(nextSnapshot));
+        } finally {
+            if (this.stateSaveTimeout) {
+                clearTimeout(this.stateSaveTimeout);
+                this.stateSaveTimeout = null;
+            }
+            this.isApplyingHistoryState = false;
+            this.updateHistoryControlsUI();
+        }
+        try {
+            localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(this.buildAppStateSnapshot()));
+        } catch (e) {
+            console.warn('Failed to persist state after redo:', e);
+        }
+    }
+
     saveAppState() {
         try {
             const snapshot = this.buildAppStateSnapshot();
             localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(snapshot));
+            this.commitHistorySnapshot({ clearRedo: true, snapshot });
         } catch (error) {
             console.warn('Failed to save app state:', error);
         }
@@ -2886,6 +3239,16 @@ class VectoramaApp {
             this.stateSaveTimeout = null;
             this.saveAppState();
         }, 200);
+    }
+
+    flushPendingStateSave() {
+        if (!this.stateSaveTimeout) {
+            return;
+        }
+
+        clearTimeout(this.stateSaveTimeout);
+        this.stateSaveTimeout = null;
+        this.saveAppState();
     }
 
     restoreAppState() {
@@ -2907,6 +3270,7 @@ class VectoramaApp {
 
         if (!state || typeof state !== 'object') return false;
 
+        try {
         this.groupCollapsed = this.getDefaultGroupCollapsedState();
 
         this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
@@ -2920,9 +3284,12 @@ class VectoramaApp {
         this.dragWheelAccumulator3D = 0;
         this.dragWheelDetentPixels3D = 100;
         this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
-        this.latticeDisplayMode = 'off';
+        this.latticeDisplayMode = state.latticeDisplayMode === 'on' ? 'on' : 'off';
+        if (this.latticeDisplayMode === 'on') {
+            this.gridVisible = false;
+        }
         this.latticeGridRestoreState = null;
-        this.latticeGridSessionActive = false;
+        this.latticeGridSessionActive = this.latticeDisplayMode === 'on';
         this.latticeGridUserOverride = false;
         this.latticeBaseSpacing2D = null;
         this.latticeAdaptiveTierIndex2D = null;
@@ -2943,8 +3310,8 @@ class VectoramaApp {
         this.latticeEdgePairs2D = null;
         this.latticeBasePoints3D = null;
         this.latticeEdgePairs3D = null;
-        this.resetLatticeTransform2D();
-        this.resetLatticeTransform3D();
+        this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
+        this.latticeCurrentTransform3D = this.deserializeMatrix3(state.latticeCurrentTransform3D);
 
         this.vectors2D = this.deserializeVectors(state.vectors2D || []);
         this.vectors3D = this.deserializeVectors(state.vectors3D || []);
@@ -3035,6 +3402,11 @@ class VectoramaApp {
         this.clearLatticeOverlay();
 
         return true;
+        } catch (e) {
+            console.warn('[Vectorama] Corrupted app state detected on startup; clearing and starting fresh.', e);
+            try { localStorage.removeItem(APP_STATE_STORAGE_KEY); } catch {}
+            return false;
+        }
     }
 
     updateGridToggleUI() {

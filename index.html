@@ -321,6 +321,19 @@
                 </div>
                 <div id="drag-vector-overlay-hint" class="drag-vector-overlay-hint">Mouse wheel or Arrow Up/Down adjusts y</div>
             </div>
+
+            <div id="history-controls" class="history-controls" aria-label="Undo and redo controls">
+                <button id="undo-btn" class="history-btn" type="button" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo" disabled>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M7.18,4,8.6,5.44,6.06,8h9.71a6,6,0,0,1,0,12h-2V18h2a4,4,0,0,0,0-8H6.06L8.6,12.51,7.18,13.92,2.23,9Z"/>
+                    </svg>
+                </button>
+                <button id="redo-btn" class="history-btn" type="button" title="Redo (Ctrl/Cmd+Y)" aria-label="Redo" disabled>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path transform="scale(-1,1) translate(-24,0)" d="M7.18,4,8.6,5.44,6.06,8h9.71a6,6,0,0,1,0,12h-2V18h2a4,4,0,0,0,0-8H6.06L8.6,12.51,7.18,13.92,2.23,9Z"/>
+                    </svg>
+                </button>
+            </div>
             
             <!-- Eigenvalue Info Panel (bottom-right) -->
             <div id="eigenvalue-panel" class="eigenvalue-panel" style="display: none;">

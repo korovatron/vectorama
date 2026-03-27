@@ -23,6 +23,9 @@
     --safe-area-bottom: env(safe-area-inset-bottom);
     --safe-area-left: env(safe-area-inset-left);
     --safe-area-right: env(safe-area-inset-right);
+    --history-controls-size: 38px;
+    --history-controls-gap: 8px;
+    --history-controls-reserve: 50px;
 }
 
 html[data-theme="light"] {
@@ -1908,10 +1911,53 @@ body {
     text-align: center;
 }
 
+.history-controls {
+    position: fixed;
+    right: max(20px, calc(var(--safe-area-right, 0px) + 20px));
+    bottom: max(12px, calc(var(--safe-area-bottom, 0px) + 12px));
+    display: flex;
+    gap: var(--history-controls-gap);
+    z-index: 95;
+    pointer-events: auto;
+}
+
+.history-btn {
+    width: var(--history-controls-size);
+    height: var(--history-controls-size);
+    border: 1px solid #555;
+    border-radius: 8px;
+    background: rgba(42, 63, 90, 0.95);
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .history-btn:hover:not(:disabled) {
+        filter: brightness(1.15);
+    }
+}
+
+.history-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.history-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
 /* Eigenvalue Info Panel (bottom-right) */
 .eigenvalue-panel {
     position: fixed;
-    bottom: max(12px, calc(var(--safe-area-bottom, 0px) + 12px));
+    bottom: calc(max(12px, calc(var(--safe-area-bottom, 0px) + 12px)) + var(--history-controls-reserve));
     right: max(20px, calc(var(--safe-area-right, 0px) + 20px));
     background: rgba(58, 79, 106, 0.95);
     border: 1px solid #555555;
@@ -2139,6 +2185,11 @@ body {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
+    :root {
+        --history-controls-size: 34px;
+        --history-controls-reserve: 46px;
+    }
+
     .control-panel {
         width: 330px;
     }
