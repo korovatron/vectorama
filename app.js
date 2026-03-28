@@ -420,7 +420,13 @@ class VectoramaApp {
         this.controls.addEventListener('end', () => {
             this.isInteracting = false;
             this.captureCurrentCameraState();
-            this.scheduleStateSave();
+            // Persist camera position to localStorage without pushing a history entry.
+            // Pan/zoom/rotate are not undoable actions.
+            try {
+                localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(this.buildAppStateSnapshot()));
+            } catch (e) {
+                console.warn('Failed to persist camera state:', e);
+            }
         });
 
         // Raycaster for clicking
@@ -8849,10 +8855,6 @@ class VectoramaApp {
         
         line.mesh.visible = line.visible;
         this.scene.add(line.mesh);
-
-        if (!this.isAnimating && !this.isInteracting) {
-            this.scheduleStateSave();
-        }
     }
 
     renderPlane(plane) {
@@ -8890,10 +8892,6 @@ class VectoramaApp {
         plane.mesh.lookAt(plane.mesh.position.clone().add(normal));
         plane.mesh.visible = plane.visible;
         this.scene.add(plane.mesh);
-
-        if (!this.isAnimating && !this.isInteracting) {
-            this.scheduleStateSave();
-        }
     }
 
     onWindowResize() {
