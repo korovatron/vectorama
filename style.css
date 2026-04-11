@@ -119,14 +119,6 @@ body {
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .title-logo {
-        animation: none;
-        transform: none;
-        opacity: 1;
-    }
-}
-
 .title-tagline {
     font-size: 1.15em;
     font-weight: 500;
