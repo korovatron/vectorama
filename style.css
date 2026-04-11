@@ -1287,7 +1287,26 @@ body {
     color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    flex: 1;
+    margin-right: 2px;
+}
+
+.group-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 6px;
+    background: #ffcc00;
+    color: #000000;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.group-add-btn {
+    margin-left: auto;
 }
 
 .group-add-btn {

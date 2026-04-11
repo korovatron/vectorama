@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.53';
+const APP_VERSION = '1.0.54';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -5475,7 +5475,11 @@ class VectoramaApp {
         // Group label with count
         const label = document.createElement('span');
         label.className = 'group-label';
-        label.textContent = `${groupName} (${items.length})`;
+        label.textContent = groupName;
+
+        const countBadge = document.createElement('span');
+        countBadge.className = 'group-count-badge';
+        countBadge.textContent = `${items.length}`;
         
         // Add button for quick item creation
         const addBtn = document.createElement('button');
@@ -5515,6 +5519,9 @@ class VectoramaApp {
         
         header.appendChild(arrow);
         header.appendChild(label);
+        if (items.length > 0) {
+            header.appendChild(countBadge);
+        }
         header.appendChild(addBtn);
         
         // Create items container (always render for animation)
@@ -5551,8 +5558,8 @@ class VectoramaApp {
                 arrow.textContent = '▼\uFE0E';
             }
             
-            // Update count in label (in case items changed)
-            label.textContent = `${groupName} (${items.length})`;
+            // Keep header text format consistent with badge-based count styling
+            label.textContent = groupName;
             this.scheduleStateSave();
         });
         
