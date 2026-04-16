@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.57';
+const APP_VERSION = '1.0.58';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -115,6 +115,23 @@ const themeToggle = document.getElementById('theme-toggle');
 const lightIcon = document.getElementById('light-icon');
 const darkIcon = document.getElementById('dark-icon');
 const APP_STATE_STORAGE_KEY = 'vectorama-app-state-v1';
+const APP_STATE_QUERY_PARAM = 'state';
+const APP_STATE_SHARE_MAX_URL_LENGTH = 7000;
+
+function hasSharedStateInUrl() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        return !!params.get(APP_STATE_QUERY_PARAM);
+    } catch {
+        return false;
+    }
+}
+
+window.addEventListener('load', () => {
+    if (!appInitialized && hasSharedStateInUrl()) {
+        startApp();
+    }
+});
 
 // Load theme from localStorage or default to light
 const savedTheme = localStorage.getItem('theme') || 'light';
@@ -296,6 +313,8 @@ class VectoramaApp {
         this.cameraState2D = null;
         this.cameraState3D = null;
         this.stateSaveTimeout = null;
+        this.toastEl = null;
+        this.toastHideTimer = null;
         this.undoStack = [];
         this.redoStack = [];
         this.maxHistoryEntries = 80;
@@ -318,22 +337,28 @@ class VectoramaApp {
         this.createAxes();
         this.animate();
 
+        this.initializeAppState();
+    }
+
+    async initializeAppState() {
         let restoredFromState = false;
         try {
-            restoredFromState = this.restoreAppState();
+            restoredFromState = await this.restoreAppState();
         } catch (e) {
             console.warn('[Vectorama] restoreAppState threw unexpectedly; starting fresh.', e);
             try { localStorage.removeItem(APP_STATE_STORAGE_KEY); } catch {}
         }
+
         if (!restoredFromState) {
             // Initialize with default content
             this.initializeDefaultContent();
             this.captureCurrentCameraState();
         }
+
         this.commitHistorySnapshot({ clearRedo: true });
         this.updateHistoryControlsUI();
-        
-        // Visualize invariant spaces for initial identity matrix after scene is ready
+
+        // Visualize invariant spaces for initial state after scene is ready
         requestAnimationFrame(() => {
             this.visualizeInvariantSpaces();
         });
@@ -1572,6 +1597,13 @@ class VectoramaApp {
             };
         }
 
+        const shareStateButton = document.getElementById('share-state-btn');
+        if (shareStateButton) {
+            shareStateButton.addEventListener('click', async () => {
+                await this.shareCurrentStateUrl();
+            }, withSignal());
+        }
+
         const shortcutsOverlay = document.getElementById('shortcuts-overlay');
         if (shortcutsOverlay) {
             shortcutsOverlay.onclick = (e) => {
@@ -1739,6 +1771,95 @@ class VectoramaApp {
             }
         }
     }
+
+    showToast(message, durationMs = 2200) {
+        if (!message) return;
+
+        if (this.toastHideTimer) {
+            clearTimeout(this.toastHideTimer);
+            this.toastHideTimer = null;
+        }
+
+        if (!this.toastEl) {
+            const toast = document.createElement('div');
+            toast.className = 'app-toast';
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            document.body.appendChild(toast);
+            this.toastEl = toast;
+        }
+
+        this.toastEl.textContent = message;
+        this.toastEl.classList.add('show');
+
+        this.toastHideTimer = setTimeout(() => {
+            if (this.toastEl) {
+                this.toastEl.classList.remove('show');
+            }
+            this.toastHideTimer = null;
+        }, Math.max(800, durationMs));
+    }
+
+    showAlertModal(message) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('custom-modal-overlay');
+            const msgEl = document.getElementById('custom-modal-message');
+            const input = document.getElementById('custom-modal-input');
+            const errorEl = document.getElementById('custom-modal-error');
+            const confirm = document.getElementById('custom-modal-confirm');
+            const cancel = document.getElementById('custom-modal-cancel');
+
+            if (!overlay || !msgEl || !confirm || !cancel) {
+                alert(message);
+                resolve();
+                return;
+            }
+
+            msgEl.textContent = message;
+            if (input) {
+                input.style.display = 'none';
+            }
+            if (errorEl) {
+                errorEl.textContent = '';
+            }
+            cancel.style.display = 'none';
+            overlay.classList.add('show');
+            overlay.setAttribute('aria-hidden', 'false');
+
+            const close = () => {
+                overlay.classList.remove('show');
+                overlay.setAttribute('aria-hidden', 'true');
+                if (input) {
+                    input.style.display = '';
+                }
+                cancel.style.display = '';
+                confirm.removeEventListener('click', close);
+                overlay.removeEventListener('keydown', onKey);
+                overlay.removeEventListener('click', onBackdrop);
+                resolve();
+            };
+
+            const onKey = (e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                }
+            };
+
+            const onBackdrop = (e) => {
+                if (e.target === overlay) {
+                    close();
+                }
+            };
+
+            setTimeout(() => {
+                confirm.focus();
+                confirm.addEventListener('click', close);
+                overlay.addEventListener('keydown', onKey);
+                overlay.addEventListener('click', onBackdrop);
+            }, 120);
+        });
+    }
     
     addMatrixInputListeners() {
         // Listen to all matrix inputs for live preview
@@ -1786,6 +1907,16 @@ class VectoramaApp {
         if (this.updateTimeout) {
             clearTimeout(this.updateTimeout);
             this.updateTimeout = null;
+        }
+
+        if (this.toastHideTimer) {
+            clearTimeout(this.toastHideTimer);
+            this.toastHideTimer = null;
+        }
+
+        if (this.toastEl) {
+            this.toastEl.remove();
+            this.toastEl = null;
         }
 
         this.toggleShortcutsOverlay(false);
@@ -3257,7 +3388,152 @@ class VectoramaApp {
         this.saveAppState();
     }
 
-    restoreAppState() {
+    base64UrlEncode(bytes) {
+        const chunkSize = 0x8000;
+        let binaryString = '';
+
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binaryString += String.fromCharCode(...chunk);
+        }
+
+        return btoa(binaryString)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/g, '');
+    }
+
+    base64UrlDecode(input) {
+        const paddedBase64 = input
+            .replace(/-/g, '+')
+            .replace(/_/g, '/')
+            .padEnd(Math.ceil(input.length / 4) * 4, '=');
+
+        const binaryString = atob(paddedBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        return bytes;
+    }
+
+    async streamToUint8Array(stream) {
+        const response = new Response(stream);
+        const buffer = await response.arrayBuffer();
+        return new Uint8Array(buffer);
+    }
+
+    async encodeAppStateForUrl(state) {
+        const json = JSON.stringify(state);
+        const rawBytes = new TextEncoder().encode(json);
+
+        if (typeof CompressionStream === 'function') {
+            try {
+                const compressedBytes = await this.streamToUint8Array(
+                    new Blob([rawBytes]).stream().pipeThrough(new CompressionStream('gzip'))
+                );
+
+                if (compressedBytes.length < rawBytes.length) {
+                    return `g.${this.base64UrlEncode(compressedBytes)}`;
+                }
+            } catch {
+                // Fall back to raw encoding.
+            }
+        }
+
+        return `r.${this.base64UrlEncode(rawBytes)}`;
+    }
+
+    async decodeAppStateFromUrl(encodedState) {
+        if (!encodedState || typeof encodedState !== 'string') {
+            return null;
+        }
+
+        try {
+            // Backward compatibility with legacy links that had no prefix.
+            if (!encodedState.includes('.')) {
+                const legacyBytes = this.base64UrlDecode(encodedState);
+                const legacyJson = new TextDecoder().decode(legacyBytes);
+                const legacyParsed = JSON.parse(legacyJson);
+                return legacyParsed && typeof legacyParsed === 'object' ? legacyParsed : null;
+            }
+
+            const [encoding, payload] = encodedState.split('.', 2);
+            const bytes = this.base64UrlDecode(payload || '');
+
+            if (encoding === 'g') {
+                if (typeof DecompressionStream !== 'function') {
+                    return null;
+                }
+
+                const decompressedBytes = await this.streamToUint8Array(
+                    new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+                );
+                const decompressedJson = new TextDecoder().decode(decompressedBytes);
+                const decompressedParsed = JSON.parse(decompressedJson);
+                return decompressedParsed && typeof decompressedParsed === 'object'
+                    ? decompressedParsed
+                    : null;
+            }
+
+            if (encoding === 'r') {
+                const rawJson = new TextDecoder().decode(bytes);
+                const rawParsed = JSON.parse(rawJson);
+                return rawParsed && typeof rawParsed === 'object' ? rawParsed : null;
+            }
+
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    async getStateFromShareUrl() {
+        let searchParams = null;
+        try {
+            searchParams = new URLSearchParams(window.location.search || '');
+        } catch {
+            return null;
+        }
+
+        const encodedState = searchParams.get(APP_STATE_QUERY_PARAM);
+        return this.decodeAppStateFromUrl(encodedState);
+    }
+
+    async shareCurrentStateUrl() {
+        try {
+            const snapshot = this.buildAppStateSnapshot();
+            const encodedState = await this.encodeAppStateForUrl(snapshot);
+            const shareUrl = new URL(window.location.href);
+            shareUrl.searchParams.set(APP_STATE_QUERY_PARAM, encodedState);
+
+            if (shareUrl.toString().length > APP_STATE_SHARE_MAX_URL_LENGTH) {
+                await this.showAlertModal('This state is too large to share as a URL.');
+                return;
+            }
+
+            await navigator.clipboard.writeText(shareUrl.toString());
+            await this.showAlertModal('Share link copied to clipboard.');
+        } catch (error) {
+            console.warn('Failed to copy share URL to clipboard:', error);
+            const fallbackSnapshot = this.buildAppStateSnapshot();
+            const fallbackEncodedState = await this.encodeAppStateForUrl(fallbackSnapshot);
+            const fallbackUrl = new URL(window.location.href);
+            fallbackUrl.searchParams.set(APP_STATE_QUERY_PARAM, fallbackEncodedState);
+            window.prompt('Copy this share URL:', fallbackUrl.toString());
+        }
+    }
+
+    async restoreAppState() {
+        let stateSource = 'localStorage';
+        let state = await this.getStateFromShareUrl();
+
+        if (state) {
+            stateSource = 'url';
+        }
+
+        if (!state) {
         let rawState = null;
         try {
             rawState = localStorage.getItem(APP_STATE_STORAGE_KEY);
@@ -3267,11 +3543,11 @@ class VectoramaApp {
 
         if (!rawState) return false;
 
-        let state = null;
         try {
             state = JSON.parse(rawState);
         } catch {
             return false;
+        }
         }
 
         if (!state || typeof state !== 'object') return false;
@@ -3401,16 +3677,46 @@ class VectoramaApp {
         this.updatePlaneExtentControl();
         this.updateDragVectorOverlay(null);
 
+        // Force switchDimension to treat staged refs as 2D to avoid wiping 3D data,
+        // and keep lattice off during switch to prevent automatic lattice reset.
+        this.dimension = '2d';
+        this.latticeDisplayMode = 'off';
         const targetDimension = this.normalizeDimension(state.dimension);
         this.switchDimension(targetDimension, { skipCameraStateCapture: true, skipStateSave: true });
+
+        // Restore lattice state after switchDimension completes.
+        const restoredLatticeOn = state.latticeDisplayMode === 'on';
+        this.latticeDisplayMode = restoredLatticeOn ? 'on' : 'off';
+        this.latticeGridSessionActive = restoredLatticeOn;
+        if (restoredLatticeOn) {
+            this.gridVisible = false;
+        }
+        this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
+        this.latticeCurrentTransform3D = this.deserializeMatrix3(state.latticeCurrentTransform3D);
         this.updateObjectsList();
         this.updateIntersections();
-        this.clearLatticeOverlay();
+        this.updateLatticeOverlay();
+        this.updateLatticeControlsUI();
+
+        if (stateSource === 'url') {
+            try {
+                localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(this.buildAppStateSnapshot()));
+            } catch (storageError) {
+                console.warn('Failed to persist URL-derived app state:', storageError);
+            }
+            this.showToast('Loaded shared state.');
+        } else {
+            this.showToast('Restored saved state.');
+        }
 
         return true;
         } catch (e) {
-            console.warn('[Vectorama] Corrupted app state detected on startup; clearing and starting fresh.', e);
-            try { localStorage.removeItem(APP_STATE_STORAGE_KEY); } catch {}
+            if (stateSource === 'url') {
+                console.warn('[Vectorama] Corrupted app state in share URL; starting fresh.', e);
+            } else {
+                console.warn('[Vectorama] Corrupted app state detected on startup; clearing and starting fresh.', e);
+                try { localStorage.removeItem(APP_STATE_STORAGE_KEY); } catch {}
+            }
             return false;
         }
     }
