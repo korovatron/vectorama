@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.58';
+const APP_VERSION = '1.0.59';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -3555,11 +3555,14 @@ class VectoramaApp {
         try {
         this.groupCollapsed = this.getDefaultGroupCollapsedState();
 
+        const restoredGridVisible = state.gridVisible !== false;
+        const restoredIntersectionsVisible = state.intersectionsVisible !== false;
+
         this.vectorDisplayMode = state.vectorDisplayMode === 'vectors' ? 'vectors' : 'points';
         // Session defaults (not persisted)
         this.vectorSizeMode = 'small';
-        this.gridVisible = true;
-        this.intersectionsVisible = true;
+        this.gridVisible = restoredGridVisible;
+        this.intersectionsVisible = restoredIntersectionsVisible;
         this.planeExtent = 10;
         this.dragPreviewPoint3D = null;
         this.dragPreviewY3D = 0;
@@ -3567,9 +3570,6 @@ class VectoramaApp {
         this.dragWheelDetentPixels3D = 100;
         this.currentGridSpacing = this.toFiniteNumber(state.currentGridSpacing, 1);
         this.latticeDisplayMode = state.latticeDisplayMode === 'on' ? 'on' : 'off';
-        if (this.latticeDisplayMode === 'on') {
-            this.gridVisible = false;
-        }
         this.latticeGridRestoreState = null;
         this.latticeGridSessionActive = this.latticeDisplayMode === 'on';
         this.latticeGridUserOverride = false;
@@ -3689,7 +3689,12 @@ class VectoramaApp {
         this.latticeDisplayMode = restoredLatticeOn ? 'on' : 'off';
         this.latticeGridSessionActive = restoredLatticeOn;
         if (restoredLatticeOn) {
+            // Preserve the user's intended grid state for when lattice is toggled off.
+            this.latticeGridRestoreState = restoredGridVisible;
             this.gridVisible = false;
+        } else {
+            this.latticeGridRestoreState = null;
+            this.gridVisible = restoredGridVisible;
         }
         this.latticeCurrentTransform2D = this.deserializeMatrix3(state.latticeCurrentTransform2D);
         this.latticeCurrentTransform3D = this.deserializeMatrix3(state.latticeCurrentTransform3D);
