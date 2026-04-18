@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.59';
+const APP_VERSION = '1.0.60';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -7285,6 +7285,7 @@ class VectoramaApp {
                 this.disposeSceneObject(plane.mesh);
                 plane.mesh = null;
             }
+            this.disposePlaneNormal(plane);
             this.planes.splice(index, 1);
             
             // Hide plane info panel if showing this plane
@@ -13265,7 +13266,7 @@ class VectoramaApp {
         const formatDistance = (distance) => {
             return this.formatDisplayNumber(distance, 3);
         };
-        
+
         // Get other planes (excluding current one)
         const otherPlanes = this.planes.filter(p => p.id !== plane.id && p.visible);
         
@@ -13319,6 +13320,12 @@ class VectoramaApp {
             if (savedPlaneSelection && otherPlanes.some(p => p.id === savedPlaneSelection)) {
                 planeSelect.value = String(savedPlaneSelection);
             }
+
+            const shouldShowNormals = this.angleVisualizationState &&
+                this.angleVisualizationState.type === 'plane-plane' &&
+                this.angleVisualizationState.planeId === plane.id &&
+                this.angleVisualizationState.otherPlaneId === parseInt(planeSelect.value) &&
+                this.angleVisualizationState.showNormals === true;
             
             planeSelect.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -13326,16 +13333,17 @@ class VectoramaApp {
                     if (otherPlane) {
                         const angle = this.calculatePlanePlaneAngle(plane, otherPlane);
                         planeResult.textContent = formatAngle(angle);
-                        planeResult.style.display = 'block';
+                        planeResultRow.style.display = 'flex';
                         this.angleVisualizationState = {
                             type: 'plane-plane',
                             planeId: plane.id,
-                            otherPlaneId: otherPlane.id
+                            otherPlaneId: otherPlane.id,
+                            showNormals: normalsCheckbox.checked
                         };
                         this.updateAngleVisualization();
                     }
                 } else {
-                    planeResult.style.display = 'none';
+                    planeResultRow.style.display = 'none';
                     this.angleVisualizationState = null;
                     this.clearAngleVisualization();
                 }
@@ -13343,13 +13351,57 @@ class VectoramaApp {
             
             planeSection.appendChild(planeSelect);
             
+            const planeResultRow = document.createElement('div');
+            planeResultRow.style.marginTop = '6px';
+            planeResultRow.style.display = 'none';
+            planeResultRow.style.alignItems = 'center';
+            planeResultRow.style.gap = '10px';
+            planeResultRow.style.flexWrap = 'wrap';
+
             const planeResult = document.createElement('div');
-            planeResult.style.marginTop = '6px';
             planeResult.style.fontSize = '13px';
             planeResult.style.fontWeight = 'bold';
             planeResult.style.color = '#64B5F6';
-            planeResult.style.display = 'none';
-            planeSection.appendChild(planeResult);
+            planeResultRow.appendChild(planeResult);
+
+            const normalsToggleRow = document.createElement('div');
+            normalsToggleRow.style.display = 'flex';
+            normalsToggleRow.style.alignItems = 'center';
+            normalsToggleRow.style.gap = '6px';
+            normalsToggleRow.style.marginLeft = 'auto';
+
+            const normalsCheckbox = document.createElement('input');
+            normalsCheckbox.type = 'checkbox';
+            normalsCheckbox.checked = shouldShowNormals;
+
+            const normalsLabel = document.createElement('label');
+            normalsLabel.textContent = 'Show normals';
+            normalsLabel.style.fontSize = '11px';
+            normalsLabel.style.opacity = '0.9';
+            normalsLabel.style.cursor = 'pointer';
+
+            normalsToggleRow.appendChild(normalsCheckbox);
+            normalsToggleRow.appendChild(normalsLabel);
+            planeResultRow.appendChild(normalsToggleRow);
+            planeSection.appendChild(planeResultRow);
+
+            normalsCheckbox.addEventListener('change', () => {
+                if (!planeSelect.value) return;
+
+                const selectedPlaneId = parseInt(planeSelect.value);
+                this.angleVisualizationState = {
+                    type: 'plane-plane',
+                    planeId: plane.id,
+                    otherPlaneId: selectedPlaneId,
+                    showNormals: normalsCheckbox.checked
+                };
+                this.updateAngleVisualization();
+            });
+
+            normalsLabel.addEventListener('click', () => {
+                normalsCheckbox.checked = !normalsCheckbox.checked;
+                normalsCheckbox.dispatchEvent(new Event('change'));
+            });
 
             // Restore displayed result if this selection was already active
             if (planeSelect.value) {
@@ -13358,7 +13410,7 @@ class VectoramaApp {
                 if (selectedPlane) {
                     const angle = this.calculatePlanePlaneAngle(plane, selectedPlane);
                     planeResult.textContent = formatAngle(angle);
-                    planeResult.style.display = 'block';
+                    planeResultRow.style.display = 'flex';
                 }
             }
             
@@ -14048,6 +14100,7 @@ class VectoramaApp {
         let ray1Color = '#64B5F6';
         let ray2Color = '#64B5F6';
         let angle = 0;
+        let planePairNormals = null;
 
         if (state.type === 'line-distance') {
             const line1 = this.lines.find(l => l.id === state.lineId && l.visible);
@@ -14408,6 +14461,11 @@ class VectoramaApp {
                 ray1Direction = section1;
                 ray2Direction = section2;
                 angle = Math.acos(Math.min(1, Math.abs(section1.dot(section2Raw))));
+                const n2ForDisplay = n2Raw.clone();
+                if (n1.dot(n2ForDisplay) < 0) {
+                    n2ForDisplay.multiplyScalar(-1);
+                }
+                planePairNormals = { plane1, plane2, n1: n1.clone(), n2: n2ForDisplay, isParallel: false };
             } else if (plane1.mesh) {
                 origin = plane1.mesh.position.clone();
                 const n2 = n2Raw.clone();
@@ -14415,6 +14473,7 @@ class VectoramaApp {
                 ray1Direction = n1;
                 ray2Direction = n2;
                 angle = Math.acos(Math.min(1, Math.abs(n1.dot(n2Raw))));
+                planePairNormals = { plane1, plane2, n1: n1.clone(), n2: n2.clone(), isParallel: true };
             }
             ray1Color = plane1.color;
             ray2Color = plane2.color;
@@ -14457,6 +14516,36 @@ class VectoramaApp {
         marker.renderOrder = 22;
         overlayGroup.add(marker);
         cycleMaterials.push(marker.material);
+
+        // For plane-plane: optionally draw normal arrows (or labels only if parallel) from the common origin
+        if (planePairNormals && state.showNormals === true) {
+            const { plane1, plane2, n1, n2, isParallel } = planePairNormals;
+            const normalLength = rayLength;
+            const normalLabelOffset = normalLength * 1.2;
+
+            const makeNormalLabel = (planeName, color, tipPosition) => {
+                const num = planeName.replace(/\D/g, '');
+                const lbl = this.createAngleTextLabel('n' + num, color);
+                lbl.position.copy(tipPosition);
+                return lbl;
+            };
+
+            if (!isParallel) {
+                // Section vectors already shown — add normals as additional coloured arrows
+                const t = this.getArrowThickness();
+                const n1Arrow = this.createSmoothArrow(n1, origin.clone(), normalLength, new THREE.Color(plane1.color), t.headLength * 0.8, t.headWidth * 0.8);
+                const n2Arrow = this.createSmoothArrow(n2, origin.clone(), normalLength, new THREE.Color(plane2.color), t.headLength * 0.8, t.headWidth * 0.8);
+                overlayGroup.add(n1Arrow, n2Arrow);
+            }
+
+            // Labels at the tip of each normal (both intersecting and parallel cases)
+            const n1Tip = origin.clone().add(n1.clone().multiplyScalar(normalLabelOffset));
+            const n2Tip = origin.clone().add(n2.clone().multiplyScalar(normalLabelOffset));
+            const n1Label = makeNormalLabel(plane1.name, plane1.color, n1Tip);
+            const n2Label = makeNormalLabel(plane2.name, plane2.color, n2Tip);
+            overlayGroup.add(n1Label, n2Label);
+            cycleMaterials.push(n1Label.material, n2Label.material);
+        }
 
         overlayGroup.userData.cycleMaterials = cycleMaterials;
 

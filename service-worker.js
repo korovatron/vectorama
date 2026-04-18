@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vectorama-version-1.0.59';
+const CACHE_NAME = 'vectorama-version-1.0.60';
 const LOCAL_ASSETS = [
   './',
   './index.html',
