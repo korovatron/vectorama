@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.60';
+const APP_VERSION = '1.0.61';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -7285,7 +7285,6 @@ class VectoramaApp {
                 this.disposeSceneObject(plane.mesh);
                 plane.mesh = null;
             }
-            this.disposePlaneNormal(plane);
             this.planes.splice(index, 1);
             
             // Hide plane info panel if showing this plane
