@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.62';
+const APP_VERSION = '1.0.63';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -3507,16 +3507,46 @@ class VectoramaApp {
             const encodedState = await this.encodeAppStateForUrl(snapshot);
             const shareUrl = new URL(window.location.href);
             shareUrl.searchParams.set(APP_STATE_QUERY_PARAM, encodedState);
+            const shareUrlString = shareUrl.toString();
 
-            if (shareUrl.toString().length > APP_STATE_SHARE_MAX_URL_LENGTH) {
+            if (shareUrlString.length > APP_STATE_SHARE_MAX_URL_LENGTH) {
                 await this.showAlertModal('This state is too large to share as a URL.');
                 return;
             }
 
-            await navigator.clipboard.writeText(shareUrl.toString());
-            await this.showAlertModal('Share link copied to clipboard.');
+            // iPadOS can report a desktop UA, so include the Mac+touch heuristic.
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isIPadOSDesktopUA = navigator.userAgent.includes('Mac') && 'ontouchend' in document;
+            const isMobile = isIOS || isIPadOSDesktopUA || /Android/i.test(navigator.userAgent);
+
+            if (isMobile && navigator.share) {
+                try {
+                    await navigator.share({
+                        url: shareUrlString
+                    });
+                    await this.showAlertModal('Link shared.');
+                    return;
+                } catch (shareError) {
+                    if (shareError && shareError.name === 'AbortError') {
+                        return;
+                    }
+                    console.warn('Web Share API failed, trying clipboard:', shareError);
+                }
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(shareUrlString);
+                    await this.showAlertModal('Share link copied to clipboard.');
+                    return;
+                } catch (clipboardError) {
+                    console.warn('Clipboard API failed, falling back to prompt:', clipboardError);
+                }
+            }
+
+            window.prompt('Copy this share URL:', shareUrlString);
         } catch (error) {
-            console.warn('Failed to copy share URL to clipboard:', error);
+            console.warn('Failed to generate share URL:', error);
             const fallbackSnapshot = this.buildAppStateSnapshot();
             const fallbackEncodedState = await this.encodeAppStateForUrl(fallbackSnapshot);
             const fallbackUrl = new URL(window.location.href);
