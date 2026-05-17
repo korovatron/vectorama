@@ -35,6 +35,10 @@ html[data-theme="light"] {
 
 html,
 body {
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    min-height: var(--actual-vh, 100vh);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
 }
@@ -310,8 +314,18 @@ body {
     position: relative;
     height: 100vh;
     height: var(--actual-vh, 100vh); /* Mobile: JS-calculated height for iOS PWA fix */
+    min-height: var(--actual-vh, 100vh);
     width: 100vw;
     overscroll-behavior: none;
+}
+
+.main-app {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: var(--actual-vh, 100vh);
+    min-height: var(--actual-vh, 100vh);
 }
 
 /* Hamburger Menu Button */
@@ -385,6 +399,8 @@ body {
     top: 0;
     width: 330px;
     height: 100vh;
+    height: var(--actual-vh, 100vh);
+    min-height: var(--actual-vh, 100vh);
     background: var(--panel-bg);
     backdrop-filter: blur(5px);
     padding: 20px;
@@ -1838,6 +1854,8 @@ body {
 .canvas-container {
     width: 100%;
     height: 100vh;
+    height: var(--actual-vh, 100vh);
+    min-height: var(--actual-vh, 100vh);
     position: relative;
     background: var(--canvas-bg);
     overscroll-behavior: none;

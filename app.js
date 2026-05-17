@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.63';
+const APP_VERSION = '1.0.64';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -96,8 +96,7 @@ document.addEventListener('keydown', (e) => {
 // iOS viewport height fix - necessary for full-screen rendering into notch and chrome areas
 // Sets a CSS variable for the actual viewport height, which works around iOS Safari's 100vh issue
 function setActualVH() {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--actual-vh', `${vh}px`);
+    document.documentElement.style.setProperty('--actual-vh', `${window.innerHeight}px`);
 }
 
 // Set on load
@@ -108,6 +107,9 @@ window.addEventListener('resize', setActualVH);
 window.addEventListener('orientationchange', () => {
     // Small delay needed for iOS to complete the orientation change
     setTimeout(setActualVH, 100);
+});
+window.addEventListener('pageshow', () => {
+    setTimeout(setActualVH, 0);
 });
 
 // Theme Toggle Functionality
