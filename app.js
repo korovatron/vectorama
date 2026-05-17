@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.64';
+const APP_VERSION = '1.0.65';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -333,6 +333,7 @@ class VectoramaApp {
         this.eventAbortController = new AbortController();
         
         this.panelOpen = true; // Panel open by default
+        this.panelShouldSlideInOnLoad = true;
         this.initThreeJS();
         this.initEventListeners();
         this.createGrid();
@@ -363,6 +364,45 @@ class VectoramaApp {
         // Visualize invariant spaces for initial state after scene is ready
         requestAnimationFrame(() => {
             this.visualizeInvariantSpaces();
+            this.slideInPanelIfNeeded();
+        });
+    }
+
+    slideInPanelIfNeeded() {
+        if (!this.panelShouldSlideInOnLoad) {
+            return;
+        }
+
+        this.panelShouldSlideInOnLoad = false;
+
+        if (!this.panelOpen) {
+            return;
+        }
+
+        const controlPanel = document.querySelector('.control-panel');
+        const panelToggleBtn = document.getElementById('panel-toggle-btn');
+
+        if (!controlPanel || !panelToggleBtn) {
+            return;
+        }
+
+        // Move panel off-screen for one frame, then let CSS animate it back in.
+        controlPanel.style.transition = 'none';
+        controlPanel.classList.add('closed');
+        panelToggleBtn.classList.remove('active');
+        void controlPanel.offsetHeight;
+        controlPanel.style.transition = '';
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (this.isDestroyed) {
+                    return;
+                }
+
+                controlPanel.classList.remove('closed');
+                panelToggleBtn.classList.add('active');
+                this.onPanelResize();
+            });
         });
     }
 
