@@ -1865,9 +1865,16 @@ body {
     width: 100%;
     height: 100%;
     display: block;
+    cursor: grab;
+    cursor: -webkit-grab;
     touch-action: none; /* Prevent default touch behaviors */
     -webkit-user-select: none;
     user-select: none;
+}
+
+#three-canvas:active {
+    cursor: grabbing;
+    cursor: -webkit-grabbing;
 }
 
 .plane-extent-control {
