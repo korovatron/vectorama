@@ -261,9 +261,8 @@ body {
         display: none;
     }
 
-    .copyright .tools-label {
-        display: block;
-        margin-top: 2px;
+    .copyright .tool-description {
+        display: none;
     }
 
     .copyright .tool-link {
