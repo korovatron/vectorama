@@ -251,6 +251,42 @@ body {
     white-space: nowrap;
 }
 
+.copyright .tools-row a.tool-link:nth-of-type(1) {
+    color: #FF355E;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(1):hover {
+    color: #FF5C7D;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(1):active {
+    color: #FF2A52;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(2) {
+    color: #39FF14;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(2):hover {
+    color: #66FF47;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(2):active {
+    color: #2EEA0F;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(3) {
+    color: #00C8FF;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(3):hover {
+    color: #35D6FF;
+}
+
+.copyright .tools-row a.tool-link:nth-of-type(3):active {
+    color: #00B8EB;
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
     .title-content {
         height: 100%;
@@ -272,7 +308,7 @@ body {
 }
 
 .copyright .tool-name {
-    color: #ffe600;
+    color: inherit;
     font-weight: 700;
 }
 
