@@ -312,6 +312,10 @@ body {
     font-weight: 700;
 }
 
+.copyright .tool-description {
+    display: none;
+}
+
 @media (max-width: 700px) {
     .copyright .tool-separator {
         display: none;
