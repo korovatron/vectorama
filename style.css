@@ -192,15 +192,19 @@ body {
 }
 
 .worksheets-link {
-    color: var(--text-primary);
+    color: #fff;
     font-size: 0.95em;
     text-decoration: underline;
     text-underline-offset: 2px;
-    transition: opacity 0.2s;
+    transition: color 0.2s;
+}
+
+.worksheets-link:visited {
+    color: #fff;
 }
 
 .worksheets-link:hover {
-    opacity: 0.85;
+    color: #B7DCFF;
 }
 
 .new-badge {
