@@ -1,11 +1,13 @@
-const CACHE_NAME = 'vectorama-version-1.0.79';
+const CACHE_NAME = 'vectorama-version-1.0.80';
 const LOCAL_ASSETS = [
   './',
   './index.html',
+  './guide.html',
   './worksheets.html',
   './style.css',
   './app.js',
   './manifest.json',
+  './images/preview.png',
   './images/vectoramaLogo.png',
   './images/panelLogo.png',
   './images/yt_icon_white_digital.png',
