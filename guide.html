@@ -30,6 +30,30 @@
     <meta property="twitter:title" content="Vectorama Guide">
     <meta property="twitter:description" content="Explore vectors, matrices, transformations, eigenvectors and 3D geometry with Vectorama.">
     <meta property="twitter:image" content="https://www.korovatron.co.uk/vectorama/images/preview.png">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemPage",
+        "name": "Vectorama Guide | Linear Algebra and Matrix Transformation Visualiser",
+        "description": "Comprehensive guide to Vectorama, including vectors, matrix transformations, eigenvectors, eigenspaces, lines, planes, intersections, angles and distances in 2D and 3D.",
+        "url": "https://www.korovatron.co.uk/vectorama/guide.html",
+        "inLanguage": "en-GB",
+        "mainEntity": {
+            "@type": "SoftwareApplication",
+            "name": "Vectorama",
+            "url": "https://www.korovatron.co.uk/vectorama/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web Browser"
+        },
+        "author": {
+            "@type": "Person",
+            "name": "Neil Kendall",
+            "url": "https://www.korovatron.co.uk"
+        }
+    }
+    </script>
+
     <style>
         :root {
             --page-bg: #1A2F42;
@@ -152,6 +176,32 @@
             margin: 0 0 18px;
             color: var(--text-secondary);
             font-size: 1.08rem;
+        }
+
+        .featured-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 2px;
+        }
+
+        .featured-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.035);
+            color: var(--accent-bright);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .featured-link:hover {
+            color: #C7E5FF;
+            background: rgba(255, 255, 255, 0.06);
         }
 
         .hero-image {
@@ -282,6 +332,10 @@
                 <h1>Vectorama guide</h1>
                 <p>Vectorama is a free online linear algebra visualiser for exploring vectors, matrices, transformations and 3D geometry. It is designed for classroom explanation, independent study and quick visual checks.</p>
                 <p>Vectorama lets you build diagrams in 2D and 3D, switch between dimensions, animate matrix transformations, inspect eigenvalues and eigenspaces, and work with vectors, lines, planes, intersections, angles and distances.</p>
+                <div class="featured-links" aria-label="External mentions of Vectorama">
+                    <a class="featured-link" href="https://www.resourceaholic.com/2026/04/5-maths-gems-197.html" rel="noopener" target="_blank">Featured in Resourceaholic's 5 Maths Gems #197</a>
+                    <a class="featured-link" href="https://mathsindex.uk/algebra/vectorama" rel="noopener" target="_blank">Listed on MathsIndex</a>
+                </div>
             </div>
             <figure class="hero-image">
                 <img src="images/preview.png" alt="Vectorama showing vectors, matrices and 3D geometry tools">
