@@ -2481,3 +2481,9 @@ body {
         display: none !important;
     }
 }
+
+@media (min-width: 1024px) {
+    .copyright {
+        font-size: 1em;
+    }
+}
