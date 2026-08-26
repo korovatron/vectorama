@@ -26,6 +26,7 @@
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:alt" content="Vectorama showing interactive vector and matrix transformation tools">
+    <meta property="og:site_name" content="Korovatron">
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:title" content="Vectorama Guide">
     <meta property="twitter:description" content="Explore vectors, matrices, transformations, eigenvectors and 3D geometry with Vectorama.">
@@ -34,23 +35,54 @@
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "ItemPage",
-        "name": "Vectorama Guide | Linear Algebra and Matrix Transformation Visualiser",
-        "description": "Comprehensive guide to Vectorama, including vectors, matrix transformations, eigenvectors, eigenspaces, lines, planes, intersections, angles and distances in 2D and 3D.",
-        "url": "https://www.korovatron.co.uk/vectorama/guide.html",
-        "inLanguage": "en-GB",
-        "mainEntity": {
-            "@type": "SoftwareApplication",
-            "name": "Vectorama",
-            "url": "https://www.korovatron.co.uk/vectorama/",
-            "applicationCategory": "EducationalApplication",
-            "operatingSystem": "Web Browser"
-        },
-        "author": {
-            "@type": "Person",
-            "name": "Neil Kendall",
-            "url": "https://www.korovatron.co.uk"
-        }
+        "@graph": [
+            {
+                "@type": "BreadcrumbList",
+                "@id": "https://www.korovatron.co.uk/vectorama/guide.html#breadcrumb",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Korovatron",
+                        "item": "https://www.korovatron.co.uk/"
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "Vectorama",
+                        "item": "https://www.korovatron.co.uk/vectorama/"
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 3,
+                        "name": "Guide",
+                        "item": "https://www.korovatron.co.uk/vectorama/guide.html"
+                    }
+                ]
+            },
+            {
+                "@type": "ItemPage",
+                "@id": "https://www.korovatron.co.uk/vectorama/guide.html#webpage",
+                "name": "Vectorama Guide | Linear Algebra and Matrix Transformation Visualiser",
+                "description": "Comprehensive guide to Vectorama, including vectors, matrix transformations, eigenvectors, eigenspaces, lines, planes, intersections, angles and distances in 2D and 3D.",
+                "url": "https://www.korovatron.co.uk/vectorama/guide.html",
+                "inLanguage": "en-GB",
+                "mainEntity": {
+                    "@id": "https://www.korovatron.co.uk/vectorama/#webapplication"
+                },
+                "author": {
+                    "@type": "Person",
+                    "name": "Neil Kendall",
+                    "url": "https://www.korovatron.co.uk"
+                },
+                "publisher": {
+                    "@id": "https://www.korovatron.co.uk/#organization"
+                },
+                "breadcrumb": {
+                    "@id": "https://www.korovatron.co.uk/vectorama/guide.html#breadcrumb"
+                }
+            }
+        ]
     }
     </script>
 
