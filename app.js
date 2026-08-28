@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.86';
+const APP_VERSION = '1.0.87';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -4339,6 +4339,7 @@ class VectoramaApp {
             return;
         }
 
+        window.goatcounter?.count({ path: 'Vectorama lattice toggle', event: true });
         const isTurningOn = this.latticeDisplayMode !== 'on';
         this.latticeDisplayMode = isTurningOn ? 'on' : 'off';
 
@@ -4427,6 +4428,7 @@ class VectoramaApp {
             return;
         }
 
+        window.goatcounter?.count({ path: 'Vectorama 2D/3D toggle', event: true });
         // Toggle between 2D and 3D
         const newDimension = this.dimension === '2d' ? '3d' : '2d';
         this.switchDimension(newDimension);
@@ -6057,7 +6059,10 @@ class VectoramaApp {
         applyBtn.className = 'matrix-apply-btn';
         applyBtn.title = 'Apply sequence (rightmost matrix applies first)';
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
-        applyBtn.addEventListener('click', () => this.applyMatrixSequenceFromInput());
+        applyBtn.addEventListener('click', () => {
+            window.goatcounter?.count({ path: 'Vectorama matrix composition applied', event: true });
+            this.applyMatrixSequenceFromInput();
+        });
         controls.appendChild(applyBtn);
 
         infoBtn = document.createElement('button');
@@ -6157,7 +6162,10 @@ class VectoramaApp {
         applyBtn.className = 'matrix-apply-btn';
         applyBtn.title = 'Apply transformation to all objects';
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
-        applyBtn.addEventListener('click', () => this.applyMatrix(matrix.id));
+        applyBtn.addEventListener('click', () => {
+            window.goatcounter?.count({ path: 'Vectorama matrix transformation applied', event: true });
+            this.applyMatrix(matrix.id);
+        });
         controls.appendChild(applyBtn);
         
         // Info button (i icon)
@@ -6166,6 +6174,7 @@ class VectoramaApp {
         infoBtn.title = 'Show matrix analysis (eigenvalues, determinant, trace, characteristic equation)';
         infoBtn.textContent = 'i';
         infoBtn.addEventListener('click', () => {
+            window.goatcounter?.count({ path: 'Vectorama matrix info button clicked', event: true });
             this.showMatrixInfo(matrix.id);
         });
         controls.appendChild(infoBtn);
@@ -6282,6 +6291,7 @@ class VectoramaApp {
             infoBtn.title = 'Show vector information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
+                window.goatcounter?.count({ path: 'Vectorama vector info button clicked', event: true });
                 this.showVectorInfo(vec.id);
             });
             controls.appendChild(infoBtn);
@@ -6550,6 +6560,7 @@ class VectoramaApp {
             infoBtn.title = 'Show line information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
+                window.goatcounter?.count({ path: 'Vectorama line info button clicked', event: true });
                 this.showLineInfo(line.id);
             });
             controls.appendChild(infoBtn);
@@ -6655,6 +6666,7 @@ class VectoramaApp {
             infoBtn.title = 'Show plane information';
             infoBtn.textContent = 'i';
             infoBtn.addEventListener('click', () => {
+                window.goatcounter?.count({ path: 'Vectorama plane info button clicked', event: true });
                 this.showPlaneInfo(plane.id);
             });
             controls.appendChild(infoBtn);
