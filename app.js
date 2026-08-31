@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.87';
+const APP_VERSION = '1.0.88';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -6157,6 +6157,13 @@ class VectoramaApp {
         const controls = document.createElement('div');
         controls.className = 'matrix-controls';
         
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+        removeBtn.title = 'Delete matrix';
+        removeBtn.addEventListener('click', () => this.removeMatrix(matrix.id));
+        controls.appendChild(removeBtn);
+
         // Apply transformation button (play icon)
         const applyBtn = document.createElement('button');
         applyBtn.className = 'matrix-apply-btn';
@@ -6178,13 +6185,6 @@ class VectoramaApp {
             this.showMatrixInfo(matrix.id);
         });
         controls.appendChild(infoBtn);
-        
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '×';
-        removeBtn.title = 'Delete matrix';
-        removeBtn.addEventListener('click', () => this.removeMatrix(matrix.id));
-        controls.appendChild(removeBtn);
         
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
@@ -6283,7 +6283,14 @@ class VectoramaApp {
             const vectorId = parseInt(e.currentTarget.getAttribute('data-vector-id'));
             this.toggleVectorVisibility(vectorId);
         });
-        controls.appendChild(colorIndicator);
+
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+        removeBtn.title = 'Delete vector';
+        removeBtn.addEventListener('click', () => this.removeVector(vec.id));
+        controls.appendChild(removeBtn);
 
         if (vec.visible) {
             const infoBtn = document.createElement('button');
@@ -6297,13 +6304,7 @@ class VectoramaApp {
             controls.appendChild(infoBtn);
         }
 
-        // Remove button
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '×';
-        removeBtn.title = 'Delete vector';
-        removeBtn.addEventListener('click', () => this.removeVector(vec.id));
-        controls.appendChild(removeBtn);
+        controls.appendChild(colorIndicator);
 
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
@@ -6528,7 +6529,13 @@ class VectoramaApp {
         colorIndicator.title = `Click to ${line.visible ? 'hide' : 'show'} line`;
         colorIndicator.style.cursor = 'pointer';
         colorIndicator.addEventListener('click', () => this.toggleLineVisibility(line.id));
-        controls.appendChild(colorIndicator);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+        removeBtn.title = 'Delete line';
+        removeBtn.addEventListener('click', () => this.removeLine(line.id));
+        controls.appendChild(removeBtn);
 
         const formToggleBtn = document.createElement('button');
         formToggleBtn.className = 'form-toggle-btn';
@@ -6566,12 +6573,7 @@ class VectoramaApp {
             controls.appendChild(infoBtn);
         }
 
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '×';
-        removeBtn.title = 'Delete line';
-        removeBtn.addEventListener('click', () => this.removeLine(line.id));
-        controls.appendChild(removeBtn);
+        controls.appendChild(colorIndicator);
 
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
@@ -6635,7 +6637,14 @@ class VectoramaApp {
         colorIndicator.title = `Click to ${plane.visible ? 'hide' : 'show'} plane`;
         colorIndicator.style.cursor = 'pointer';
         colorIndicator.addEventListener('click', () => this.togglePlaneVisibility(plane.id));
-        controls.appendChild(colorIndicator);
+
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>';
+        removeBtn.title = 'Delete plane';
+        removeBtn.addEventListener('click', () => this.removePlane(plane.id));
+        controls.appendChild(removeBtn);
 
         // Form toggle button (F)
         const formToggleBtn = document.createElement('button');
@@ -6672,12 +6681,7 @@ class VectoramaApp {
             controls.appendChild(infoBtn);
         }
 
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '×';
-        removeBtn.title = 'Delete plane';
-        removeBtn.addEventListener('click', () => this.removePlane(plane.id));
-        controls.appendChild(removeBtn);
+        controls.appendChild(colorIndicator);
 
         mainRow.appendChild(controls);
         item.appendChild(mainRow);
