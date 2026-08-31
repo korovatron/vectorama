@@ -2084,7 +2084,7 @@ body {
     background: rgba(58, 79, 106, 0.95);
     border: 1px solid #555555;
     border-radius: 4px;
-    border-left: 8px solid #00C853;
+    border-left: 8px solid transparent;
     padding: 12px 16px;
     min-width: 260px;
     max-width: 350px;

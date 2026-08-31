@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.91';
+const APP_VERSION = '1.0.92';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -7861,6 +7861,7 @@ class VectoramaApp {
 
         headerSpan.textContent = 'Matrix Composition';
         panel.style.display = 'block';
+        panel.style.borderLeftColor = '#00C853';
         valuesDiv.innerHTML = '';
 
         const parsed = this.parseMatrixSequenceInput(this.matrixSequenceInput);
@@ -12254,6 +12255,7 @@ class VectoramaApp {
         
         // Show panel and populate with eigenvalue/eigenvector data
         panel.style.display = 'block';
+        panel.style.borderLeftColor = '#' + selectedMatrix.color.getHexString();
         valuesDiv.innerHTML = '';
         
         // Format number: smart formatting like matrices
