@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.89';
+const APP_VERSION = '1.0.90';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -1297,7 +1297,7 @@ class VectoramaApp {
             id: this.nextMatrixId++,
             name: 'A',
             values: [[0, 1, 0], [0, 0, -1], [-1, 0, 0]], // 90° rotation about X then Y
-            color: new THREE.Color(0x904AE2)
+            color: new THREE.Color(0x00C853)
         };
         this.matrices3D.push(matrix3D);
         this.usedMatrixLetters3D.add('A');
@@ -2748,7 +2748,7 @@ class VectoramaApp {
             id: this.toFiniteNumber(matrix.id, 0),
             name: matrix.name || null,
             values: Array.isArray(matrix.values) ? matrix.values : [],
-            color: this.serializeColor(matrix.color, '#904AE2')
+            color: this.serializeColor(matrix.color, '#00C853')
         };
     }
 
@@ -2765,9 +2765,12 @@ class VectoramaApp {
 
             let color = null;
             try {
-                color = new THREE.Color(this.serializeColor(matrix?.color, '#904AE2'));
+                const rawColor = this.serializeColor(matrix?.color, '#00C853');
+                // Migrate old purple accent to green
+                const resolvedColor = rawColor.toLowerCase() === '#904ae2' ? '#00C853' : rawColor;
+                color = new THREE.Color(resolvedColor);
             } catch {
-                color = new THREE.Color(0x904AE2);
+                color = new THREE.Color(0x00C853);
             }
 
             return {
@@ -5957,7 +5960,7 @@ class VectoramaApp {
     renderMatrixSequenceItem(container) {
         const item = document.createElement('div');
         item.className = 'matrix-item matrix-sequence-item';
-        item.style.borderLeftColor = '#904AE2';
+        item.style.borderLeftColor = '#00C853';
 
         const transformationLabel = document.createElement('div');
         transformationLabel.className = 'matrix-transform-label visible';
@@ -8233,8 +8236,7 @@ class VectoramaApp {
             }
         }
         
-        // Use consistent purple color for all matrices (not visual objects)
-        const color = new THREE.Color(0x904AE2); // Purple
+        const color = new THREE.Color(0x00C853);
         
         const matrix = {
             id: this.nextMatrixId++,
@@ -8331,7 +8333,7 @@ class VectoramaApp {
             }
         }
         
-        const color = new THREE.Color(0x904AE2); // Purple
+        const color = new THREE.Color(0x00C853);
         
         const matrix = {
             id: this.nextMatrixId++,
