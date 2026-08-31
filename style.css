@@ -1498,15 +1498,19 @@ body {
 .matrix-item .matrix-transform-label {
     display: none;
     margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    color: var(--accent-color);
-    opacity: 0.95;
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: #904AE2;
+    border-radius: 999px;
+    padding: 3px 8px;
 }
 
 .matrix-item .matrix-transform-label.visible {
-    display: block;
+    display: inline-flex;
 }
 
 .matrix-sequence-item {
@@ -2454,7 +2458,6 @@ body {
 
     .matrix-item .matrix-transform-label {
         margin-bottom: 4px;
-        font-size: 11px;
     }
 
     .matrix-sequence-input {
