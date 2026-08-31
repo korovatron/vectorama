@@ -1446,7 +1446,7 @@ body {
 .object-group-items {
     margin-top: 8px;
     padding-left: 0px;
-    max-height: 2000px;
+    max-height: 9999px;
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.3s ease;
     opacity: 1;
@@ -1503,8 +1503,6 @@ body {
     font-weight: 700;
     line-height: 1;
     letter-spacing: 0.02em;
-    color: #000;
-    background: #00C853;
     border-radius: 999px;
     padding: 3px 8px;
 }
@@ -1653,12 +1651,11 @@ body {
 }
 
 .matrix-item .matrix-apply-btn {
-    color: #00C853;
+    /* background and color set via inline style from matrix colour */
 }
 
 .matrix-item .matrix-apply-btn:active {
-    background: #00C853;
-    color: white;
+    filter: brightness(0.85);
 }
 
 .matrix-item .matrix-info-btn,

@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.90';
+const APP_VERSION = '1.0.91';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -189,6 +189,12 @@ class VectoramaApp {
         this.matrixSequenceInput3D = '';
         this.colorIndex2D = 0;
         this.colorIndex3D = 0;
+        this.lineColorIndex2D = 3;
+        this.lineColorIndex3D = 3;
+        this.planeColorIndex2D = 6;
+        this.planeColorIndex3D = 6;
+        this.matrixColorIndex2D = 2;
+        this.matrixColorIndex3D = 2;
         
         // Active references (point to current dimension)
         this.vectors = this.vectors2D;
@@ -199,6 +205,9 @@ class VectoramaApp {
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.matrixSequenceInput = this.matrixSequenceInput2D;
         this.colorIndex = this.colorIndex2D;
+        this.lineColorIndex = this.lineColorIndex2D;
+        this.planeColorIndex = this.planeColorIndex2D;
+        this.matrixColorIndex = this.matrixColorIndex2D;
         this.eigenvaluePanelMatrixId = null; // Track which matrix's info is showing in eigenvalue panel
         this.lineInfoPanelId = null; // Track which line's info is showing
         this.planeInfoPanelId = null; // Track which plane's info is showing
@@ -235,9 +244,9 @@ class VectoramaApp {
         
         // Vector color palette matching graphiti
         this.vectorColors = [
-            '#4A90E2', '#27AE60', '#F39C12', 
-            '#E91E63', '#1ABC9C', '#E67E22', '#34495E',
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#E74C3C'
+            '#0057FF', '#00C853', '#B91C1C',
+            '#C026D3', '#1ABC9C', '#00E5FF', '#A855F7',
+            '#FF6B6B', '#4A90E2', '#FFD400', '#84CC16', '#F39C12'
         ];
         this.colorIndex = 0; // Track next color to use
         
@@ -1293,11 +1302,12 @@ class VectoramaApp {
         
         // Pre-initialize 3D mode data (without adding to scene)
         // Add matrix data directly - composite rotation in 2 dimensions
+        const matrix3DColorHex = this.getNextDistinctObjectColor('matrices');
         const matrix3D = {
             id: this.nextMatrixId++,
             name: 'A',
             values: [[0, 1, 0], [0, 0, -1], [-1, 0, 0]], // 90° rotation about X then Y
-            color: new THREE.Color(0x00C853)
+            color: new THREE.Color(matrix3DColorHex)
         };
         this.matrices3D.push(matrix3D);
         this.usedMatrixLetters3D.add('A');
@@ -3023,6 +3033,9 @@ class VectoramaApp {
             this.selectedMatrixId2D = this.selectedMatrixId;
             this.matrixSequenceInput2D = this.matrixSequenceInput;
             this.colorIndex2D = this.colorIndex;
+            this.lineColorIndex2D = this.lineColorIndex;
+            this.planeColorIndex2D = this.planeColorIndex;
+            this.matrixColorIndex2D = this.matrixColorIndex;
         } else {
             this.vectors3D = this.vectors;
             this.matrices3D = this.matrices;
@@ -3036,6 +3049,9 @@ class VectoramaApp {
             this.selectedMatrixId3D = this.selectedMatrixId;
             this.matrixSequenceInput3D = this.matrixSequenceInput;
             this.colorIndex3D = this.colorIndex;
+            this.lineColorIndex3D = this.lineColorIndex;
+            this.planeColorIndex3D = this.planeColorIndex;
+            this.matrixColorIndex3D = this.matrixColorIndex;
         }
     }
 
@@ -3062,6 +3078,12 @@ class VectoramaApp {
             },
             colorIndex2D: this.colorIndex2D,
             colorIndex3D: this.colorIndex3D,
+            lineColorIndex2D: this.lineColorIndex2D,
+            lineColorIndex3D: this.lineColorIndex3D,
+            planeColorIndex2D: this.planeColorIndex2D,
+            planeColorIndex3D: this.planeColorIndex3D,
+            matrixColorIndex2D: this.matrixColorIndex2D,
+            matrixColorIndex3D: this.matrixColorIndex3D,
             selectedMatrixId2D: this.selectedMatrixId2D,
             selectedMatrixId3D: this.selectedMatrixId3D,
             matrixSequenceInput2D: this.matrixSequenceInput2D,
@@ -3264,6 +3286,12 @@ class VectoramaApp {
         this.matrixSequenceInput3D = typeof state.matrixSequenceInput3D === 'string' ? state.matrixSequenceInput3D : '';
         this.colorIndex2D = this.toFiniteNumber(state.colorIndex2D, 0);
         this.colorIndex3D = this.toFiniteNumber(state.colorIndex3D, 0);
+        this.lineColorIndex2D = this.toFiniteNumber(state.lineColorIndex2D, 3);
+        this.lineColorIndex3D = this.toFiniteNumber(state.lineColorIndex3D, 3);
+        this.planeColorIndex2D = this.toFiniteNumber(state.planeColorIndex2D, 6);
+        this.planeColorIndex3D = this.toFiniteNumber(state.planeColorIndex3D, 6);
+        this.matrixColorIndex2D = this.toFiniteNumber(state.matrixColorIndex2D, 2);
+        this.matrixColorIndex3D = this.toFiniteNumber(state.matrixColorIndex3D, 2);
 
         this.cameraState2D = this.deserializeCameraState(state.cameraState2D);
         this.cameraState3D = this.deserializeCameraState(state.cameraState3D);
@@ -3280,6 +3308,9 @@ class VectoramaApp {
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.matrixSequenceInput = this.matrixSequenceInput2D;
         this.colorIndex = this.colorIndex2D;
+        this.lineColorIndex = this.lineColorIndex2D;
+        this.planeColorIndex = this.planeColorIndex2D;
+        this.matrixColorIndex = this.matrixColorIndex2D;
 
         const counters = state.counters || {};
         const maxVectorId = Math.max(0, ...this.vectors2D.map(v => v.id), ...this.vectors3D.map(v => v.id));
@@ -3715,6 +3746,12 @@ class VectoramaApp {
         this.matrixSequenceInput3D = typeof state.matrixSequenceInput3D === 'string' ? state.matrixSequenceInput3D : '';
         this.colorIndex2D = this.toFiniteNumber(state.colorIndex2D, 0);
         this.colorIndex3D = this.toFiniteNumber(state.colorIndex3D, 0);
+        this.lineColorIndex2D = this.toFiniteNumber(state.lineColorIndex2D, 3);
+        this.lineColorIndex3D = this.toFiniteNumber(state.lineColorIndex3D, 3);
+        this.planeColorIndex2D = this.toFiniteNumber(state.planeColorIndex2D, 6);
+        this.planeColorIndex3D = this.toFiniteNumber(state.planeColorIndex3D, 6);
+        this.matrixColorIndex2D = this.toFiniteNumber(state.matrixColorIndex2D, 2);
+        this.matrixColorIndex3D = this.toFiniteNumber(state.matrixColorIndex3D, 2);
 
         this.cameraState2D = this.deserializeCameraState(state.cameraState2D);
         this.cameraState3D = this.deserializeCameraState(state.cameraState3D);
@@ -3731,6 +3768,9 @@ class VectoramaApp {
         this.selectedMatrixId = this.selectedMatrixId2D;
         this.matrixSequenceInput = this.matrixSequenceInput2D;
         this.colorIndex = this.colorIndex2D;
+        this.lineColorIndex = this.lineColorIndex2D;
+        this.planeColorIndex = this.planeColorIndex2D;
+        this.matrixColorIndex = this.matrixColorIndex2D;
 
         const counters = state.counters || {};
         const maxVectorId = Math.max(0, ...this.vectors2D.map(v => v.id), ...this.vectors3D.map(v => v.id));
@@ -4104,6 +4144,9 @@ class VectoramaApp {
             this.selectedMatrixId2D = this.selectedMatrixId;
             this.matrixSequenceInput2D = this.matrixSequenceInput;
             this.colorIndex2D = this.colorIndex;
+            this.lineColorIndex2D = this.lineColorIndex;
+            this.planeColorIndex2D = this.planeColorIndex;
+            this.matrixColorIndex2D = this.matrixColorIndex;
         } else {
             this.vectors3D = this.vectors;
             this.matrices3D = this.matrices;
@@ -4117,6 +4160,9 @@ class VectoramaApp {
             this.selectedMatrixId3D = this.selectedMatrixId;
             this.matrixSequenceInput3D = this.matrixSequenceInput;
             this.colorIndex3D = this.colorIndex;
+            this.lineColorIndex3D = this.lineColorIndex;
+            this.planeColorIndex3D = this.planeColorIndex;
+            this.matrixColorIndex3D = this.matrixColorIndex;
         }
         
         // Clear current visualizations from scene
@@ -4150,6 +4196,9 @@ class VectoramaApp {
             this.selectedMatrixId = this.selectedMatrixId2D;
             this.matrixSequenceInput = this.matrixSequenceInput2D;
             this.colorIndex = this.colorIndex2D;
+            this.lineColorIndex = this.lineColorIndex2D;
+            this.planeColorIndex = this.planeColorIndex2D;
+            this.matrixColorIndex = this.matrixColorIndex2D;
         } else {
             this.vectors = this.vectors3D;
             this.matrices = this.matrices3D;
@@ -4163,6 +4212,9 @@ class VectoramaApp {
             this.selectedMatrixId = this.selectedMatrixId3D;
             this.matrixSequenceInput = this.matrixSequenceInput3D;
             this.colorIndex = this.colorIndex3D;
+            this.lineColorIndex = this.lineColorIndex3D;
+            this.planeColorIndex = this.planeColorIndex3D;
+            this.matrixColorIndex = this.matrixColorIndex3D;
         }
         
         // Ensure all vectors have their THREE.js objects created
@@ -5965,6 +6017,8 @@ class VectoramaApp {
         const transformationLabel = document.createElement('div');
         transformationLabel.className = 'matrix-transform-label visible';
         transformationLabel.textContent = 'Matrix Composition (right to left)';
+        transformationLabel.style.backgroundColor = '#00C853';
+        transformationLabel.style.color = this.getContrastColor('#00C853');
         item.appendChild(transformationLabel);
 
         const mainRow = document.createElement('div');
@@ -6061,6 +6115,8 @@ class VectoramaApp {
         applyBtn = document.createElement('button');
         applyBtn.className = 'matrix-apply-btn';
         applyBtn.title = 'Apply sequence (rightmost matrix applies first)';
+        applyBtn.style.backgroundColor = '#00C853';
+        applyBtn.style.color = this.getContrastColor('#00C853');
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
         applyBtn.addEventListener('click', () => {
             window.goatcounter?.count({ path: 'Vectorama matrix composition applied', event: true });
@@ -6088,8 +6144,13 @@ class VectoramaApp {
         item.style.borderLeftColor = matrix.color.getStyle();
         item.setAttribute('data-matrix-id', matrix.id);
 
+        const colorHex = '#' + matrix.color.getHexString();
+        const contrastColor = this.getContrastColor(colorHex);
+
         const transformationLabel = document.createElement('div');
         transformationLabel.className = 'matrix-transform-label';
+        transformationLabel.style.backgroundColor = colorHex;
+        transformationLabel.style.color = contrastColor;
         this.updateMatrixTransformationLabel(transformationLabel, matrix);
         item.appendChild(transformationLabel);
 
@@ -6171,6 +6232,8 @@ class VectoramaApp {
         const applyBtn = document.createElement('button');
         applyBtn.className = 'matrix-apply-btn';
         applyBtn.title = 'Apply transformation to all objects';
+        applyBtn.style.backgroundColor = colorHex;
+        applyBtn.style.color = contrastColor;
         applyBtn.innerHTML = `<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6" fill="currentColor" /></svg>`;
         applyBtn.addEventListener('click', () => {
             window.goatcounter?.count({ path: 'Vectorama matrix transformation applied', event: true });
@@ -8236,7 +8299,11 @@ class VectoramaApp {
             }
         }
         
-        const color = new THREE.Color(0x00C853);
+        const previousMatrixColor = this.matrices.length > 0
+            ? this.matrices[this.matrices.length - 1].color.getStyle()
+            : null;
+        const colorHex = this.getNextDistinctObjectColor('matrices', previousMatrixColor);
+        const color = new THREE.Color(colorHex);
         
         const matrix = {
             id: this.nextMatrixId++,
@@ -8333,7 +8400,8 @@ class VectoramaApp {
             }
         }
         
-        const color = new THREE.Color(0x00C853);
+        const colorHex = this.getNextDistinctObjectColor('matrices');
+        const color = new THREE.Color(colorHex);
         
         const matrix = {
             id: this.nextMatrixId++,
@@ -9117,32 +9185,33 @@ class VectoramaApp {
         return Math.sqrt(dr * dr + dg * dg + db * db);
     }
 
-    getNextDistinctObjectColor(previousColorHex = null) {
+    getNextDistinctObjectColor(typeKey) {
+        const counterMap = {
+            lines: 'lineColorIndex',
+            planes: 'planeColorIndex',
+            matrices: 'matrixColorIndex'
+        };
+        const counter = counterMap[typeKey] || 'colorIndex';
         const palette = this.vectorColors;
         if (!palette || palette.length === 0) return '#4A90E2';
+        const index = this[counter] % palette.length;
+        this[counter]++;
+        return palette[index];
+    }
 
-        const startIndex = this.colorIndex;
-        const minimumDistance = 120;
-
-        for (let offset = 0; offset < palette.length; offset++) {
-            const paletteIndex = (startIndex + offset) % palette.length;
-            const candidate = palette[paletteIndex];
-
-            if (!previousColorHex || this.getColorDistance(candidate, previousColorHex) >= minimumDistance) {
-                this.colorIndex = paletteIndex + 1;
-                return candidate;
-            }
-        }
-
-        const fallbackIndex = startIndex % palette.length;
-        const fallback = palette[fallbackIndex];
-        this.colorIndex = fallbackIndex + 1;
-        return fallback;
+    getContrastColor(hexColor) {
+        if (!hexColor || typeof hexColor !== 'string') return '#ffffff';
+        const h = hexColor.replace('#', '');
+        if (h.length !== 6) return '#ffffff';
+        const r = parseInt(h.slice(0, 2), 16) / 255;
+        const g = parseInt(h.slice(2, 4), 16) / 255;
+        const b = parseInt(h.slice(4, 6), 16) / 255;
+        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        return luminance > 0.5 ? '#000000' : '#ffffff';
     }
 
     addLine(ax = 0, ay = 1, az = 0, bx = 1, by = 0, bz = 0) {
-        const previousLineColor = this.lines.length > 0 ? this.lines[this.lines.length - 1].color : null;
-        const colorHex = this.getNextDistinctObjectColor(previousLineColor);
+        const colorHex = this.getNextDistinctObjectColor('lines');
         
         const line = {
             id: this.nextLineId++,
@@ -9174,8 +9243,7 @@ class VectoramaApp {
     addPlane(a = 0, b = 0, c = 1, d = 0) {
         if (this.dimension === '2d') return;
         
-        const previousPlaneColor = this.planes.length > 0 ? this.planes[this.planes.length - 1].color : null;
-        const colorHex = this.getNextDistinctObjectColor(previousPlaneColor);
+        const colorHex = this.getNextDistinctObjectColor('planes');
         
         const plane = {
             id: this.nextPlaneId++,
