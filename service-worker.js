@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vectorama-version-1.0.93';
+const CACHE_NAME = 'vectorama-version-1.0.94';
 const LOCAL_ASSETS = [
   './',
   './index.html',
@@ -25,7 +25,8 @@ async function cacheFirstWithBackgroundRefresh(request, options = {}) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request, options);
 
-  const networkPromise = fetch(request)
+  // 'no-cache' revalidates with the server rather than trusting the HTTP cache
+  const networkPromise = fetch(request, { cache: 'no-cache' })
     .then((response) => {
       if (response && response.ok) {
         cache.put(request, response.clone());
@@ -72,7 +73,14 @@ self.addEventListener('install', (event) => {
     const cache = await caches.open(CACHE_NAME);
 
     // Local shell is mandatory so launch is fast even with poor connectivity.
-    await cache.addAll(LOCAL_ASSETS.map((asset) => toScopeUrl(asset)));
+    // cache: 'reload' bypasses the HTTP cache so a new version never stores stale files.
+    await Promise.all(LOCAL_ASSETS.map(async (asset) => {
+      const response = await fetch(new Request(toScopeUrl(asset), { cache: 'reload' }));
+      if (!response.ok) {
+        throw new Error(`Failed to cache ${asset}: ${response.status}`);
+      }
+      await cache.put(toScopeUrl(asset), response);
+    }));
 
     // External CDN files are best-effort: don't block install when network is weak.
     await Promise.allSettled(CDN_ASSETS.map((url) => cache.add(url)));

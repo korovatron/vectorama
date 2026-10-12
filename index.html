@@ -572,9 +572,51 @@
     <script>
         // Register Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js')
+            // iOS PWAs can stay alive for days without a navigation, so check for updates
+            // explicitly, then reload onto the new version once it is safe to do so.
+            const hadController = !!navigator.serviceWorker.controller;
+            let reloadPending = false;
+
+            const isTitleScreenShowing = () => {
+                const mainApp = document.getElementById('main-app');
+                return !mainApp || mainApp.style.display === 'none';
+            };
+
+            const reloadIfSafe = () => {
+                if (reloadPending && (document.hidden || isTitleScreenShowing())) {
+                    reloadPending = false;
+                    window.location.reload();
+                }
+            };
+
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!hadController) return; // first install, nothing stale to replace
+                reloadPending = true;
+                reloadIfSafe();
+            });
+
+            navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
                 .then((registration) => {
                     console.log('Service Worker registered successfully:', registration.scope);
+
+                    let lastCheck = Date.now();
+                    const checkForUpdate = () => {
+                        lastCheck = Date.now();
+                        registration.update().catch(() => {});
+                    };
+
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            reloadIfSafe();
+                        } else {
+                            checkForUpdate();
+                        }
+                    });
+                    window.addEventListener('pageshow', checkForUpdate);
+                    window.addEventListener('focus', () => {
+                        if (Date.now() - lastCheck > 60 * 1000) checkForUpdate();
+                    });
+                    setInterval(checkForUpdate, 30 * 60 * 1000);
                 })
                 .catch((error) => {
                     console.log('Service Worker registration failed:', error);
