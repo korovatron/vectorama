@@ -6,7 +6,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 
-const APP_VERSION = '1.0.92';
+const APP_VERSION = '1.0.93';
 
 // Title Screen Functionality
 const titleScreen = document.getElementById('title-screen');
@@ -93,24 +93,83 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// iOS viewport height fix - necessary for full-screen rendering into notch and chrome areas
-// Sets a CSS variable for the actual viewport height, which works around iOS Safari's 100vh issue
-function setActualVH() {
-    document.documentElement.style.setProperty('--actual-vh', `${window.innerHeight}px`);
+// iOS PWA viewport fix. In standalone mode iOS can subtract safe-area-inset-top from
+// window.innerHeight (leaving a bar at the bottom), and visualViewport.scale may not be 1,
+// so screen size and the safe-area inset must be normalised by scale before comparing.
+function fixIOSViewportBug() {
+    let lastKnownHeight = 0;
+
+    const isPWA = () => window.matchMedia('(display-mode: standalone)').matches ||
+                        window.matchMedia('(display-mode: fullscreen)').matches ||
+                        window.navigator.standalone === true;
+    const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const setActualViewportHeight = () => {
+        // innerHeight, not visualViewport.height, which is volatile around keyboard/share sheet
+        let viewportHeight = window.innerHeight;
+        const isPortrait = window.innerHeight > window.innerWidth;
+
+        if (isIOS() && isPWA() && isPortrait) {
+            // Flush layout so the computed --safe-area-top isn't stale
+            void document.documentElement.offsetHeight;
+
+            const scale = (window.visualViewport && window.visualViewport.scale) || 1;
+            const screenPortraitHeight = Math.max(window.screen.height, window.screen.width) / scale;
+            const difference = screenPortraitHeight - viewportHeight;
+
+            if (difference > 2) {
+                const safeTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top');
+                const safeTopPx = (parseInt(safeTop) || 0) / scale;
+
+                if (safeTopPx > 0) {
+                    viewportHeight += safeTopPx;
+                } else if (difference <= 180 / scale) {
+                    // Safe-area not resolved yet (cold launch): best guess until a retry picks it up
+                    viewportHeight = screenPortraitHeight;
+                }
+            }
+        }
+
+        document.documentElement.style.setProperty('--actual-vh', `${viewportHeight}px`);
+
+        if (lastKnownHeight > 0 && Math.abs(viewportHeight - lastKnownHeight) > 30) {
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        }
+        lastKnownHeight = viewportHeight;
+    };
+
+    const scheduleUpdates = (delays) => {
+        delays.forEach(delay => setTimeout(setActualViewportHeight, delay));
+    };
+
+    setActualViewportHeight();
+    scheduleUpdates([50, 100, 200, 350, 600, 900, 1300, 1800, 2400]);
+
+    if (isIOS() && isPWA()) {
+        [350, 900, 1800, 2400].forEach(delay => {
+            setTimeout(() => window.dispatchEvent(new Event('resize')), delay);
+        });
+    }
+
+    window.addEventListener('resize', setActualViewportHeight);
+    window.addEventListener('orientationchange', () => {
+        scheduleUpdates([50, 100, 200, 350, 600, 900, 1300, 1800]);
+    });
+    if (screen.orientation) {
+        screen.orientation.addEventListener('change', () => {
+            scheduleUpdates([50, 100, 200, 350, 600, 900, 1300, 1800]);
+        });
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) scheduleUpdates([50, 200, 500, 900]);
+    });
+    window.addEventListener('pageshow', () => {
+        scheduleUpdates([0, 200, 500, 900]);
+    });
 }
 
-// Set on load
-setActualVH();
-
-// Update on resize and orientation change
-window.addEventListener('resize', setActualVH);
-window.addEventListener('orientationchange', () => {
-    // Small delay needed for iOS to complete the orientation change
-    setTimeout(setActualVH, 100);
-});
-window.addEventListener('pageshow', () => {
-    setTimeout(setActualVH, 0);
-});
+fixIOSViewportBug();
 
 // Theme Toggle Functionality
 const themeToggle = document.getElementById('theme-toggle');
