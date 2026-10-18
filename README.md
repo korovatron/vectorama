@@ -4,6 +4,10 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ## Changelog
 
+### 1.0.96 (2026-10-18)
+- `worksheets.html` is no longer a full duplicate worksheets page. It now shows a short "this page has moved" notice (with a meta-refresh redirect and canonical link) pointing to the sitewide https://www.korovatron.co.uk/worksheets/ page, and the stale password-unlock mechanism has been removed.
+- Removed the now-unused `worksheets/` folder (PDFs and `wordDocs/` Word originals); these worksheets are maintained in the sitewide worksheets site's own repo instead.
+
 ### 1.0.45 (2026-03-16)
 - Corrected matrix-info eigenvector display for irrational 2D eigendirections by avoiding fallback integer rounding that could show misleading vectors.
 
@@ -46,9 +50,8 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ## Usage
 
-### Solutions Buttons Password
-- Current unlock password for `worksheets.html`: **DrinkSlurm**
-- Note: `worksheets.html` is no longer linked from the homepage (superseded by the sitewide https://www.korovatron.co.uk/worksheets/ page) but is kept live for now in case of direct links. When it's eventually deleted, also remove `'./worksheets.html'` from `LOCAL_ASSETS` in `service-worker.js` and bump `CACHE_NAME` in the same change, otherwise the service worker's install step will fail (it treats local assets as mandatory and throws if any fetch 404s).
+### Worksheets Page
+- `worksheets.html` is no longer linked from the homepage (superseded by the sitewide https://www.korovatron.co.uk/worksheets/ page). It now just shows a short "this page has moved" notice with a meta-refresh redirect and canonical link to the new page, kept live for now in case of direct links/bookmarks. The password-unlock mechanism has been removed since there is no longer any content to unlock. When the page is eventually deleted entirely, also remove `'./worksheets.html'` from `LOCAL_ASSETS` in `service-worker.js` and bump `CACHE_NAME` in the same change, otherwise the service worker's install step will fail (it treats local assets as mandatory and throws if any fetch 404s).
 
 ### Switching Modes
 - Use the **Transform** / **Geometry** buttons at the top to switch between modes
