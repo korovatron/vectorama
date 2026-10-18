@@ -48,6 +48,7 @@ A comprehensive web application for teaching and visualizing vectors, matrix tra
 
 ### Solutions Buttons Password
 - Current unlock password for `worksheets.html`: **DrinkSlurm**
+- Note: `worksheets.html` is no longer linked from the homepage (superseded by the sitewide https://www.korovatron.co.uk/worksheets/ page) but is kept live for now in case of direct links. When it's eventually deleted, also remove `'./worksheets.html'` from `LOCAL_ASSETS` in `service-worker.js` and bump `CACHE_NAME` in the same change, otherwise the service worker's install step will fail (it treats local assets as mandatory and throws if any fetch 404s).
 
 ### Switching Modes
 - Use the **Transform** / **Geometry** buttons at the top to switch between modes

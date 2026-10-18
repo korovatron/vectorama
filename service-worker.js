@@ -1,9 +1,9 @@
-const CACHE_NAME = 'vectorama-version-1.0.94';
+const CACHE_NAME = 'vectorama-version-1.0.95';
 const LOCAL_ASSETS = [
   './',
   './index.html',
   './guide.html',
-  './worksheets.html',
+  './worksheets.html', // TODO: deprecated page (no longer linked from homepage). When deleted, remove this entry and bump CACHE_NAME, or install will fail.
   './style.css',
   './app.js',
   './manifest.json',
